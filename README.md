@@ -1,20 +1,26 @@
-# React + TypeScript + Vite + shadcn/ui
+<div align="center">
+  <img width="500px" src="./.github/JobbyLogo.svg" alt="Jobby logo">
+</div>
 
-This is a template for a new Vite project with React, TypeScript, and shadcn/ui.
+Using React + TypeScript + Vite + shadcn/ui
 
-Install Dependencies
+## ⚙️ Setup
+
+### 📂Install dependencies
 
 ```bash
 bun i
 ```
 
-Development
+### 🛠️ Development
 
 ```bash
 bun dev
 ```
 
-Format Code
+### 🎯 Before Push
+
+Should Format Code Every Push
 
 ```bash
 bunx prettier . --write
