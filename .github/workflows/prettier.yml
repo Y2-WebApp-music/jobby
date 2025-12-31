@@ -19,4 +19,3 @@ jobs:
         run: bun install --frozen-lockfile
       - name: Run Prettier (check mode)
         run: bunx prettier . --check
-
