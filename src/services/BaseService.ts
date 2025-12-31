@@ -15,13 +15,8 @@ const toApiError = (errors: AxiosError | Error): ApiError => {
       ? String(axiosError.response.status ?? "error")
       : "error",
     code:
-      "code" in errors && errors.code
-        ? String(errors.code)
-        : "unknown_error",
-    message:
-      responseData?.message ??
-      errors.message ??
-      "Unknown error",
+      "code" in errors && errors.code ? String(errors.code) : "unknown_error",
+    message: responseData?.message ?? errors.message ?? "Unknown error",
   };
 };
 
