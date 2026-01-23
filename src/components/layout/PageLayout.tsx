@@ -2,6 +2,8 @@ import React from "react";
 import JobbyLogo from "@/assets/icons/JobbyLogo.svg?react";
 import { Button } from "../ui/button";
 import { Link } from "react-router-dom";
+import { InputGroup, InputGroupInput, InputGroupButton } from "@/components/ui/input-group";
+import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 export default function PageLayout({
   children,
@@ -28,9 +30,24 @@ export default function PageLayout({
               <Button>{item.label}</Button>
             </Link>
           ))}
-          <Link to={"/login"}>
-            <Button>Login</Button>
-          </Link>
+
+          <Dialog>
+            <DialogTrigger asChild>
+              <Button>Login</Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-md">
+              <DialogHeader>
+                <DialogTitle>Login</DialogTitle>
+              </DialogHeader>
+              <InputGroup className="w-full">
+                <InputGroupInput placeholder="Text Here" />
+                <InputGroupButton>
+                  button
+                </InputGroupButton>
+              </InputGroup>
+            </DialogContent>
+          </Dialog>
+          
         </div>
       </div>
       {/* Page Content */}
