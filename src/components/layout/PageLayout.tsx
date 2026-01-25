@@ -2,7 +2,14 @@ import React from "react";
 import JobbyLogo from "@/assets/icons/JobbyLogo.svg?react";
 import { Button } from "../ui/button";
 import { Link } from "react-router-dom";
-
+import { 
+  Dialog, 
+  DialogContent, 
+  DialogDescription, 
+  DialogHeader, 
+  DialogTitle, 
+  DialogTrigger 
+} from "@/components/ui/dialog"; 
 export default function PageLayout({
   children,
 }: {
@@ -28,8 +35,24 @@ export default function PageLayout({
               <Button>{item.label}</Button>
             </Link>
           ))}
+
+          {/* เอาไว้เทส dialog */}
+          {/* <Dialog>
+            <DialogTrigger asChild>
+              <Button>Login</Button>
+            </DialogTrigger>
+            <DialogContent variant="error">
+              <DialogHeader>
+                <DialogTitle>Event has been created</DialogTitle>
+                <DialogDescription>
+
+                </DialogDescription>
+              </DialogHeader>
+            </DialogContent>
+          </Dialog> */}
+
           <Link to={"/login"}>
-            <Button>Login</Button>
+            <Button >Login</Button>
           </Link>
         </div>
       </div>
