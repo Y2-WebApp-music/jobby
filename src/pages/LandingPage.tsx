@@ -21,7 +21,7 @@ export default function LandingPage() {
           ipsam praesentium officia corporis est a dolor, nemo aspernatur ab
           minima asperiores illo! Id, rerum expedita.
         </p>
-        <p>ที่ทดสอบ</p>
+        <p className=" text-second">ที่ทดสอบ</p>
       </div>
     </PageLayout>
   );
