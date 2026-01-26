@@ -2,14 +2,9 @@ import React from "react";
 import JobbyLogo from "@/assets/icons/JobbyLogo.svg?react";
 import { Button } from "../ui/button";
 import { Link } from "react-router-dom";
-import { 
-  Dialog, 
-  DialogContent, 
-  DialogDescription, 
-  DialogHeader, 
-  DialogTitle, 
-  DialogTrigger 
-} from "@/components/ui/dialog"; 
+import { InputGroup, InputGroupInput, InputGroupButton } from "@/components/ui/input-group";
+import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+
 export default function PageLayout({
   children,
 }: {
@@ -36,24 +31,23 @@ export default function PageLayout({
             </Link>
           ))}
 
-          {/* เอาไว้เทส dialog */}
-          {/* <Dialog>
+          <Dialog>
             <DialogTrigger asChild>
               <Button>Login</Button>
             </DialogTrigger>
-            <DialogContent variant="error">
+            <DialogContent className="sm:max-w-md">
               <DialogHeader>
-                <DialogTitle>Event has been created</DialogTitle>
-                <DialogDescription>
-
-                </DialogDescription>
+                <DialogTitle>Login</DialogTitle>
               </DialogHeader>
+              <InputGroup className="w-full">
+                <InputGroupInput placeholder="Text Here" />
+                <InputGroupButton>
+                  button
+                </InputGroupButton>
+              </InputGroup>
             </DialogContent>
-          </Dialog> */}
-
-          <Link to={"/login"}>
-            <Button >Login</Button>
-          </Link>
+          </Dialog>
+          
         </div>
       </div>
       {/* Page Content */}
