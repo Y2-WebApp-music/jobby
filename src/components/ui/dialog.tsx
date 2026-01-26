@@ -3,8 +3,15 @@ import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { XIcon, CheckCircle2, Info, AlertTriangle, OctagonXIcon, Loader2 } from "lucide-react";
-import Success_icon from "/src/assets/icons/Success.png" ;
+import {
+  XIcon,
+  CheckCircle2,
+  Info,
+  AlertTriangle,
+  OctagonXIcon,
+  Loader2,
+} from "lucide-react";
+import Success_icon from "/src/assets/icons/Success.png";
 
 const dialogVariants = cva(
   "bg-background data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 grid max-w-[calc(100%-2rem)] gap-6 rounded-xl p-6 text-sm duration-100 sm:max-w-md fixed top-1/2 left-1/2 z-50 w-full -translate-x-1/2 -translate-y-1/2",
@@ -23,7 +30,7 @@ const dialogVariants = cva(
     defaultVariants: {
       variant: "default",
     },
-  }
+  },
 );
 
 function Dialog({
@@ -66,7 +73,8 @@ function DialogOverlay({
 }
 
 interface DialogContentProps
-  extends React.ComponentProps<typeof DialogPrimitive.Content>,
+  extends
+    React.ComponentProps<typeof DialogPrimitive.Content>,
     VariantProps<typeof dialogVariants> {
   showCloseButton?: boolean;
 }
@@ -78,10 +86,10 @@ function DialogContent({
   variant,
   ...props
 }: DialogContentProps) {
-
   const renderIcon = () => {
-    const iconClass = "w-8 h-8 text-black animate-in fade-in zoom-in duration-300";
-    
+    const iconClass =
+      "w-8 h-8 text-black animate-in fade-in zoom-in duration-300";
+
     switch (variant) {
       case "success":
         return <CheckCircle2 className={iconClass} />;
@@ -92,13 +100,17 @@ function DialogContent({
       case "error":
         return <OctagonXIcon className={iconClass} />;
       case "promise":
-        return <Loader2 className="w-8 h-8 text-black animate-spin duration-1000" />;
+        return (
+          <Loader2 className="w-8 h-8 text-black animate-spin duration-1000" />
+        );
       default:
         return null;
     }
   };
 
-  const isSpecialVariant = variant && ["success", "info", "warning", "error", "promise"].includes(variant);
+  const isSpecialVariant =
+    variant &&
+    ["success", "info", "warning", "error", "promise"].includes(variant);
 
   return (
     <DialogPortal>
@@ -107,13 +119,14 @@ function DialogContent({
         className={cn(dialogVariants({ variant, className }))}
         {...props}
       >
-        <div className={cn("flex gap-4", isSpecialVariant ? "items-center" : "flex-col")}>
-          {isSpecialVariant && (
-            <div className="shrink-0">
-              {renderIcon()}
-            </div>
+        <div
+          className={cn(
+            "flex gap-4",
+            isSpecialVariant ? "items-center" : "flex-col",
           )}
-          
+        >
+          {isSpecialVariant && <div className="shrink-0">{renderIcon()}</div>}
+
           <div className="flex-1 flex flex-col gap-2 justify-center min-h-[2rem] mt-[-4px] mb-[-4px]">
             {children}
           </div>
@@ -126,7 +139,10 @@ function DialogContent({
 function DialogHeader({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
-      className={cn("gap-1.5 flex flex-col text-left justify-center", className)}
+      className={cn(
+        "gap-1.5 flex flex-col text-left justify-center",
+        className,
+      )}
       {...props}
     />
   );
@@ -156,7 +172,10 @@ function DialogTitle({
 }: React.ComponentProps<typeof DialogPrimitive.Title>) {
   return (
     <DialogPrimitive.Title
-      className={cn("leading-none font-normal text-[19px] flex items-center pt-2", className)}
+      className={cn(
+        "leading-none font-normal text-[19px] flex items-center pt-2",
+        className,
+      )}
       {...props}
     />
   );
