@@ -17,7 +17,7 @@ import WorkexpDialog, {
 import ProjectDialog, {
   type ProjectItem,
 } from "../../features/profile/dialog/ProjectDialog";
-import Thumbnail from "@/assets/images/Thumbnail.svg";
+import Thumbnail from "@/assets/Thumbnail.svg";
 
 const MAX_IMAGE_SIZE_BYTES = 15 * 1024 * 1024;
 
@@ -252,7 +252,7 @@ export default function Profile() {
     projects.find((item) => item.id === previewProjectId) ?? null;
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen">
       <div className="fixed inset-x-0 top-0 z-40 h-14 border-b border-slate-200 bg-white">
         <div className="mx-auto flex h-full max-w-7xl items-center px-4">
           <JobbyLogo height={36} width={110} />
