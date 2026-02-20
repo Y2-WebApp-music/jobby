@@ -10,6 +10,7 @@ import { CgClose } from "react-icons/cg";
 import { IoIosMore } from "react-icons/io";
 import { HiOutlineSelector } from "react-icons/hi";
 import { IoIosArrowForward, IoIosArrowBack } from "react-icons/io";
+import ApplyJob from "./seachpopup/ApplyJob";
 
 
 
@@ -253,14 +254,25 @@ export default function SearchJobPage() {
 	const [searchType, setSearchType] = useState<"any" | "skill" | "job">("any");
 	const [skillOpen, setSkillOpen] = useState(false);
 	const [searchQuery, setSearchQuery] = useState("");
-	const [categoryFilter, setCategoryFilter] = useState("Any Category");
+	const [selectedCategories, setSelectedCategories] = useState<Set<string>>(
+		new Set(),
+	);
 	const [placeFilter, setPlaceFilter] = useState("Any Place");
-	const [workTypeFilter, setWorkTypeFilter] = useState("Any Work Type");
-	const [workOptionFilter, setWorkOptionFilter] = useState("Any Work Option");
+	const [selectedWorkTypes, setSelectedWorkTypes] = useState<Set<string>>(
+		new Set(),
+	);
+	const [selectedWorkOptions, setSelectedWorkOptions] = useState<Set<string>>(
+		new Set(),
+	);
+	const [categoryOpen, setCategoryOpen] = useState(false);
+	const [workTypeOpen, setWorkTypeOpen] = useState(false);
+	const [workOptionOpen, setWorkOptionOpen] = useState(false);
 	const [filterMode, setFilterMode] = useState<
 		"relevance" | "date" | "unviewed"
 	>("relevance");
 	const [messageCount, setMessageCount] = useState<number>(0);
+	const [applyOpen, setApplyOpen] = useState(false);
+	const [applyDialogKey, setApplyDialogKey] = useState(0);
 
 	const skillOptions = [
 		"Front-End",
@@ -274,6 +286,9 @@ export default function SearchJobPage() {
 		"Docker",
 		"AWS",
 	];
+	const categoryOptions = ["Technology", "Design", "Data", "Security"];
+	const workTypeOptions = ["Full-time", "Contract"];
+	const workOptionOptions = ["On-site", "Hybrid", "Remote"];
 	const pageSize = 6;
 	const [currentPage, setCurrentPage] = useState(1);
 	const query = searchQuery.trim().toLowerCase();
@@ -281,14 +296,14 @@ export default function SearchJobPage() {
 	const filteredJobs = jobs
 		.filter((job) => {
 			const matchesCategory =
-				categoryFilter === "Any Category" || job.category === categoryFilter;
+				selectedCategories.size === 0 || selectedCategories.has(job.category);
 			const matchesPlace =
 				placeFilter === "Any Place" || job.place === placeFilter;
 			const matchesWorkType =
-				workTypeFilter === "Any Work Type" || job.workType === workTypeFilter;
+				selectedWorkTypes.size === 0 || selectedWorkTypes.has(job.workType);
 			const matchesWorkOption =
-				workOptionFilter === "Any Work Option" ||
-				job.workOption === workOptionFilter;
+				selectedWorkOptions.size === 0 ||
+				selectedWorkOptions.has(job.workOption);
 
 			if (!query) {
 				return (
@@ -395,6 +410,42 @@ export default function SearchJobPage() {
 			if (!prev.has(id)) return prev;
 			const next = new Set(prev);
 			next.delete(id);
+			return next;
+		});
+	};
+
+	const toggleCategory = (value: string) => {
+		setSelectedCategories((prev) => {
+			const next = new Set(prev);
+			if (next.has(value)) {
+				next.delete(value);
+			} else {
+				next.add(value);
+			}
+			return next;
+		});
+	};
+
+	const toggleWorkType = (value: string) => {
+		setSelectedWorkTypes((prev) => {
+			const next = new Set(prev);
+			if (next.has(value)) {
+				next.delete(value);
+			} else {
+				next.add(value);
+			}
+			return next;
+		});
+	};
+
+	const toggleWorkOption = (value: string) => {
+		setSelectedWorkOptions((prev) => {
+			const next = new Set(prev);
+			if (next.has(value)) {
+				next.delete(value);
+			} else {
+				next.add(value);
+			}
 			return next;
 		});
 	};
@@ -575,18 +626,59 @@ export default function SearchJobPage() {
 
 						<div className="mt-3 grid grid-cols-4 gap-3">
 							<div className="relative">
-								<select
-									value={categoryFilter}
-									onChange={(e) => setCategoryFilter(e.target.value)}
-									className="h-10 w-full px-4 border rounded-full text-[#A1A1A1] border-[#E5E5E5] bg-transparent appearance-none pr-8 text-sm shadow-sm"
+								<button
+									type="button"
+									onClick={() => setCategoryOpen((prev) => !prev)}
+									className="h-10 w-full px-3 border rounded-full border-[#E5E5E5] bg-transparent text-sm shadow-sm flex items-center"
 								>
-									<option>Any Category</option>
-									<option>Technology</option>
-									<option>Design</option>
-									<option>Data</option>
-									<option>Security</option>
-								</select>
-								<HiOutlineSelector className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#A1A1A1]" />
+									<div className="flex items-center gap-1.5 min-w-0 overflow-hidden">
+										{selectedCategories.size === 0 ? (
+											<span className="text-[#A1A1A1]">Any Category</span>
+										) : (
+											<>
+												{Array.from(selectedCategories)
+													.slice(0, 3)
+													.map((item) => (
+														<span
+															key={item}
+															className="h-6 px-2 rounded-full bg-[#eeeeee] text-black inline-flex items-center whitespace-nowrap text-xs"
+														>
+															{item}
+														</span>
+													))}
+												{selectedCategories.size > 3 && (
+													<span className="h-6 px-2 rounded-full bg-[#eeeeee] text-black inline-flex items-center whitespace-nowrap text-xs">
+														+{selectedCategories.size - 3}
+													</span>
+												)}
+											</>
+										)}
+									</div>
+									<HiOutlineSelector className="ml-auto h-4 w-4 text-[#A1A1A1]" />
+								</button>
+								{categoryOpen && (
+									<div className="absolute top-full left-0 mt-2 w-full rounded-2xl border border-[#e2e2e2] bg-white shadow-lg p-2 z-30">
+										<div className="flex flex-wrap gap-2">
+											{categoryOptions.map((option) => {
+												const active = selectedCategories.has(option);
+												return (
+													<button
+														key={option}
+														type="button"
+														onClick={() => toggleCategory(option)}
+														className={`h-7 px-3 rounded-full text-xs ${
+															active
+																? "bg-[#e5e5e5] text-black"
+																: "bg-white text-[#666] border border-[#e2e2e2]"
+														}`}
+													>
+														{option}
+													</button>
+												);
+											})}
+										</div>
+									</div>
+								)}
 							</div>
 							<div className="relative">
 								<select
@@ -600,29 +692,114 @@ export default function SearchJobPage() {
 								<HiOutlineSelector className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#A1A1A1]" />
 							</div>
 							<div className="relative">
-								<select
-									value={workTypeFilter}
-									onChange={(e) => setWorkTypeFilter(e.target.value)}
-									className="h-10 w-full px-4 border rounded-full text-[#A1A1A1] border-[#E5E5E5] bg-transparent appearance-none pr-8 text-sm shadow-sm"
+								<button
+									type="button"
+									onClick={() => setWorkTypeOpen((prev) => !prev)}
+									className="h-10 w-full px-3 border rounded-full border-[#E5E5E5] bg-transparent text-sm shadow-sm flex items-center"
 								>
-									<option>Any Work Type</option>
-									<option>Full-time</option>
-									<option>Contract</option>
-								</select>
-								<HiOutlineSelector className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#A1A1A1]" />
+									<div className="flex items-center gap-1.5 min-w-0 overflow-hidden">
+										{selectedWorkTypes.size === 0 ? (
+											<span className="text-[#A1A1A1]">Any Work Type</span>
+										) : (
+											<>
+												{Array.from(selectedWorkTypes)
+													.slice(0, 3)
+													.map((item) => (
+														<span
+															key={item}
+															className="h-6 px-2 rounded-full bg-[#eeeeee] text-black inline-flex items-center whitespace-nowrap text-xs"
+														>
+															{item}
+														</span>
+													))}
+												{selectedWorkTypes.size > 3 && (
+													<span className="h-6 px-2 rounded-full bg-[#eeeeee] text-black inline-flex items-center whitespace-nowrap text-xs">
+														+{selectedWorkTypes.size - 3}
+													</span>
+												)}
+											</>
+										)}
+									</div>
+									<HiOutlineSelector className="ml-auto h-4 w-4 text-[#A1A1A1]" />
+								</button>
+								{workTypeOpen && (
+									<div className="absolute top-full left-0 mt-2 w-full rounded-2xl border border-[#e2e2e2] bg-white shadow-lg p-2 z-30">
+										<div className="flex flex-wrap gap-2">
+											{workTypeOptions.map((option) => {
+												const active = selectedWorkTypes.has(option);
+												return (
+													<button
+														key={option}
+														type="button"
+														onClick={() => toggleWorkType(option)}
+														className={`h-7 px-3 rounded-full text-xs ${
+															active
+																? "bg-[#e5e5e5] text-black"
+																: "bg-white text-[#666] border border-[#e2e2e2]"
+														}`}
+													>
+														{option}
+													</button>
+												);
+											})}
+										</div>
+									</div>
+								)}
 							</div>
 							<div className="relative">
-								<select
-									value={workOptionFilter}
-									onChange={(e) => setWorkOptionFilter(e.target.value)}
-									className="h-10 w-full px-4 border rounded-full text-[#A1A1A1] border-[#E5E5E5] bg-transparent appearance-none pr-8 text-sm shadow-sm"
+								<button
+									type="button"
+									onClick={() => setWorkOptionOpen((prev) => !prev)}
+									className="h-10 w-full px-3 border rounded-full border-[#E5E5E5] bg-transparent text-sm shadow-sm flex items-center"
 								>
-									<option>Any Work Option</option>
-									<option>On-site</option>
-									<option>Hybrid</option>
-									<option>Remote</option>
-								</select>
-								<HiOutlineSelector className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#A1A1A1]" />
+									<div className="flex items-center gap-1.5 min-w-0 overflow-hidden">
+										{selectedWorkOptions.size === 0 ? (
+											<span className="text-[#A1A1A1]">Any Work Option</span>
+										) : (
+											<>
+												{Array.from(selectedWorkOptions)
+													.slice(0, 3)
+													.map((item) => (
+														<span
+															key={item}
+															className="h-6 px-2 rounded-full bg-[#eeeeee] text-black inline-flex items-center whitespace-nowrap text-xs"
+														>
+															{item}
+														</span>
+													))}
+												{selectedWorkOptions.size > 3 && (
+													<span className="h-6 px-2 rounded-full bg-[#eeeeee] text-black inline-flex items-center whitespace-nowrap text-xs">
+														+{selectedWorkOptions.size - 3}
+													</span>
+												)}
+											</>
+										)}
+									</div>
+									<HiOutlineSelector className="ml-auto h-4 w-4 text-[#A1A1A1]" />
+								</button>
+								{workOptionOpen && (
+									<div className="absolute top-full left-0 mt-2 w-full rounded-2xl border border-[#e2e2e2] bg-white shadow-lg p-2 z-30">
+										<div className="flex flex-wrap gap-2">
+											{workOptionOptions.map((option) => {
+												const active = selectedWorkOptions.has(option);
+												return (
+													<button
+														key={option}
+														type="button"
+														onClick={() => toggleWorkOption(option)}
+														className={`h-7 px-3 rounded-full text-xs ${
+															active
+																? "bg-[#e5e5e5] text-black"
+																: "bg-white text-[#666] border border-[#e2e2e2]"
+														}`}
+													>
+														{option}
+													</button>
+												);
+											})}
+										</div>
+									</div>
+								)}
 							</div>
 						</div>
 					</div>
@@ -630,44 +807,46 @@ export default function SearchJobPage() {
 			</div>
 
 			{/* Content */}
-			<div className="w-full px-6 py-6 grid grid-cols-[380px_1fr] gap-0">
+			<div className="w-full px-6 py-6 grid grid-cols-[460px_1fr] gap-0">
 				{/* Job List */}
 				<div className="job-list bg-white divide-y divide-gray-100">
-					<div className="flex items-center gap-2 mt-15 px-4 py-5">
+					<div className="flex items-center gap-3 mt-15 px-4 py-5">
 						<span className="text-sm">{filteredJobs.length} Results</span>
-						<button
-							type="button"
-							onClick={() => setFilterMode("relevance")}
-							className={`rounded-full px-3 py-1 text-xs border ${
-								filterMode === "relevance"
-									? "text-white border-transparent bg-[linear-gradient(90deg,var(--color-main),var(--color-second))]"
-									: "text-[#555] border-[#e2e2e2] bg-white"
-							}`}
-						>
-							Relevance
-						</button>
-						<button
-							type="button"
-							onClick={() => setFilterMode("date")}
-							className={`rounded-full px-3 py-1 text-xs border ${
-								filterMode === "date"
-									? "text-white border-transparent bg-[linear-gradient(90deg,var(--color-main),var(--color-second))]"
-									: "text-[#555] border-[#e2e2e2] bg-white"
-							}`}
-						>
-							Date
-						</button>
-						<button
-							type="button"
-							onClick={() => setFilterMode("unviewed")}
-							className={`rounded-full px-3 py-1 text-xs border ${
-								filterMode === "unviewed"
-									? "text-white border-transparent bg-[linear-gradient(90deg,var(--color-main),var(--color-second))]"
-									: "text-[#555] border-[#e2e2e2] bg-white"
-							}`}
-						>
-							No browsed yet
-						</button>
+						<div className="inline-flex overflow-hidden rounded-full border border-[#cfcfcf] bg-white">
+							<button
+								type="button"
+								onClick={() => setFilterMode("relevance")}
+								className={`px-5 py-2.5 text-[14px] leading-none whitespace-nowrap border-r border-[#d8d8d8] ${
+									filterMode === "relevance"
+										? "text-white border-r-transparent bg-[linear-gradient(90deg,var(--color-main),var(--color-second))]"
+										: "text-[#555] bg-white hover:bg-[#f7f7f7]"
+								}`}
+							>
+								Relevance
+							</button>
+							<button
+								type="button"
+								onClick={() => setFilterMode("date")}
+								className={`px-5 py-2.5 text-[14px] leading-none whitespace-nowrap border-r border-[#d8d8d8] ${
+									filterMode === "date"
+										? "text-white border-r-transparent bg-[linear-gradient(90deg,var(--color-main),var(--color-second))]"
+										: "text-[#555] bg-white hover:bg-[#f7f7f7]"
+								}`}
+							>
+								Date
+							</button>
+							<button
+								type="button"
+								onClick={() => setFilterMode("unviewed")}
+								className={`px-5 py-2.5 text-[14px] leading-none whitespace-nowrap ${
+									filterMode === "unviewed"
+										? "text-white bg-[linear-gradient(90deg,var(--color-main),var(--color-second))]"
+										: "text-[#555] bg-white hover:bg-[#f7f7f7]"
+								}`}
+							>
+								No browsed yet
+							</button>
+						</div>
 					</div>
 
 					{pagedJobs.map((job) => (
@@ -803,7 +982,13 @@ export default function SearchJobPage() {
 							</div>
 
 							<div className="flex gap-3 mt-4">
-							<Button className="rounded-full px-4 py-2 bg-[linear-gradient(90deg,var(--color-main),var(--color-second))] text-white hover:opacity-90">
+							<Button
+								onClick={() => {
+									setApplyDialogKey((prev) => prev + 1);
+									setApplyOpen(true);
+								}}
+								className="rounded-full px-4 py-2 bg-[linear-gradient(90deg,var(--color-main),var(--color-second))] text-white hover:opacity-90"
+							>
 								Apply This Job
 							</Button>
 								<Button variant="outline" className="rounded-full">
@@ -848,6 +1033,16 @@ export default function SearchJobPage() {
 					)}
 				</div>
 			</div>
+
+			{selectedJob ? (
+				<ApplyJob
+					key={applyDialogKey}
+					open={applyOpen}
+					onClose={() => setApplyOpen(false)}
+					company={selectedJob.company}
+					title={selectedJob.title}
+				/>
+			) : null}
 		</div>
 	);
 }

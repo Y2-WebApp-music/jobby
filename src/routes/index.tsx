@@ -1,7 +1,7 @@
 import { createBrowserRouter } from "react-router-dom";
 // import LandingPage from "@/pages/LandingPage";
 import SearchJobPage from "@/pages/seachJob/SearchJobPage";
-import Profile from "@/pages/profile/profile";
+import Profile from "@/pages/profile/Profile";
 
 export const router = createBrowserRouter(
   [
