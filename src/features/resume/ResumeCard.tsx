@@ -136,7 +136,7 @@ export function ResumeCard({
             download
           </Button>
           <Button
-            variant="outline"
+            variant="outline_gradient"
             onClick={(e) => {
               e.stopPropagation();
               onEdit?.(resume.id);

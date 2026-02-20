@@ -11,7 +11,12 @@ export function EducationTab({ resume, updateData }: FormInputTabProps) {
         <div className="text-base font-medium">Skills</div>
         <div className="mt-3 flex flex-wrap gap-2">
           {resume.data.skills.map((skill) => (
-            <Button key={skill.id} type="button" variant="outline" size="sm">
+            <Button
+              key={skill.id}
+              type="button"
+              variant="outline_gradient"
+              size="sm"
+            >
               {skill.name}
               <CgClose />
             </Button>
