@@ -6,12 +6,9 @@ import RenderResume from "@/features/resume/RenderResume";
 import Template1 from "@/features/resume/resumeTemplate/template-1";
 import Template2 from "@/features/resume/resumeTemplate/template-2";
 import Template3 from "@/features/resume/resumeTemplate/template-3";
-import { mockDistricts, mockProvinces } from "@/mock/addressMock";
-import { mockPhoneRegions } from "@/mock/globalMock";
-import { mockResumeCreate } from "@/mock/resumePage";
 import { useAddressOptionStore } from "@/store/addressOption";
 import { usePropertiesStore } from "@/store/properties";
-import { type ResumeCreateProps } from "@/types/resumeType";
+import { initialResume, type ResumeCreateProps } from "@/types/resumeType";
 import { useEffect, useRef, useState } from "react";
 import { IoIosArrowBack } from "react-icons/io";
 import { useNavigate } from "react-router-dom";
@@ -19,8 +16,7 @@ import { useReactToPrint } from "react-to-print";
 
 export default function CreateResumePage() {
   const navigate = useNavigate();
-  // const [resume, setResume] = useState<ResumeCreateProps>(initialResume);
-  const [resume, setResume] = useState<ResumeCreateProps>(mockResumeCreate);
+  const [resume, setResume] = useState<ResumeCreateProps>(initialResume);
   const printRef = useRef<HTMLDivElement>(null);
 
   const updateData = <K extends keyof ResumeCreateProps["data"]>(
@@ -71,20 +67,19 @@ export default function CreateResumePage() {
 
   const fetchPhoneRegions = async () => {
     try {
-      usePropertiesStore.setPhoneRegions(mockPhoneRegions);
+      // usePropertiesStore.setPhoneRegions();
     } catch (err) {}
   };
 
   const fetchProvinces = async () => {
     try {
-      // useAddressOptionStore.getState().setProvinces(mockProvinces);
-      useAddressOptionStore.setProvinces(mockProvinces);
+      // useAddressOptionStore.setProvinces();
     } catch (err) {}
   };
 
   const fetchDistricts = async () => {
     try {
-      useAddressOptionStore.getState().setDistricts(mockDistricts);
+      // useAddressOptionStore.setDistricts();
     } catch (err) {}
   };
 
