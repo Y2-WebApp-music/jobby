@@ -67,7 +67,7 @@ export function SearchSelect({
   const [open, setOpen] = useState(false);
 
   const displayValue = value
-    ? options.find((o) => o.value === value)?.label ?? value
+    ? (options.find((o) => o.value === value)?.label ?? value)
     : "";
 
   const handleSelect = (optionValue: string) => {

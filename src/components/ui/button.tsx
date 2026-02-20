@@ -11,8 +11,10 @@ const buttonVariants = cva(
       variant: {
         default:
           "bg-gradient-to-r from-main to-second text-primary-foreground hover:bg-gradient-to-r hover:from-main/80 hover:to-second/80",
+        outline_gradient:
+          "border-1 border-transparent text-primary-pink [background:linear-gradient(var(--background),var(--background))_padding-box,linear-gradient(to_right,var(--color-main),var(--color-second))_border-box] hover:opacity-90 aria-expanded:opacity-90 shadow-xs",
         outline:
-          "border-border bg-background hover:bg-muted hover:text-foreground dark:bg-input/30 dark:border-input dark:hover:bg-input/50 aria-expanded:bg-muted aria-expanded:text-foreground shadow-xs",
+          "border-1 border-neutral-300 text-neutral-700 hover:opacity-90 aria-expanded:opacity-90 hover:bg-neutral-100",
         secondary:
           "bg-secondary text-secondary-foreground hover:bg-secondary/80 aria-expanded:bg-secondary aria-expanded:text-secondary-foreground",
         ghost:
@@ -24,8 +26,8 @@ const buttonVariants = cva(
       size: {
         default:
           "h-9 gap-1.5 px-2.5 in-data-[slot=button-group]:rounded-xl has-data-[icon=inline-end]:pr-2 has-data-[icon=inline-start]:pl-2",
-        xs: "h-6 gap-1 rounded-[min(var(--radius-xl),8px)] px-2 text-xs in-data-[slot=button-group]:rounded-xl has-data-[icon=inline-end]:pr-1.5 has-data-[icon=inline-start]:pl-1.5 [&_svg:not([class*='size-'])]:size-3",
-        sm: "h-8 gap-1 rounded-[min(var(--radius-xl),10px)] px-2.5 in-data-[slot=button-group]:rounded-xl has-data-[icon=inline-end]:pr-1.5 has-data-[icon=inline-start]:pl-1.5",
+        xs: "h-6 gap-1 rounded-[min(var(--radius-xl),10px)] px-2 text-xs in-data-[slot=button-group]:rounded-xl has-data-[icon=inline-end]:pr-1.5 has-data-[icon=inline-start]:pl-1.5 [&_svg:not([class*='size-'])]:size-3",
+        sm: "h-8 gap-1 rounded-[min(var(--radius-xl),12px)] px-2.5 in-data-[slot=button-group]:rounded-xl has-data-[icon=inline-end]:pr-1.5 has-data-[icon=inline-start]:pl-1.5",
         lg: "h-10 gap-1.5 px-2.5 has-data-[icon=inline-end]:pr-3 has-data-[icon=inline-start]:pl-3",
         icon: "size-9",
         "icon-xs":

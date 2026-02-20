@@ -75,6 +75,7 @@ import {
 } from "@/components/ui/input-group";
 import { Label } from "@/components/ui/label";
 import { MultiSelect } from "@/components/ui/multi-select";
+import { SearchSelect } from "@/components/ui/search-select";
 import {
   Pagination,
   PaginationContent,
@@ -123,6 +124,7 @@ function ShowCaseSection({
 export default function ShowCase() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectValue, setSelectValue] = useState<string>("");
+  const [searchSelectValue, setSearchSelectValue] = useState<string>("");
   const [multiSelectValue, setMultiSelectValue] = useState<string[]>([]);
   const [calendarDate, setCalendarDate] = useState<Date | undefined>(
     new Date(),
@@ -157,6 +159,7 @@ export default function ShowCase() {
             <Button>Default</Button>
             <Button variant="secondary">Secondary</Button>
             <Button variant="outline">Outline</Button>
+            <Button variant="outline_gradient">Outline Gradient</Button>
             <Button variant="ghost">Ghost</Button>
             <Button variant="destructive">Destructive</Button>
             <Button variant="link">Link</Button>
@@ -272,6 +275,22 @@ export default function ShowCase() {
               <SelectItem value="orange">Orange</SelectItem>
             </SelectContent>
           </Select>
+        </ShowCaseSection>
+
+        <ShowCaseSection title="Search Select">
+          <SearchSelect
+            options={[
+              { value: "apple", label: "Apple" },
+              { value: "banana", label: "Banana" },
+              { value: "orange", label: "Orange" },
+              { value: "grape", label: "Grape" },
+              { value: "mango", label: "Mango" },
+            ]}
+            value={searchSelectValue}
+            onValueChange={setSearchSelectValue}
+            placeholder="Pick one (searchable)"
+            searchPlaceholder="Search fruits..."
+          />
         </ShowCaseSection>
 
         <ShowCaseSection title="Multi-Select">
