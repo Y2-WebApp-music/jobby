@@ -99,7 +99,7 @@ function InputGroupButton({
       type={type}
       className={cn(
         "h-11 shrink-0 rounded-full px-6 text-white",
-        "bg-gradient-to-r from-orange-400 to-pink-500 hover:opacity-90",
+        "bg-linear-to-r from-main to-second hover:opacity-90",
         className,
       )}
       {...props}
