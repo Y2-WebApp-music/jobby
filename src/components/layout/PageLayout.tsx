@@ -1,7 +1,7 @@
 import React from "react";
 import JobbyLogo from "@/assets/icons/JobbyLogo.svg?react";
 import { Button } from "../ui/button";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import {
   InputGroup,
   InputGroupInput,
@@ -27,13 +27,15 @@ export default function PageLayout({
     { label: "Resume", href: "/resume" },
   ];
 
+  const navigate = useNavigate();
+
   return (
     <div data-theme="dark" className="h-full w-full box-border flex flex-col">
       {/* Navbar */}
-      <div className="fixed w-full h-14 bg-white flex items-center border-b border-gray-200 shadow">
-        <div className="px-2">
+      <div className="z-10 fixed w-full h-14 bg-white flex items-center border-b border-gray-200 shadow">
+        <button onClick={() => navigate("/")} className="px-2 cursor-pointer">
           <JobbyLogo height={50} width={100} />
-        </div>
+        </button>
         <div className="grow px-2 flex gap-2 justify-end items-center">
           {navItem.map((item, index) => (
             <Link to={item.href} key={index}>

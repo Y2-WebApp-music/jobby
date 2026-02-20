@@ -1,3 +1,5 @@
+<<<<<<< feat/JOB-112
+=======
 ﻿import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
@@ -16,6 +18,7 @@ import ApplyJob from "./seachpopup/ApplyJob";
 
 
 
+>>>>>>> JOB-77
 export default function SearchJobPage() {
 	const navItem = [
 		{ label: "Message", href: "/message" },
