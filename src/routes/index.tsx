@@ -1,18 +1,13 @@
-<<<<<<< feat/JOB-112
 import LandingPage from "@/pages/LandingPage";
 import CreateResumePage from "@/pages/resume/CreateResumePage";
 import ResumePage from "@/pages/resume/ResumePage";
 import ShowCase from "@/pages/ShowCase";
-=======
->>>>>>> JOB-77
 import { createBrowserRouter } from "react-router-dom";
-// import LandingPage from "@/pages/LandingPage";
 import SearchJobPage from "@/pages/seachJob/SearchJobPage";
-import Profile from "@/pages/profile/Profile";
+import Profile from "@/pages/profile/profile";
 
 export const router = createBrowserRouter(
   [
-<<<<<<< feat/JOB-112
     {
       path: "/",
       element: <LandingPage />,
@@ -34,14 +29,10 @@ export const router = createBrowserRouter(
       element: <ShowCase />,
     },
     { path: "*", element: <div>Not Found</div> },
-=======
-    // { path: "/", element: <LandingPage /> },
     { path: "/searchjob", element: <SearchJobPage /> },
     { path: "/profile", element: <Profile /> },
-    { path: "*", element: <div>Not Found ESUS </div> },
->>>>>>> JOB-77
   ],
   {
     basename: import.meta.env.VITE_BASE_URL,
-  }
+  },
 );
