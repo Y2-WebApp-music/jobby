@@ -59,7 +59,7 @@ const Template2: React.FC<Props> = ({ resume }) => {
     .join(", ");
 
   return (
-    <div className="flex w-[794px] min-h-[1123px] flex-col bg-white font-sans text-[#1f2933]">
+    <div className="flex w-[794px] min-h-[1123px] flex-col bg-white font-sans text-c-1f2933">
       <header
         className={`${accent.bg} flex items-center justify-between px-7 py-6 text-white`}
       >
@@ -116,10 +116,10 @@ const Template2: React.FC<Props> = ({ resume }) => {
                   className="mt-2.5 break-inside-avoid"
                 >
                   <div className="font-semibold">{e.position || "Role"}</div>
-                  <div className="text-[12px] text-[#52606d]">
+                  <div className="text-[12px] text-c-52606d">
                     {[e.company_name].filter(Boolean).join(" · ")}
                   </div>
-                  <div className="text-[12px] text-[#52606d]">
+                  <div className="text-[12px] text-c-52606d">
                     {formatRange(e.start_date, e.end_Date)}
                   </div>
                   {(e.skills?.length ?? 0) > 0 && (
@@ -127,7 +127,7 @@ const Template2: React.FC<Props> = ({ resume }) => {
                       {e.skills.map((s) => (
                         <span
                           key={s.id}
-                          className="rounded-md border border-[#e0e0e0] bg-white px-1.5 py-0.5 text-[#52606d]"
+                          className="rounded-md border border-c-e0e0e0 bg-white px-1.5 py-0.5 text-c-52606d"
                         >
                           {s.name}
                         </span>
@@ -150,7 +150,7 @@ const Template2: React.FC<Props> = ({ resume }) => {
                   className="mt-2.5 break-inside-avoid"
                 >
                   <div className="font-semibold">{p.name}</div>
-                  <div className="text-[12px] text-[#52606d]">
+                  <div className="text-[12px] text-c-52606d">
                     {formatRange(p.start_date, p.end_date)}
                   </div>
                   {p.description && (
@@ -161,7 +161,7 @@ const Template2: React.FC<Props> = ({ resume }) => {
                       {p.skills.map((s) => (
                         <span
                           key={s.id}
-                          className="rounded-md border border-[#e0e0e0] bg-white px-1.5 py-0.5 text-[#52606d]"
+                          className="rounded-md border border-c-e0e0e0 bg-white px-1.5 py-0.5 text-c-52606d"
                         >
                           {s.name}
                         </span>
@@ -186,7 +186,7 @@ const Template2: React.FC<Props> = ({ resume }) => {
                   <div className="font-semibold">
                     {a.name || a.project_name}
                   </div>
-                  <div className="text-[12px] text-[#52606d]">
+                  <div className="text-[12px] text-c-52606d">
                     {formatValue(a.date)}
                   </div>
                   {a.description && (
@@ -197,7 +197,7 @@ const Template2: React.FC<Props> = ({ resume }) => {
                       {a.skills.map((s) => (
                         <span
                           key={s.id}
-                          className="rounded-md border border-[#e0e0e0] bg-white px-1.5 py-0.5 text-[#52606d]"
+                          className="rounded-md border border-c-e0e0e0 bg-white px-1.5 py-0.5 text-c-52606d"
                         >
                           {s.name}
                         </span>
@@ -227,7 +227,7 @@ const Template2: React.FC<Props> = ({ resume }) => {
           )}
         </main>
 
-        <aside className="border-l border-[#e0e0e0] pb-7 pl-[22px] pr-[22px] pt-[22px]">
+        <aside className="border-l border-c-e0e0e0 pb-7 pl-[22px] pr-[22px] pt-[22px]">
           {education.length > 0 && (
             <section className="mb-4">
               <div className={`text-[14px] font-semibold ${accent.text}`}>
@@ -239,10 +239,10 @@ const Template2: React.FC<Props> = ({ resume }) => {
                   className="mt-2 break-inside-avoid"
                 >
                   <div className="font-semibold">{e.school_name}</div>
-                  <div className="text-[12px] text-[#52606d]">
+                  <div className="text-[12px] text-c-52606d">
                     {[e.degree, e.field_of_study].filter(Boolean).join(" · ")}
                   </div>
-                  <div className="text-[12px] text-[#52606d]">
+                  <div className="text-[12px] text-c-52606d">
                     {formatRange(e.start_date, e.end_date)}
                   </div>
                 </div>
@@ -274,3 +274,4 @@ const Template2: React.FC<Props> = ({ resume }) => {
 };
 
 export default Template2;
+

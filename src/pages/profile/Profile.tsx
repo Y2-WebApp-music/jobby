@@ -14,111 +14,27 @@ import EducateDialog, {
 import WorkexpDialog, {
   type WorkExperienceItem,
 } from "../../features/profile/dialog/WorkexpDialog";
+import AddskillDialog from "../../features/profile/dialog/AddskillDialog";
+import UserskillDialog from "../../features/profile/dialog/UserskillDialog";
+import AchievementDialog, {
+  type AchievementItem,
+} from "../../features/profile/dialog/AchievementDialog";
 import ProjectDialog, {
   type ProjectItem,
 } from "../../features/profile/dialog/ProjectDialog";
 import Thumbnail from "@/assets/Thumbnail.svg";
+import { Button } from "@/components/ui/button";
+import {
+  defaultAboutText,
+  defaultAchievements,
+  defaultApplications,
+  defaultEducation,
+  defaultProfileForm,
+  defaultProjects,
+  defaultWorkExperience,
+} from "@/types/profile";
 
 const MAX_IMAGE_SIZE_BYTES = 15 * 1024 * 1024;
-
-const skills = [
-  "React",
-  "Front-End",
-  "Node.JS",
-  "express",
-  "TypeScript",
-  "SQL",
-  "noSQL",
-];
-
-const DEFAULT_EDUCATION: EducationItem[] = Array.from({ length: 3 }).map(
-  (_, i) => ({
-    id: i,
-    school: "School Name",
-    degree: "Associate's degree",
-    fieldOfStudy: "Computer Science",
-    startDate: "2022-03-01",
-    endDate: "2026-09-01",
-    gpax: "",
-    date: "01 Mar 2022 - 01 Sep 2026",
-  }),
-);
-
-const DEFAULT_WORK_EXPERIENCE: WorkExperienceItem[] = Array.from({
-  length: 3,
-}).map((_, i) => ({
-  id: i,
-  position: "Position",
-  company: "Company",
-  workType: "",
-  skills: [],
-  startDate: "2022-03-01",
-  endDate: "2026-09-01",
-  isFinished: true,
-  date: "01 Mar 2022 - 01 Sep 2026",
-}));
-
-const DEFAULT_PROJECTS: ProjectItem[] = Array.from({ length: 2 }).map(
-  (_, i) => ({
-    id: i,
-    name: "Project Name",
-    description: "Description",
-    skills: [],
-    startDate: "2026-09-01",
-    endDate: "2026-11-01",
-    images: [],
-    date: "01 Sep 2026 - 01 Nov 2026",
-  }),
-);
-
-const achievements = Array.from({ length: 2 }).map((_, i) => ({
-  id: i,
-  name: "Reward Name",
-  from: "Project Name",
-  date: "Mar 2022",
-}));
-
-const applications = [
-  {
-    id: 1,
-    title: "Personal Assistant 25 - 35 K (WFH 80%)",
-    company: "Select Service Partner Ltd.",
-    note: "Applied 7month ago",
-  },
-  {
-    id: 2,
-    title: "Operations Manager",
-    company: "Select Service Partner Ltd.",
-    note: "Applied 7month ago",
-  },
-  {
-    id: 3,
-    title: "Personal Assistant 25 - 35 K (WFH 80%)",
-    company: "Select Service Partner Ltd.",
-    note: "Applied 7month ago",
-  },
-];
-
-const DEFAULT_PROFILE_FORM: ProfileFormValue = {
-  firstName: "Nut",
-  lastName: "Somwang",
-  region: "THA",
-  tel: "66624311671",
-  email: "kunguy.159@gmail.com",
-  addressLine: "King Mongkut's University of Technology Thonburi",
-  addressNo: "",
-  moo: "",
-  soi: "",
-  street: "",
-  province: "",
-  district: "",
-  subDistrict: "",
-  postalCode: "",
-  links: [{ id: 1, label: "linkedIn", url: "www.linkedin.com/*******" }],
-};
-
-const DEFAULT_ABOUT_TEXT =
-  "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Aliquam neque nunc, vestibulum rutrum ornare vitae, suscipit non lacus. Donec eget ultrices ante. Aenean in sem nulla. Proin sit amet libero sit amet libero hendrerit ornare. Suspendisse sed eros at justo bibendum euismod sit amet nec tellus. Maecenas tincidunt nisi pharetra eros semper finibus. Aliquam mattis ipsum sem, elementum venenatis leo faucibus a. Sed nec elit nibh. Nunc et sapien sit amet odio tincidunt pharetra.";
 
 function SectionHeader({
   title,
@@ -171,33 +87,116 @@ function CardItem({
   );
 }
 
+function SkillApplicationSection({
+  skills,
+  onNewSkill,
+  onShowMore,
+}: {
+  skills: string[];
+  onNewSkill: () => void;
+  onShowMore: () => void;
+}) {
+  return (
+    <div className="space-y-6">
+      <div className="rounded-2xl border border-slate-100 bg-white p-4">
+        <div className="flex items-center justify-between">
+          <h3 className="text-sm font-semibold text-slate-900">Your Skill</h3>
+          <Button
+            type="button"
+            onClick={onNewSkill}
+            className="rounded-full bg-gradient-to-r from-main to-second px-3 py-1 text-xs font-medium text-white shadow-sm"
+          >
+            + New Skill
+          </Button>
+        </div>
+        <div className="mt-3 flex flex-wrap gap-2">
+          {skills.map((skill) => (
+            <span
+              key={skill}
+              className="rounded-full border border-transparent px-3 py-1 text-xs text-primary-pink [background:linear-gradient(var(--color-background),var(--color-background))_padding-box,linear-gradient(to_right,var(--color-main),var(--color-second))_border-box]"
+            >
+              {skill}
+            </span>
+          ))}
+        </div>
+        <button
+          type="button"
+          onClick={onShowMore}
+          className="mt-3 block mx-auto text-xs text-main"
+        >
+          Show more
+        </button>
+      </div>
+
+      <div className="rounded-2xl border border-slate-100 bg-white p-4">
+        <h3 className="text-sm font-semibold text-slate-900">Your Application</h3>
+        <div className="mt-3 space-y-3">
+          {defaultApplications.map((app) => (
+            <div
+              key={app.id}
+              className="flex gap-3 rounded-xl border border-slate-100 bg-white p-3"
+            >
+              <div className="h-12 w-12 rounded-2xl bg-slate-300" />
+              <div>
+                <div className="text-sm font-semibold text-slate-900">
+                  {app.title}
+                </div>
+                <div className="text-xs text-slate-600">{app.company}</div>
+                <div className="text-xs text-slate-500">{app.note}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function Profile() {
   const [profileUrl, setProfileUrl] = useState<string | null>(null);
   const [bannerUrl, setBannerUrl] = useState<string>(Thumbnail);
   const [editorOpen, setEditorOpen] = useState(false);
   const [profileDialogOpen, setProfileDialogOpen] = useState(false);
   const [aboutDialogOpen, setAboutDialogOpen] = useState(false);
+  const [addProfileSkillDialogOpen, setAddProfileSkillDialogOpen] =
+    useState(false);
+  const [userskillDialogOpen, setUserskillDialogOpen] = useState(false);
   const [educationDialogOpen, setEducationDialogOpen] = useState(false);
   const [workexpDialogOpen, setWorkexpDialogOpen] = useState(false);
+  const [achievementDialogOpen, setAchievementDialogOpen] = useState(false);
   const [projectDialogOpen, setProjectDialogOpen] = useState(false);
+  const [achievementEditingId, setAchievementEditingId] = useState<
+    number | null
+  >(null);
+  const [achievementPreviewOpen, setAchievementPreviewOpen] = useState(false);
+  const [previewAchievementId, setPreviewAchievementId] = useState<
+    number | null
+  >(null);
+  const [achievementDirectEditMode, setAchievementDirectEditMode] =
+    useState(false);
   const [projectEditingId, setProjectEditingId] = useState<number | null>(null);
   const [projectPreviewOpen, setProjectPreviewOpen] = useState(false);
   const [previewProjectId, setPreviewProjectId] = useState<number | null>(null);
   const [projectDirectEditMode, setProjectDirectEditMode] = useState(false);
-  const [aboutText, setAboutText] = useState(DEFAULT_ABOUT_TEXT);
+  const [skillInfoName, setSkillInfoName] = useState<string | null>(null);
+  const [aboutText, setAboutText] = useState(defaultAboutText);
   const [education, setEducation] =
-    useState<EducationItem[]>(DEFAULT_EDUCATION);
+    useState<EducationItem[]>(defaultEducation);
   const [workExperience, setWorkExperience] = useState<WorkExperienceItem[]>(
-    DEFAULT_WORK_EXPERIENCE,
+    defaultWorkExperience,
   );
-  const [projects, setProjects] = useState<ProjectItem[]>(DEFAULT_PROJECTS);
+  const [achievements, setAchievements] =
+    useState<AchievementItem[]>(defaultAchievements);
+  const [projects, setProjects] = useState<ProjectItem[]>(defaultProjects);
   const [profileForm, setProfileForm] =
-    useState<ProfileFormValue>(DEFAULT_PROFILE_FORM);
+    useState<ProfileFormValue>(defaultProfileForm);
+  const [userSkills, setUserSkills] = useState<string[]>([]);
   const [editingTarget, setEditingTarget] = useState<
     "profile" | "banner" | null
   >(null);
   const [editingImage, setEditingImage] = useState<string | null>(null);
   const projectImageListRef = useRef<HTMLDivElement | null>(null);
+  const achievementImageListRef = useRef<HTMLDivElement | null>(null);
   const navItem = [
     { label: "Find Job", href: "/searchjob" },
     { label: "Message", href: "/message", badge: "99+" },
@@ -240,6 +239,10 @@ export default function Profile() {
     setPreviewProjectId(projectId);
     setProjectPreviewOpen(true);
   };
+  const handleOpenAchievementPreview = (achievementId: number) => {
+    setPreviewAchievementId(achievementId);
+    setAchievementPreviewOpen(true);
+  };
 
   const handleScrollProjectImages = (direction: "left" | "right") => {
     const el = projectImageListRef.current;
@@ -247,9 +250,28 @@ export default function Profile() {
     const amount = direction === "left" ? -260 : 260;
     el.scrollBy({ left: amount, behavior: "smooth" });
   };
+  const handleScrollAchievementImages = (direction: "left" | "right") => {
+    const el = achievementImageListRef.current;
+    if (!el) return;
+    const amount = direction === "left" ? -260 : 260;
+    el.scrollBy({ left: amount, behavior: "smooth" });
+  };
 
   const previewProject =
     projects.find((item) => item.id === previewProjectId) ?? null;
+  const previewAchievement =
+    achievements.find((item) => item.id === previewAchievementId) ?? null;
+  const handleAddProfileSkill = (skill: string) => {
+    if (!skill) return;
+    setUserSkills((prev) =>
+      prev.includes(skill) ? prev : [...prev, skill],
+    );
+  };
+
+
+  const handleRemoveProfileSkill = (skill: string) => {
+    setUserSkills((prev) => prev.filter((item) => item !== skill));
+  };
 
   return (
     <div className="min-h-screen">
@@ -263,7 +285,7 @@ export default function Profile() {
                 to={item.href}
                 className={`relative rounded-full px-3 py-1 text-sm ${
                   item.active
-                    ? "bg-gradient-to-r from-[#FF8E00] to-[#F335EC] text-white shadow-sm"
+                    ? "bg-gradient-to-r from-main to-second text-white shadow-sm"
                     : "text-slate-700 hover:bg-slate-100"
                 }`}
               >
@@ -314,7 +336,7 @@ export default function Profile() {
 
       <div className="relative px-6 pb-6 pt-0">
         <div className="flex flex-col gap-4 border-b border-slate-100 pb-5 md:flex-row md:items-start md:gap-6">
-          <div className="relative -mt-14 h-30 w-40">
+          <div className="relative -mt-10 h-28 w-28 sm:-mt-14 sm:h-40 sm:w-40">
             <input
               id="profile-upload"
               type="file"
@@ -326,7 +348,7 @@ export default function Profile() {
                 handleSelectImage(file, "profile");
               }}
             />
-            <div className="group relative h-40 w-40 overflow-hidden rounded-full border-4 border-white bg-slate-300 shadow-md">
+            <div className="group relative h-28 w-28 overflow-hidden rounded-full border-4 border-white bg-slate-300 shadow-md sm:h-40 sm:w-40">
               {profileUrl ? (
                 <img
                   src={profileUrl}
@@ -384,9 +406,12 @@ export default function Profile() {
               ))}
             </div>
           </div>
-          <button className="mt-3 h-9 rounded-full bg-gradient-to-r from-[#FF8E00] to-[#F335EC] px-4 text-sm font-medium text-white shadow-sm md:mt-3">
+          <Button
+            type="button"
+            className="mt-3 h-9 rounded-full bg-gradient-to-r from-main to-second px-4 text-sm font-medium text-white shadow-sm md:mt-3"
+          >
             Your Resume
-          </button>
+          </Button>
         </div>
 
         <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-[1.6fr_1fr]">
@@ -401,12 +426,24 @@ export default function Profile() {
               </p>
             </div>
 
+            <div className="lg:hidden">
+              <SkillApplicationSection
+                skills={userSkills}
+                onNewSkill={() => setAddProfileSkillDialogOpen(true)}
+                onShowMore={() => setUserskillDialogOpen(true)}
+              />
+            </div>
+
             <div className="rounded-2xl border border-slate-100 bg-white p-4">
               <SectionHeader
                 title="Education"
                 onEdit={() => setEducationDialogOpen(true)}
               />
-              <div className="mt-3 space-y-3">
+              <div
+                className={`mt-3 space-y-3 ${
+                  education.length > 3 ? "max-h-[300px] overflow-y-auto pr-2" : ""
+                }`}
+              >
                 {education.map((item) => (
                   <CardItem
                     key={item.id}
@@ -425,7 +462,13 @@ export default function Profile() {
                 title="Work Experience"
                 onEdit={() => setWorkexpDialogOpen(true)}
               />
-              <div className="mt-3 space-y-3">
+              <div
+                className={`mt-3 space-y-3 ${
+                  workExperience.length > 3
+                    ? "max-h-[300px] overflow-y-auto pr-2"
+                    : ""
+                }`}
+              >
                 {workExperience.map((item) => (
                   <CardItem
                     key={item.id}
@@ -446,7 +489,11 @@ export default function Profile() {
                   setProjectDialogOpen(true);
                 }}
               />
-              <div className="mt-3 space-y-3">
+              <div
+                className={`mt-3 space-y-3 ${
+                  projects.length > 3 ? "max-h-[300px] overflow-y-auto pr-2" : ""
+                }`}
+              >
                 {projects.map((item) => (
                   <CardItem
                     key={item.id}
@@ -460,14 +507,28 @@ export default function Profile() {
             </div>
 
             <div className="rounded-2xl border border-slate-100 bg-white p-4">
-              <SectionHeader title="Achievement" />
-              <div className="mt-3 space-y-3">
+              <SectionHeader
+                title="Achievement"
+                onEdit={() => {
+                  setAchievementEditingId(null);
+                  setAchievementDirectEditMode(false);
+                  setAchievementDialogOpen(true);
+                }}
+              />
+              <div
+                className={`mt-3 space-y-3 ${
+                  achievements.length > 3
+                    ? "max-h-[300px] overflow-y-auto pr-2"
+                    : ""
+                }`}
+              >
                 {achievements.map((item) => (
                   <CardItem
                     key={item.id}
                     title={item.name}
                     subtitle={item.from}
                     meta={item.date}
+                    onClick={() => handleOpenAchievementPreview(item.id)}
                   />
                 ))}
               </div>
@@ -475,53 +536,12 @@ export default function Profile() {
           </div>
 
           <div className="space-y-6">
-            <div className="rounded-2xl border border-slate-100 bg-white p-4">
-              <div className="flex items-center justify-between">
-                <h3 className="text-sm font-semibold text-slate-900">
-                  Your Skill
-                </h3>
-                <button className="rounded-full bg-gradient-to-r from-[#FF8E00] to-[#F335EC] text-white shadow-sm px-3 py-1 text-xs font-medium text-white">
-                  + New Skill
-                </button>
-              </div>
-              <div className="mt-3 flex flex-wrap gap-2">
-                {skills.map((skill) => (
-                  <span
-                    key={skill}
-                    className="rounded-full border border-[#F335EC] px-3 py-1 text-xs text-[#F335EC]"
-                  >
-                    {skill}
-                  </span>
-                ))}
-              </div>
-              <button className="mt-3 block mx-auto text-xs text-[#FF8E00]">
-                Show more
-              </button>
-            </div>
-
-            <div className="rounded-2xl border border-slate-100 bg-white p-4">
-              <h3 className="text-sm font-semibold text-slate-900">
-                Your Application
-              </h3>
-              <div className="mt-3 space-y-3">
-                {applications.map((app) => (
-                  <div
-                    key={app.id}
-                    className="flex gap-3 rounded-xl border border-slate-100 bg-white p-3"
-                  >
-                    <div className="h-12 w-12 rounded-2xl bg-slate-300" />
-                    <div>
-                      <div className="text-sm font-semibold text-slate-900">
-                        {app.title}
-                      </div>
-                      <div className="text-xs text-slate-600">
-                        {app.company}
-                      </div>
-                      <div className="text-xs text-slate-500">{app.note}</div>
-                    </div>
-                  </div>
-                ))}
-              </div>
+            <div className="hidden lg:block">
+              <SkillApplicationSection
+                skills={userSkills}
+                onNewSkill={() => setAddProfileSkillDialogOpen(true)}
+                onShowMore={() => setUserskillDialogOpen(true)}
+              />
             </div>
           </div>
         </div>
@@ -557,6 +577,25 @@ export default function Profile() {
         onSave={setAboutText}
       />
 
+      <AddskillDialog
+        open={addProfileSkillDialogOpen}
+        onClose={() => setAddProfileSkillDialogOpen(false)}
+        existingSkills={userSkills}
+        onAddSkill={handleAddProfileSkill}
+        onRemoveSkill={handleRemoveProfileSkill}
+        showSkillsList
+      />
+
+      <UserskillDialog
+        open={userskillDialogOpen}
+        skills={userSkills}
+        onClose={() => setUserskillDialogOpen(false)}
+        onNewSkill={() => {
+          setUserskillDialogOpen(false);
+          setAddProfileSkillDialogOpen(true);
+        }}
+      />
+
       <EducateDialog
         key={educationDialogOpen ? "open" : "closed"}
         open={educationDialogOpen}
@@ -571,6 +610,24 @@ export default function Profile() {
         initialData={workExperience}
         onClose={() => setWorkexpDialogOpen(false)}
         onSave={setWorkExperience}
+      />
+
+      <AchievementDialog
+        key={achievementDialogOpen ? "open" : "closed"}
+        open={achievementDialogOpen}
+        initialData={achievements}
+        initialEditingId={achievementEditingId}
+        directEditMode={achievementDirectEditMode}
+        onClose={() => {
+          setAchievementDialogOpen(false);
+          setAchievementEditingId(null);
+          setAchievementDirectEditMode(false);
+        }}
+        onSave={(items) => {
+          setAchievements(items);
+          setAchievementEditingId(null);
+          setAchievementDirectEditMode(false);
+        }}
       />
 
       <ProjectDialog
@@ -667,7 +724,7 @@ export default function Profile() {
                   previewProject.skills.map((skill) => (
                     <span
                       key={skill}
-                      className="rounded-full border border-[#F335EC] px-3 py-1 text-xs text-[#F335EC]"
+                      className="rounded-full border border-transparent px-3 py-1 text-xs text-primary-pink [background:linear-gradient(var(--color-background),var(--color-background))_padding-box,linear-gradient(to_right,var(--color-main),var(--color-second))_border-box]"
                     >
                       {skill}
                     </span>
@@ -695,6 +752,126 @@ export default function Profile() {
           </div>
         </div>
       ) : null}
+
+      {achievementPreviewOpen && previewAchievement ? (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/60 p-4">
+          <div className="w-full max-w-4xl rounded-3xl bg-white p-5 shadow-xl">
+            <div className="mb-4 flex items-start justify-between">
+              <div>
+                <h2 className="text-2xl font-semibold text-slate-900">
+                  {previewAchievement.name || "Reward Name"}
+                </h2>
+                <p className="text-sm text-slate-700">
+                  {previewAchievement.from || "Project Name"}
+                </p>
+                <p className="text-sm text-slate-500">
+                  {previewAchievement.date || "Date"}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setAchievementPreviewOpen(false);
+                  setPreviewAchievementId(null);
+                }}
+                className="rounded-full bg-slate-100 p-1 text-slate-700 hover:bg-slate-200"
+                aria-label="Close achievement preview"
+              >
+                <CgClose className="h-6 w-6" />
+              </button>
+            </div>
+
+            <div className="mb-4 flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => handleScrollAchievementImages("left")}
+                className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-100 text-lg text-slate-700 hover:bg-slate-200"
+                aria-label="Previous achievement images"
+              >
+                {"<"}
+              </button>
+              <div
+                ref={achievementImageListRef}
+                className="flex flex-1 gap-3 overflow-x-auto scroll-smooth"
+              >
+                {previewAchievement.images.length > 0 ? (
+                  previewAchievement.images.map((image, idx) => (
+                    <img
+                      key={`${image}-${idx}`}
+                      src={image}
+                      alt={`Achievement image ${idx + 1}`}
+                      className="h-[280px] w-[240px] shrink-0 rounded-xl object-cover"
+                    />
+                  ))
+                ) : (
+                  <div className="flex h-[280px] w-full items-center justify-center rounded-xl border border-slate-200 bg-slate-50 text-slate-400">
+                    No images uploaded
+                  </div>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={() => handleScrollAchievementImages("right")}
+                className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-100 text-lg text-slate-700 hover:bg-slate-200"
+                aria-label="Next achievement images"
+              >
+                {">"}
+              </button>
+            </div>
+
+            <p className="mb-3 text-sm leading-relaxed text-slate-700">
+              {previewAchievement.description || "No description."}
+            </p>
+
+            <div>
+              <h3 className="mb-2 text-base font-medium text-slate-900">
+                Skill use
+              </h3>
+              <div className="flex flex-wrap gap-2">
+                {previewAchievement.skills.length > 0 ? (
+                  previewAchievement.skills.map((skill) => (
+                    <span
+                      key={skill}
+                      className="rounded-full border border-transparent px-3 py-1 text-xs text-primary-pink [background:linear-gradient(var(--color-background),var(--color-background))_padding-box,linear-gradient(to_right,var(--color-main),var(--color-second))_border-box]"
+                    >
+                      {skill}
+                    </span>
+                  ))
+                ) : (
+                  <span className="text-sm text-slate-400">No skills</span>
+                )}
+              </div>
+            </div>
+
+            <div className="mt-4 flex justify-end">
+              <button
+                type="button"
+                onClick={() => {
+                  setAchievementEditingId(previewAchievement.id);
+                  setAchievementDirectEditMode(true);
+                  setAchievementPreviewOpen(false);
+                  setAchievementDialogOpen(true);
+                }}
+                className="inline-flex items-center gap-1 rounded-full border border-slate-300 px-4 py-1.5 text-sm text-slate-600 hover:bg-slate-50"
+              >
+                <RiPencilFill className="h-4 w-4" />
+                Edit
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }
+
+// กูนึกว่าเพื่อนกูจะเดินไปใกล้กว่านี้ 
+
+
+
+
+
+
+
+
+

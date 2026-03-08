@@ -128,7 +128,7 @@ export default function CreateResumePage() {
                 onClick={() => setResume((prev) => ({ ...prev, theme: id }))}
                 className={`h-[120px] w-[86px] cursor-pointer rounded-xl bg-neutral-200 ${
                   id === resume.theme
-                    ? "border-2 border-[#ff7a00]"
+                    ? "border-2 border-c-ff7a00"
                     : "border border-neutral-300"
                 }`}
               />
@@ -171,3 +171,4 @@ export default function CreateResumePage() {
     </PageLayout>
   );
 }
+

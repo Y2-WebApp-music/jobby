@@ -126,7 +126,7 @@ export function MultiSelect({
                       key={v}
                       variant="secondary"
                       className={cn(
-                        "gap-1 rounded-xl px-1.5 py-3 font-normal bg-[#C1C1C1]/20 text-neutral-800",
+                        "gap-1 rounded-xl px-1.5 py-3 font-normal bg-c-c1c1c1/20 text-neutral-800",
                         badgeClassName,
                       )}
                     >
@@ -150,7 +150,7 @@ export function MultiSelect({
                 })
               : placeholder}
             {remainingCount > 0 && (
-              <span className="text-xs bg-[#C1C1C1]/20 text-neutral-800 rounded-xl px-2 py-1">
+              <span className="text-xs bg-c-c1c1c1/20 text-neutral-800 rounded-xl px-2 py-1">
                 +{remainingCount}
               </span>
             )}
@@ -204,3 +204,4 @@ export function MultiSelect({
     </Popover>
   );
 }
+

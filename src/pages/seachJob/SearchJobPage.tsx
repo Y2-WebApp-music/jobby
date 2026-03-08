@@ -1,4 +1,4 @@
-ï»¿import { Button } from "@/components/ui/button";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -11,6 +11,7 @@ import { IoIosMore } from "react-icons/io";
 import { HiOutlineSelector } from "react-icons/hi";
 import { IoIosArrowForward, IoIosArrowBack } from "react-icons/io";
 import { ApplyDialog } from "@/features/searchJob/dialogs/ApplyDialog";
+import SkillinfoDialog from "@/features/profile/dialog/SkillinfoDialog";
 
 export default function SearchJobPage() {
   const navItem = [
@@ -26,7 +27,7 @@ export default function SearchJobPage() {
       title: "Frontend Engineer (React)",
       company: "Select Service Partner Ltd.",
       location: "Lat Krabang, Bangkok",
-      meta: "4 Skills Match â€¢ 3 weeks ago",
+      meta: "4 Skills Match • 3 weeks ago",
       skills: ["React", "TypeScript", "Tailwind", "Figma"],
       category: "Technology",
       place: "Bangkok",
@@ -44,7 +45,7 @@ export default function SearchJobPage() {
       title: "Backend Engineer (Node.js)",
       company: "Blue Orbit Tech",
       location: "Bang Na, Bangkok",
-      meta: "3 Skills Match â€¢ 2 weeks ago",
+      meta: "3 Skills Match • 2 weeks ago",
       skills: ["Node.js", "PostgreSQL", "Redis", "Docker"],
       category: "Technology",
       place: "Bangkok",
@@ -62,7 +63,7 @@ export default function SearchJobPage() {
       title: "Product Designer",
       company: "Aurora Studio",
       location: "Phaya Thai, Bangkok",
-      meta: "2 Skills Match â€¢ 4 weeks ago",
+      meta: "2 Skills Match • 4 weeks ago",
       skills: ["Figma", "User Research", "Prototyping"],
       category: "Design",
       place: "Bangkok",
@@ -80,7 +81,7 @@ export default function SearchJobPage() {
       title: "Data Analyst",
       company: "Nimbus Analytics",
       location: "Huai Khwang, Bangkok",
-      meta: "5 Skills Match â€¢ 1 week ago",
+      meta: "5 Skills Match • 1 week ago",
       skills: ["SQL", "Python", "Tableau", "Excel", "Statistics"],
       category: "Data",
       place: "Bangkok",
@@ -98,7 +99,7 @@ export default function SearchJobPage() {
       title: "QA Engineer (Automation)",
       company: "Siam Mobile Labs",
       location: "Chatuchak, Bangkok",
-      meta: "3 Skills Match â€¢ 5 days ago",
+      meta: "3 Skills Match • 5 days ago",
       skills: ["Playwright", "Jest", "CI/CD"],
       category: "Technology",
       place: "Bangkok",
@@ -116,7 +117,7 @@ export default function SearchJobPage() {
       title: "DevOps Engineer",
       company: "Cloud Harbor Co., Ltd.",
       location: "Sathorn, Bangkok",
-      meta: "4 Skills Match â€¢ 6 days ago",
+      meta: "4 Skills Match • 6 days ago",
       skills: ["AWS", "Kubernetes", "Terraform", "GitHub Actions"],
       category: "Technology",
       place: "Bangkok",
@@ -134,7 +135,7 @@ export default function SearchJobPage() {
       title: "Mobile Developer (iOS)",
       company: "Riverline Digital",
       location: "Rama 9, Bangkok",
-      meta: "3 Skills Match â€¢ 2 days ago",
+      meta: "3 Skills Match • 2 days ago",
       skills: ["Swift", "UIKit", "REST APIs"],
       category: "Technology",
       place: "Bangkok",
@@ -152,7 +153,7 @@ export default function SearchJobPage() {
       title: "Mobile Developer (Android)",
       company: "Skyline Works",
       location: "Ratchada, Bangkok",
-      meta: "2 Skills Match â€¢ 1 week ago",
+      meta: "2 Skills Match • 1 week ago",
       skills: ["Kotlin", "Jetpack", "MVVM"],
       category: "Technology",
       place: "Bangkok",
@@ -170,7 +171,7 @@ export default function SearchJobPage() {
       title: "UI/UX Researcher",
       company: "Nimble Labs",
       location: "Ari, Bangkok",
-      meta: "2 Skills Match â€¢ 3 days ago",
+      meta: "2 Skills Match • 3 days ago",
       skills: ["Interviews", "Surveys", "Usability Testing"],
       category: "Design",
       place: "Bangkok",
@@ -188,7 +189,7 @@ export default function SearchJobPage() {
       title: "Full-stack Engineer",
       company: "Orbitsoft",
       location: "Onnut, Bangkok",
-      meta: "4 Skills Match â€¢ 4 days ago",
+      meta: "4 Skills Match • 4 days ago",
       skills: ["React", "Node.js", "PostgreSQL", "Docker"],
       category: "Technology",
       place: "Bangkok",
@@ -206,7 +207,7 @@ export default function SearchJobPage() {
       title: "Security Engineer",
       company: "Fortress Cloud",
       location: "Silom, Bangkok",
-      meta: "3 Skills Match â€¢ 5 days ago",
+      meta: "3 Skills Match • 5 days ago",
       skills: ["Threat Modeling", "SIEM", "Pen Testing"],
       category: "Security",
       place: "Bangkok",
@@ -224,7 +225,7 @@ export default function SearchJobPage() {
       title: "Machine Learning Engineer",
       company: "Aether AI",
       location: "Asoke, Bangkok",
-      meta: "5 Skills Match â€¢ 1 day ago",
+      meta: "5 Skills Match • 1 day ago",
       skills: ["Python", "PyTorch", "MLOps", "Data Pipelines"],
       category: "Data",
       place: "Bangkok",
@@ -447,7 +448,7 @@ export default function SearchJobPage() {
   };
 
   useEffect(() => {
-    // à¹€à¸Šà¸·à¹ˆà¸­à¸¡à¸•à¹ˆà¸­à¸à¸±à¸š API à¹€à¸žà¸·à¹ˆà¸­à¸”à¸¶à¸‡à¸ˆà¸³à¸™à¸§à¸™à¸‚à¹‰à¸­à¸„à¸§à¸²à¸¡à¸—à¸µà¹ˆà¸¢à¸±à¸‡à¹„à¸¡à¹ˆà¹„à¸”à¹‰à¸­à¹ˆà¸²à¸™à¸¡à¸²à¹à¸ªà¸”à¸‡
+    // àª×èÍÁµèÍ¡Ñº API à¾×èÍ´Ö§¨Ó¹Ç¹¢éÍ¤ÇÒÁ·ÕèÂÑ§äÁèä´éÍèÒ¹ÁÒáÊ´§
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setMessageCount(100);
   }, []);
@@ -517,16 +518,16 @@ export default function SearchJobPage() {
                         ? "text-[var(--color-second)] border-[var(--color-second)]"
                         : searchType === "job"
                           ? "text-[var(--color-main)] border-[var(--color-main)]"
-                          : "text-[#A1A1A1] border-[#E5E5E5]"
+                          : "text-c-a1a1a1 border-c-e5e5e5"
                     }`}
                   >
-                    <option value="any" className="text-[#A1A1A1]">
+                    <option value="any" className="text-c-a1a1a1">
                       Any
                     </option>
-                    <option value="skill" className="text-[#A1A1A1]">
+                    <option value="skill" className="text-c-a1a1a1">
                       Skill
                     </option>
-                    <option value="job" className="text-[#A1A1A1]">
+                    <option value="job" className="text-c-a1a1a1">
                       Job
                     </option>
                   </select>
@@ -536,7 +537,7 @@ export default function SearchJobPage() {
                         ? "text-[var(--color-second)]"
                         : searchType === "job"
                           ? "text-[var(--color-main)]"
-                          : "text-[#A1A1A1]"
+                          : "text-c-a1a1a1"
                     }`}
                   />
                 </div>
@@ -547,7 +548,7 @@ export default function SearchJobPage() {
                   Skill Use:
                 </span>
                 <div className="relative w-[540px] min-h-[54px]">
-                  <div className="flex items-center gap-2 rounded-full border border-[#e2e2e2] bg-white px-3 py-2 shadow-sm w-full min-h-[54px]">
+                  <div className="flex items-center gap-2 rounded-full border border-c-e2e2e2 bg-white px-3 py-2 shadow-sm w-full min-h-[54px]">
                     <div className="flex items-center gap-2 min-w-0">
                       {(() => {
                         const selected = Array.from(selectedSkills);
@@ -568,7 +569,7 @@ export default function SearchJobPage() {
                         const remaining = Math.max(0, total - 5);
                         return (
                           remaining > 0 && (
-                            <span className="h-7 rounded-full border px-3 text-xs bg-[#f5f5f5] text-[#8a8a8a] border-[#e2e2e2] inline-flex items-center">
+                            <span className="h-7 rounded-full border px-3 text-xs bg-c-f5f5f5 text-c-8a8a8a border-c-e2e2e2 inline-flex items-center">
                               +{remaining}
                             </span>
                           )
@@ -582,7 +583,7 @@ export default function SearchJobPage() {
                       className="ml-auto h-6 w-6 flex items-center justify-center rounded-full hover:bg-gray-100"
                       aria-label="toggle skill list"
                     >
-                      <HiOutlineSelector className="h-4 w-4 text-[#b3b3b3]" />
+                      <HiOutlineSelector className="h-4 w-4 text-c-b3b3b3" />
                     </button>
                     <button
                       type="button"
@@ -594,7 +595,7 @@ export default function SearchJobPage() {
                     </button>
                   </div>
                   {skillOpen && (
-                    <div className="absolute left-0 top-full mt-2 w-full rounded-2xl border border-[#e2e2e2] bg-white shadow-lg p-3 z-20">
+                    <div className="absolute left-0 top-full mt-2 w-full rounded-2xl border border-c-e2e2e2 bg-white shadow-lg p-3 z-20">
                       <div className="flex flex-wrap gap-2">
                         {skillOptions.map((skill) => {
                           const active = selectedSkills.has(skill);
@@ -605,8 +606,8 @@ export default function SearchJobPage() {
                               onClick={() => toggleSkill(skill)}
                               className={`h-8 rounded-full border px-3 text-xs ${
                                 active
-                                  ? "bg-[#fff4f9] text-[#f335ec] border-[#f7c3e8]"
-                                  : "bg-white text-[#b3b3b3] border-[#e2e2e2]"
+                                  ? "bg-c-fff4f9 text-second border-c-f7c3e8"
+                                  : "bg-white text-c-b3b3b3 border-c-e2e2e2"
                               }`}
                             >
                               {skill}
@@ -625,11 +626,11 @@ export default function SearchJobPage() {
                 <button
                   type="button"
                   onClick={() => setCategoryOpen((prev) => !prev)}
-                  className="h-10 w-full px-3 border rounded-full border-[#E5E5E5] bg-transparent text-sm shadow-sm flex items-center"
+                  className="h-10 w-full px-3 border rounded-full border-c-e5e5e5 bg-transparent text-sm shadow-sm flex items-center"
                 >
                   <div className="flex items-center gap-1.5 min-w-0 overflow-hidden">
                     {selectedCategories.size === 0 ? (
-                      <span className="text-[#A1A1A1]">Any Category</span>
+                      <span className="text-c-a1a1a1">Any Category</span>
                     ) : (
                       <>
                         {Array.from(selectedCategories)
@@ -637,23 +638,23 @@ export default function SearchJobPage() {
                           .map((item) => (
                             <span
                               key={item}
-                              className="h-6 px-2 rounded-full bg-[#eeeeee] text-black inline-flex items-center whitespace-nowrap text-xs"
+                              className="h-6 px-2 rounded-full bg-c-eeeeee text-black inline-flex items-center whitespace-nowrap text-xs"
                             >
                               {item}
                             </span>
                           ))}
                         {selectedCategories.size > 3 && (
-                          <span className="h-6 px-2 rounded-full bg-[#eeeeee] text-black inline-flex items-center whitespace-nowrap text-xs">
+                          <span className="h-6 px-2 rounded-full bg-c-eeeeee text-black inline-flex items-center whitespace-nowrap text-xs">
                             +{selectedCategories.size - 3}
                           </span>
                         )}
                       </>
                     )}
                   </div>
-                  <HiOutlineSelector className="ml-auto h-4 w-4 text-[#A1A1A1]" />
+                  <HiOutlineSelector className="ml-auto h-4 w-4 text-c-a1a1a1" />
                 </button>
                 {categoryOpen && (
-                  <div className="absolute top-full left-0 mt-2 w-full rounded-2xl border border-[#e2e2e2] bg-white shadow-lg p-2 z-30">
+                  <div className="absolute top-full left-0 mt-2 w-full rounded-2xl border border-c-e2e2e2 bg-white shadow-lg p-2 z-30">
                     <div className="flex flex-wrap gap-2">
                       {categoryOptions.map((option) => {
                         const active = selectedCategories.has(option);
@@ -664,8 +665,8 @@ export default function SearchJobPage() {
                             onClick={() => toggleCategory(option)}
                             className={`h-7 px-3 rounded-full text-xs ${
                               active
-                                ? "bg-[#e5e5e5] text-black"
-                                : "bg-white text-[#666] border border-[#e2e2e2]"
+                                ? "bg-c-e5e5e5 text-black"
+                                : "bg-white text-c-666 border border-c-e2e2e2"
                             }`}
                           >
                             {option}
@@ -680,22 +681,22 @@ export default function SearchJobPage() {
                 <select
                   value={placeFilter}
                   onChange={(e) => setPlaceFilter(e.target.value)}
-                  className="h-10 w-full px-4 border rounded-full text-[#A1A1A1] border-[#E5E5E5] bg-transparent appearance-none pr-8 text-sm shadow-sm"
+                  className="h-10 w-full px-4 border rounded-full text-c-a1a1a1 border-c-e5e5e5 bg-transparent appearance-none pr-8 text-sm shadow-sm"
                 >
                   <option>Any Place</option>
                   <option>Bangkok</option>
                 </select>
-                <HiOutlineSelector className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#A1A1A1]" />
+                <HiOutlineSelector className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-c-a1a1a1" />
               </div>
               <div className="relative">
                 <button
                   type="button"
                   onClick={() => setWorkTypeOpen((prev) => !prev)}
-                  className="h-10 w-full px-3 border rounded-full border-[#E5E5E5] bg-transparent text-sm shadow-sm flex items-center"
+                  className="h-10 w-full px-3 border rounded-full border-c-e5e5e5 bg-transparent text-sm shadow-sm flex items-center"
                 >
                   <div className="flex items-center gap-1.5 min-w-0 overflow-hidden">
                     {selectedWorkTypes.size === 0 ? (
-                      <span className="text-[#A1A1A1]">Any Work Type</span>
+                      <span className="text-c-a1a1a1">Any Work Type</span>
                     ) : (
                       <>
                         {Array.from(selectedWorkTypes)
@@ -703,23 +704,23 @@ export default function SearchJobPage() {
                           .map((item) => (
                             <span
                               key={item}
-                              className="h-6 px-2 rounded-full bg-[#eeeeee] text-black inline-flex items-center whitespace-nowrap text-xs"
+                              className="h-6 px-2 rounded-full bg-c-eeeeee text-black inline-flex items-center whitespace-nowrap text-xs"
                             >
                               {item}
                             </span>
                           ))}
                         {selectedWorkTypes.size > 3 && (
-                          <span className="h-6 px-2 rounded-full bg-[#eeeeee] text-black inline-flex items-center whitespace-nowrap text-xs">
+                          <span className="h-6 px-2 rounded-full bg-c-eeeeee text-black inline-flex items-center whitespace-nowrap text-xs">
                             +{selectedWorkTypes.size - 3}
                           </span>
                         )}
                       </>
                     )}
                   </div>
-                  <HiOutlineSelector className="ml-auto h-4 w-4 text-[#A1A1A1]" />
+                  <HiOutlineSelector className="ml-auto h-4 w-4 text-c-a1a1a1" />
                 </button>
                 {workTypeOpen && (
-                  <div className="absolute top-full left-0 mt-2 w-full rounded-2xl border border-[#e2e2e2] bg-white shadow-lg p-2 z-30">
+                  <div className="absolute top-full left-0 mt-2 w-full rounded-2xl border border-c-e2e2e2 bg-white shadow-lg p-2 z-30">
                     <div className="flex flex-wrap gap-2">
                       {workTypeOptions.map((option) => {
                         const active = selectedWorkTypes.has(option);
@@ -730,8 +731,8 @@ export default function SearchJobPage() {
                             onClick={() => toggleWorkType(option)}
                             className={`h-7 px-3 rounded-full text-xs ${
                               active
-                                ? "bg-[#e5e5e5] text-black"
-                                : "bg-white text-[#666] border border-[#e2e2e2]"
+                                ? "bg-c-e5e5e5 text-black"
+                                : "bg-white text-c-666 border border-c-e2e2e2"
                             }`}
                           >
                             {option}
@@ -746,11 +747,11 @@ export default function SearchJobPage() {
                 <button
                   type="button"
                   onClick={() => setWorkOptionOpen((prev) => !prev)}
-                  className="h-10 w-full px-3 border rounded-full border-[#E5E5E5] bg-transparent text-sm shadow-sm flex items-center"
+                  className="h-10 w-full px-3 border rounded-full border-c-e5e5e5 bg-transparent text-sm shadow-sm flex items-center"
                 >
                   <div className="flex items-center gap-1.5 min-w-0 overflow-hidden">
                     {selectedWorkOptions.size === 0 ? (
-                      <span className="text-[#A1A1A1]">Any Work Option</span>
+                      <span className="text-c-a1a1a1">Any Work Option</span>
                     ) : (
                       <>
                         {Array.from(selectedWorkOptions)
@@ -758,23 +759,23 @@ export default function SearchJobPage() {
                           .map((item) => (
                             <span
                               key={item}
-                              className="h-6 px-2 rounded-full bg-[#eeeeee] text-black inline-flex items-center whitespace-nowrap text-xs"
+                              className="h-6 px-2 rounded-full bg-c-eeeeee text-black inline-flex items-center whitespace-nowrap text-xs"
                             >
                               {item}
                             </span>
                           ))}
                         {selectedWorkOptions.size > 3 && (
-                          <span className="h-6 px-2 rounded-full bg-[#eeeeee] text-black inline-flex items-center whitespace-nowrap text-xs">
+                          <span className="h-6 px-2 rounded-full bg-c-eeeeee text-black inline-flex items-center whitespace-nowrap text-xs">
                             +{selectedWorkOptions.size - 3}
                           </span>
                         )}
                       </>
                     )}
                   </div>
-                  <HiOutlineSelector className="ml-auto h-4 w-4 text-[#A1A1A1]" />
+                  <HiOutlineSelector className="ml-auto h-4 w-4 text-c-a1a1a1" />
                 </button>
                 {workOptionOpen && (
-                  <div className="absolute top-full left-0 mt-2 w-full rounded-2xl border border-[#e2e2e2] bg-white shadow-lg p-2 z-30">
+                  <div className="absolute top-full left-0 mt-2 w-full rounded-2xl border border-c-e2e2e2 bg-white shadow-lg p-2 z-30">
                     <div className="flex flex-wrap gap-2">
                       {workOptionOptions.map((option) => {
                         const active = selectedWorkOptions.has(option);
@@ -785,8 +786,8 @@ export default function SearchJobPage() {
                             onClick={() => toggleWorkOption(option)}
                             className={`h-7 px-3 rounded-full text-xs ${
                               active
-                                ? "bg-[#e5e5e5] text-black"
-                                : "bg-white text-[#666] border border-[#e2e2e2]"
+                                ? "bg-c-e5e5e5 text-black"
+                                : "bg-white text-c-666 border border-c-e2e2e2"
                             }`}
                           >
                             {option}
@@ -808,14 +809,14 @@ export default function SearchJobPage() {
         <div className="job-list bg-white divide-y divide-gray-100">
           <div className="flex items-center gap-3 mt-15 px-4 py-5">
             <span className="text-sm">{filteredJobs.length} Results</span>
-            <div className="inline-flex overflow-hidden rounded-full border border-[#cfcfcf] bg-white">
+            <div className="inline-flex overflow-hidden rounded-full border border-c-cfcfcf bg-white">
               <button
                 type="button"
                 onClick={() => setFilterMode("relevance")}
-                className={`px-5 py-2.5 text-[14px] leading-none whitespace-nowrap border-r border-[#d8d8d8] ${
+                className={`px-5 py-2.5 text-[14px] leading-none whitespace-nowrap border-r border-c-d8d8d8 ${
                   filterMode === "relevance"
                     ? "text-white border-r-transparent bg-[linear-gradient(90deg,var(--color-main),var(--color-second))]"
-                    : "text-[#555] bg-white hover:bg-[#f7f7f7]"
+                    : "text-c-555 bg-white hover:bg-c-f7f7f7"
                 }`}
               >
                 Relevance
@@ -823,10 +824,10 @@ export default function SearchJobPage() {
               <button
                 type="button"
                 onClick={() => setFilterMode("date")}
-                className={`px-5 py-2.5 text-[14px] leading-none whitespace-nowrap border-r border-[#d8d8d8] ${
+                className={`px-5 py-2.5 text-[14px] leading-none whitespace-nowrap border-r border-c-d8d8d8 ${
                   filterMode === "date"
                     ? "text-white border-r-transparent bg-[linear-gradient(90deg,var(--color-main),var(--color-second))]"
-                    : "text-[#555] bg-white hover:bg-[#f7f7f7]"
+                    : "text-c-555 bg-white hover:bg-c-f7f7f7"
                 }`}
               >
                 Date
@@ -837,7 +838,7 @@ export default function SearchJobPage() {
                 className={`px-5 py-2.5 text-[14px] leading-none whitespace-nowrap ${
                   filterMode === "unviewed"
                     ? "text-white bg-[linear-gradient(90deg,var(--color-main),var(--color-second))]"
-                    : "text-[#555] bg-white hover:bg-[#f7f7f7]"
+                    : "text-c-555 bg-white hover:bg-c-f7f7f7"
                 }`}
               >
                 No browsed yet
@@ -890,7 +891,7 @@ export default function SearchJobPage() {
                     </div>
 
                     <div className="mt-3 text-xs text-muted-foreground">
-                      {viewed.has(job.id) && <span>Viewed â€¢ </span>}
+                      {viewed.has(job.id) && <span>Viewed • </span>}
                       {job.meta}
                     </div>
                   </div>
@@ -960,7 +961,7 @@ export default function SearchJobPage() {
                   </div>
                   <h2 className="text-lg font-semibold">{selectedJob.title}</h2>
                   <p className="text-xs text-muted-foreground">
-                    {selectedJob.location} â€¢ posted 1 week ago
+                    {selectedJob.location} • posted 1 week ago
                   </p>
                 </div>
                 <button className="ml-auto text-muted-foreground hover:text-foreground">
@@ -1030,3 +1031,7 @@ export default function SearchJobPage() {
     </div>
   );
 }
+
+
+
+

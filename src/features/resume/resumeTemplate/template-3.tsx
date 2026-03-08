@@ -53,7 +53,7 @@ const Template3: React.FC<Props> = ({ resume }) => {
     .join(", ");
 
   return (
-    <div className="w-[794px] min-h-[1123px] bg-white font-sans text-[#1f2933]">
+    <div className="w-[794px] min-h-[1123px] bg-white font-sans text-c-1f2933">
       <header
         className={`border-b-[3px] ${accent.border} flex items-start justify-between gap-4 px-7 pb-[18px] pt-[26px]`}
       >
@@ -61,11 +61,11 @@ const Template3: React.FC<Props> = ({ resume }) => {
           <div className="text-[30px] font-semibold">
             {fullName || "Your Name"}
           </div>
-          <div className="mt-1.5 text-[12px] text-[#52606d]">
+          <div className="mt-1.5 text-[12px] text-c-52606d">
             {[data.phone, data.email, location].filter(Boolean).join(" · ")}
           </div>
           {contacts.length > 0 && (
-            <div className="mt-1.5 text-[12px] text-[#52606d] flex gap-1">
+            <div className="mt-1.5 text-[12px] text-c-52606d flex gap-1">
               <div className="font-medium">Contact: </div>
               {contacts.map((c, idx) => (
                 <span key={`${c.label}-${idx}`} className="mr-0">
@@ -73,7 +73,7 @@ const Template3: React.FC<Props> = ({ resume }) => {
                     href={c.link}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-[#52606d] hover:text-[#1f2933]"
+                    className="text-c-52606d hover:text-c-1f2933"
                   >
                     · {c.label || c.link}
                   </a>
@@ -104,10 +104,10 @@ const Template3: React.FC<Props> = ({ resume }) => {
                   className="mt-2.5 break-inside-avoid"
                 >
                   <div className="font-semibold">{e.position || "Role"}</div>
-                  <div className="text-[12px] text-[#52606d]">
+                  <div className="text-[12px] text-c-52606d">
                     {[e.company_name].filter(Boolean).join(" · ")}
                   </div>
-                  <div className="text-[12px] text-[#52606d]">
+                  <div className="text-[12px] text-c-52606d">
                     {formatRange(e.start_date, e.end_Date)}
                   </div>
                   {(e.skills?.length ?? 0) > 0 && (
@@ -115,7 +115,7 @@ const Template3: React.FC<Props> = ({ resume }) => {
                       {e.skills.map((s) => (
                         <span
                           key={s.id}
-                          className="rounded-full bg-[#f0f4f8] px-2 py-0.5 text-[#52606d]"
+                          className="rounded-full bg-c-f0f4f8 px-2 py-0.5 text-c-52606d"
                         >
                           {s.name}
                         </span>
@@ -138,7 +138,7 @@ const Template3: React.FC<Props> = ({ resume }) => {
                   className="mt-2.5 break-inside-avoid"
                 >
                   <div className="font-semibold">{p.name}</div>
-                  <div className="text-[12px] text-[#52606d]">
+                  <div className="text-[12px] text-c-52606d">
                     {formatRange(p.start_date, p.end_date)}
                   </div>
                   {p.description && (
@@ -149,7 +149,7 @@ const Template3: React.FC<Props> = ({ resume }) => {
                       {p.skills.map((s) => (
                         <span
                           key={s.id}
-                          className="rounded-full bg-[#f0f4f8] px-2 py-0.5 text-[#52606d]"
+                          className="rounded-full bg-c-f0f4f8 px-2 py-0.5 text-c-52606d"
                         >
                           {s.name}
                         </span>
@@ -174,10 +174,10 @@ const Template3: React.FC<Props> = ({ resume }) => {
                   className="mt-2.5 break-inside-avoid"
                 >
                   <div className="font-semibold">{e.school_name}</div>
-                  <div className="text-[12px] text-[#52606d]">
+                  <div className="text-[12px] text-c-52606d">
                     {[e.degree, e.field_of_study].filter(Boolean).join(" · ")}
                   </div>
-                  <div className="text-[12px] text-[#52606d]">
+                  <div className="text-[12px] text-c-52606d">
                     {formatRange(e.start_date, e.end_date)}
                   </div>
                 </div>
@@ -194,7 +194,7 @@ const Template3: React.FC<Props> = ({ resume }) => {
                 {skills.map((s, idx) => (
                   <span
                     key={`${s.name}-${idx}`}
-                    className="rounded-full bg-[#f0f4f8] px-2 py-1"
+                    className="rounded-full bg-c-f0f4f8 px-2 py-1"
                   >
                     {s.name}
                   </span>
@@ -216,7 +216,7 @@ const Template3: React.FC<Props> = ({ resume }) => {
                   <div className="font-semibold">
                     {a.name || a.project_name}
                   </div>
-                  <div className="text-[12px] text-[#52606d]">
+                  <div className="text-[12px] text-c-52606d">
                     {formatValue(a.date)}
                   </div>
                   {a.description && (
@@ -227,7 +227,7 @@ const Template3: React.FC<Props> = ({ resume }) => {
                       {a.skills.map((s) => (
                         <span
                           key={s.id}
-                          className="rounded-full bg-[#f0f4f8] px-2 py-0.5 text-[#52606d]"
+                          className="rounded-full bg-c-f0f4f8 px-2 py-0.5 text-c-52606d"
                         >
                           {s.name}
                         </span>
@@ -262,3 +262,4 @@ const Template3: React.FC<Props> = ({ resume }) => {
 };
 
 export default Template3;
+

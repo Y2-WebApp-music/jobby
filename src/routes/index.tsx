@@ -4,7 +4,7 @@ import ResumePage from "@/pages/resume/ResumePage";
 import ShowCase from "@/pages/ShowCase";
 import { createBrowserRouter } from "react-router-dom";
 import SearchJobPage from "@/pages/seachJob/SearchJobPage";
-import Profile from "@/pages/profile/profile";
+import Profile from "@/pages/profile/Profile";
 
 export const router = createBrowserRouter(
   [
@@ -28,7 +28,7 @@ export const router = createBrowserRouter(
       path: "/showcase",
       element: <ShowCase />,
     },
-    { path: "*", element: <div>Not Found</div> },
+    { path: "*", element: <div>Not Found ESUS</div> },
     { path: "/searchjob", element: <SearchJobPage /> },
     { path: "/profile", element: <Profile /> },
   ],

@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from "react";
 import { CgClose } from "react-icons/cg";
+import { Button } from "@/components/ui/button";
 
 interface AboutDialogProps {
   open: boolean;
@@ -31,7 +32,7 @@ export default function AboutDialog({
           <div>
             <h2 className="text-4 font-semibold text-slate-900">About Me</h2>
             <p className="text-4 text-slate-500">
-              Make changes to your About here. Click save when you&apos;re done.
+              Make changes to your About here. Click save when you're done.
             </p>
           </div>
           <button
@@ -61,15 +62,16 @@ export default function AboutDialog({
             >
               Cancel
             </button>
-            <button
+            <Button
               type="submit"
-              className="rounded-full bg-gradient-to-r from-[#FF8E00] to-[#F335EC] px-5 py-1.5 text-base font-medium text-white"
+              className="rounded-full bg-gradient-to-r from-main to-second px-5 py-1.5 text-base font-medium text-white"
             >
               Save Change
-            </button>
+            </Button>
           </div>
         </form>
       </div>
     </div>
   );
 }
+
