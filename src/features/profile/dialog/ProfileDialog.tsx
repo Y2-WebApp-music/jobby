@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from "react";
 import { CgClose } from "react-icons/cg";
+import { Button } from "@/components/ui/button";
 
 export type ProfileLink = {
   id: number;
@@ -42,6 +43,28 @@ const REGION_OPTIONS = [
 const getDialCodeByRegion = (region: string) =>
   REGION_OPTIONS.find((item) => item.value === region)?.dialCode ?? "66";
 
+const normalizeLocalTel = (region: string, localTel: string) => {
+  const digits = localTel.replace(/\D/g, "");
+  if (!digits) return "";
+  if (region === "THA") {
+    return digits.replace(/^0/, "");
+  }
+  return digits;
+};
+
+const buildTelWithDialCode = (region: string, rawLocalTel: string) => {
+  const dialCode = getDialCodeByRegion(region);
+  const normalizedLocal = normalizeLocalTel(region, rawLocalTel);
+  return `${dialCode}${normalizedLocal}`;
+};
+
+const extractLocalTel = (region: string, fullTel: string) => {
+  const digits = fullTel.replace(/\D/g, "");
+  const dialCode = getDialCodeByRegion(region);
+  if (!digits.startsWith(dialCode)) return digits;
+  return digits.slice(dialCode.length);
+};
+
 export default function ProfileDialog({
   open,
   onClose,
@@ -49,6 +72,9 @@ export default function ProfileDialog({
   initialData,
 }: ProfileDialogProps) {
   const [formValue, setFormValue] = useState<ProfileFormValue>(initialData);
+  const [localTelInput, setLocalTelInput] = useState(() =>
+    extractLocalTel(initialData.region, initialData.tel),
+  );
 
   if (!open) return null;
 
@@ -84,9 +110,14 @@ export default function ProfileDialog({
 
   const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    onSave(formValue);
+    onSave({
+      ...formValue,
+      tel: buildTelWithDialCode(formValue.region, localTelInput),
+    });
     onClose();
   };
+
+  const enableLinkScroll = formValue.links.length > 3;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
@@ -125,7 +156,7 @@ export default function ProfileDialog({
                     firstName: e.target.value,
                   }))
                 }
-                className="h-9 w-full rounded-xl border border-[#f335ec] px-3 text-sm outline-none"
+                className="h-9 w-full rounded-xl border border-second px-3 text-sm outline-none"
               />
             </div>
             <div>
@@ -156,18 +187,9 @@ export default function ProfileDialog({
                 <select
                   value={formValue.region}
                   onChange={(e) => {
-                    const nextRegion = e.target.value;
-                    const prevDialCode = getDialCodeByRegion(formValue.region);
-                    const nextDialCode = getDialCodeByRegion(nextRegion);
-                    const currentDigits = formValue.tel.replace(/\D/g, "");
-                    const localDigits = currentDigits.startsWith(prevDialCode)
-                      ? currentDigits.slice(prevDialCode.length)
-                      : currentDigits;
-
                     setFormValue((prev) => ({
                       ...prev,
-                      region: nextRegion,
-                      tel: `${nextDialCode}${localDigits}`,
+                      region: e.target.value,
                     }));
                   }}
                   className="h-9 w-full rounded-xl border border-slate-200 px-2 text-sm outline-none"
@@ -188,19 +210,12 @@ export default function ProfileDialog({
                     +{getDialCodeByRegion(formValue.region)}
                   </span>
                   <input
-                    value={formValue.tel
-                      .replace(/\D/g, "")
-                      .slice(getDialCodeByRegion(formValue.region).length)}
+                    value={localTelInput}
                     placeholder="815XXXXXX"
                     inputMode="numeric"
                     pattern="[0-9]*"
                     onChange={(e) => {
-                      const localDigits = e.target.value.replace(/\D/g, "");
-                      const dialCode = getDialCodeByRegion(formValue.region);
-                      setFormValue((prev) => ({
-                        ...prev,
-                        tel: `${dialCode}${localDigits}`,
-                      }));
+                      setLocalTelInput(e.target.value.replace(/\D/g, ""));
                     }}
                     className="h-full w-full px-3 text-sm outline-none"
                   />
@@ -227,7 +242,11 @@ export default function ProfileDialog({
             </div>
           </div>
 
-          <div className="space-y-2">
+          <div
+            className={`space-y-2 ${
+              enableLinkScroll ? "max-h-[196px] overflow-y-auto pr-2" : ""
+            }`}
+          >
             {formValue.links.map((item) => (
               <div
                 key={item.id}
@@ -407,15 +426,18 @@ export default function ProfileDialog({
             >
               Cancel
             </button>
-            <button
+            <Button
               type="submit"
-              className="rounded-full bg-gradient-to-r from-[#FF8E00] to-[#F335EC] px-5 py-1.5 text-base font-medium text-white"
+              className="rounded-full bg-gradient-to-r from-main to-second px-5 py-1.5 text-base font-medium text-white"
             >
               Save Change
-            </button>
+            </Button>
           </div>
         </form>
       </div>
     </div>
   );
 }
+
+
+

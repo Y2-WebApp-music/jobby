@@ -28,7 +28,7 @@ export const router = createBrowserRouter(
       path: "/showcase",
       element: <ShowCase />,
     },
-    { path: "*", element: <div>Not Found</div> },
+    { path: "*", element: <div>Not Found ESUS</div> },
     { path: "/searchjob", element: <SearchJobPage /> },
     { path: "/profile", element: <Profile /> },
   ],

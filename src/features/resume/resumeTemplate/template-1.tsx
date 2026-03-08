@@ -59,7 +59,7 @@ const Template1: React.FC<Props> = ({ resume }) => {
     .join(", ");
 
   return (
-    <div className="grid w-[794px] min-h-[1123px] grid-cols-[260px_1fr] bg-white font-sans text-[#1f2933]">
+    <div className="grid w-[794px] min-h-[1123px] grid-cols-[260px_1fr] bg-white font-sans text-c-1f2933">
       <aside className={`${accent.bg} px-[22px] py-7 text-white`}>
         {data.logo && (
           <ResumeLogo
@@ -126,10 +126,10 @@ const Template1: React.FC<Props> = ({ resume }) => {
                 className="mt-2.5 break-inside-avoid"
               >
                 <div className="font-semibold">{e.school_name}</div>
-                <div className="text-[12px] text-[#52606d]">
+                <div className="text-[12px] text-c-52606d">
                   {[e.degree, e.field_of_study].filter(Boolean).join(" · ")}
                 </div>
-                <div className="text-[12px] text-[#52606d]">
+                <div className="text-[12px] text-c-52606d">
                   {formatRange(e.start_date, e.end_date)}
                 </div>
               </div>
@@ -148,10 +148,10 @@ const Template1: React.FC<Props> = ({ resume }) => {
                 className="mt-2.5 break-inside-avoid"
               >
                 <div className="font-semibold">{e.position || "Role"}</div>
-                <div className="text-[12px] text-[#52606d]">
+                <div className="text-[12px] text-c-52606d">
                   {[e.company_name].filter(Boolean).join(" · ")}
                 </div>
-                <div className="text-[12px] text-[#52606d]">
+                <div className="text-[12px] text-c-52606d">
                   {formatRange(e.start_date, e.end_Date)}
                 </div>
                 {(e.skills?.length ?? 0) > 0 && (
@@ -159,7 +159,7 @@ const Template1: React.FC<Props> = ({ resume }) => {
                     {e.skills.map((s) => (
                       <span
                         key={s.id}
-                        className="rounded-md bg-[#e4e7eb] px-1.5 py-0.5 text-[#52606d]"
+                        className="rounded-md bg-c-e4e7eb px-1.5 py-0.5 text-c-52606d"
                       >
                         {s.name}
                       </span>
@@ -182,7 +182,7 @@ const Template1: React.FC<Props> = ({ resume }) => {
                 className="mt-2.5 break-inside-avoid"
               >
                 <div className="font-semibold">{p.name}</div>
-                <div className="text-[12px] text-[#52606d]">
+                <div className="text-[12px] text-c-52606d">
                   {formatRange(p.start_date, p.end_date)}
                 </div>
                 {p.description && (
@@ -193,7 +193,7 @@ const Template1: React.FC<Props> = ({ resume }) => {
                     {p.skills.map((s) => (
                       <span
                         key={s.id}
-                        className="rounded-md bg-[#e4e7eb] px-1.5 py-0.5 text-[#52606d]"
+                        className="rounded-md bg-c-e4e7eb px-1.5 py-0.5 text-c-52606d"
                       >
                         {s.name}
                       </span>
@@ -216,7 +216,7 @@ const Template1: React.FC<Props> = ({ resume }) => {
                 className="mt-2.5 break-inside-avoid"
               >
                 <div className="font-semibold">{a.name || a.project_name}</div>
-                <div className="text-[12px] text-[#52606d]">
+                <div className="text-[12px] text-c-52606d">
                   {formatValue(a.date)}
                 </div>
                 {a.description && (
@@ -227,7 +227,7 @@ const Template1: React.FC<Props> = ({ resume }) => {
                     {a.skills.map((s) => (
                       <span
                         key={s.id}
-                        className="rounded-md bg-[#e4e7eb] px-1.5 py-0.5 text-[#52606d]"
+                        className="rounded-md bg-c-e4e7eb px-1.5 py-0.5 text-c-52606d"
                       >
                         {s.name}
                       </span>
@@ -261,3 +261,4 @@ const Template1: React.FC<Props> = ({ resume }) => {
 };
 
 export default Template1;
+
