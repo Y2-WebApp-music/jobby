@@ -11,7 +11,7 @@ import {
     PopoverTrigger,
 } from "@/components/ui/popover";
 import AddskillDialog from "@/features/profile/dialog/AddskillDialog";
-import SkillinfoDialog from "@/features/profile/dialog/SkillinfoDialog";
+// import SkillinfoDialog from "@/features/profile/dialog/SkillinfoDialog";
 
 export type AchievementItem = {
     id: number;
@@ -73,7 +73,9 @@ const parseToDate = (value: string) => {
     });
     };
 
-    function DatePickerField({
+    
+const normalizeNewlines = (value: string) => value.replace(/\r\n/g, "\n");
+function DatePickerField({
     label,
     value,
     minDate,
@@ -143,7 +145,6 @@ const parseToDate = (value: string) => {
     const [items, setItems] = useState<AchievementItem[]>(initialData);
     const [editorOpen, setEditorOpen] = useState(Boolean(initialEditingItem));
     const [addSkillDialogOpen, setAddSkillDialogOpen] = useState(false);
-    const [skillInfoName, setSkillInfoName] = useState<string | null>(null);
     const [editingId, setEditingId] = useState<number | null>(
         initialEditingItem?.id ?? null,
     );
@@ -277,7 +278,7 @@ const parseToDate = (value: string) => {
                     <div className="text-sm text-slate-800">
                         {item.from || "Project Name"}
                     </div>
-                    <div className="line-clamp-2 text-sm text-slate-700">
+                    <div className="line-clamp-2 whitespace-pre-line break-all text-sm text-slate-700">
                         {item.description || "Description"}
                     </div>
                     <div className="text-sm text-slate-700">
@@ -385,7 +386,7 @@ const parseToDate = (value: string) => {
                     onChange={(e) =>
                         setDraft((prev) => ({
                         ...prev,
-                        description: e.target.value,
+                        description: normalizeNewlines(e.target.value),
                         }))
                     }
                     className="h-28 w-full resize-none rounded-xl border border-slate-200 p-3 text-base outline-none"
@@ -402,13 +403,7 @@ const parseToDate = (value: string) => {
                         key={skill}
                         className="inline-flex items-center gap-1 rounded-full border border-transparent px-3 py-1 text-xs text-primary-pink [background:linear-gradient(var(--color-background),var(--color-background))_padding-box,linear-gradient(to_right,var(--color-main),var(--color-second))_border-box]"
                     >
-                        <button
-                        type="button"
-                        onClick={() => setSkillInfoName(skill)}
-                        className="text-sm"
-                        >
-                        {skill}
-                        </button>
+                        <span className="text-sm">{skill}</span>
                         <button
                         type="button"
                         onClick={() => handleRemoveSkill(skill)}
@@ -527,6 +522,11 @@ const parseToDate = (value: string) => {
         </div>
     );
 }
+
+
+
+
+
 
 
 

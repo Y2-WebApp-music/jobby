@@ -9,6 +9,8 @@ interface AboutDialogProps {
   onSave: (value: string) => void;
 }
 
+
+const normalizeNewlines = (value: string) => value.replace(/\r\n/g, "\n");
 export default function AboutDialog({
   open,
   initialValue,
@@ -21,7 +23,7 @@ export default function AboutDialog({
 
   const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    onSave(aboutText.trim());
+    onSave(normalizeNewlines(aboutText).trim());
     onClose();
   };
 
@@ -48,7 +50,7 @@ export default function AboutDialog({
         <form onSubmit={handleSubmit}>
           <textarea
             value={aboutText}
-            onChange={(e) => setAboutText(e.target.value)}
+            onChange={(e) => setAboutText(normalizeNewlines(e.target.value))}
             placeholder="Type your message here"
             rows={5}
             className="w-full resize-none rounded-2xl border border-slate-200 p-4 text-sm outline-none"
@@ -74,4 +76,5 @@ export default function AboutDialog({
     </div>
   );
 }
+
 
