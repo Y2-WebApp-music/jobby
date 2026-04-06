@@ -21,7 +21,7 @@ export default function PageLayout({
   children: React.ReactNode;
 }) {
   const navItem = [
-    { label: "Find Job", href: "/find" },
+    { label: "Find Job", href: "/searchjob" },
     { label: "Message", href: "/message" },
     { label: "Profile", href: "/profile" },
     { label: "Resume", href: "/resume" },
@@ -60,7 +60,11 @@ export default function PageLayout({
         </div>
       </div>
       {/* Page Content */}
-      <div className="w-full h-full pt-14">{children}</div>
+      <div className="w-full min-h-0 flex-1 pt-14">{children}</div>
     </div>
   );
 }
+
+
+
+

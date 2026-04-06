@@ -10,7 +10,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import AddskillDialog from "@/features/profile/dialog/AddskillDialog";
-import SkillinfoDialog from "@/features/profile/dialog/SkillinfoDialog";
+// import SkillinfoDialog from "@/features/profile/dialog/SkillinfoDialog";
 
 export type WorkExperienceItem = {
   id: number;
@@ -146,7 +146,6 @@ export default function WorkexpDialog({
   const [items, setItems] = useState<WorkExperienceItem[]>(initialData);
   const [editorOpen, setEditorOpen] = useState(false);
   const [addSkillDialogOpen, setAddSkillDialogOpen] = useState(false);
-  const [skillInfoName, setSkillInfoName] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [draft, setDraft] = useState<WorkExperienceItem>(createEmptyWorkExp());
 
@@ -371,13 +370,7 @@ export default function WorkexpDialog({
                       key={skill}
                       className="inline-flex items-center gap-1 rounded-full border border-transparent px-3 py-1 text-xs text-primary-pink [background:linear-gradient(var(--color-background),var(--color-background))_padding-box,linear-gradient(to_right,var(--color-main),var(--color-second))_border-box]"
                     >
-                      <button
-                        type="button"
-                        onClick={() => setSkillInfoName(skill)}
-                        className="text-sm"
-                      >
-                        {skill}
-                      </button>
+                      <span className="text-sm">{skill}</span>
                       <button
                         type="button"
                         onClick={() => handleRemoveSkill(skill)}
@@ -481,6 +474,8 @@ export default function WorkexpDialog({
     </div>
   );
 }
+
+
 
 
 

@@ -1,8 +1,6 @@
-import { Link } from "react-router-dom";
 import { useRef, useState } from "react";
 import { RiPencilFill } from "react-icons/ri";
 import { CgClose } from "react-icons/cg";
-import JobbyLogo from "@/assets/icons/JobbyLogo.svg?react";
 import ImageEditor from "../../features/profile/dialog/ImageEditorModel";
 import ProfileDialog, {
   type ProfileFormValue,
@@ -33,6 +31,7 @@ import {
   defaultProjects,
   defaultWorkExperience,
 } from "@/types/profile";
+import PageLayout from "@/components/layout/PageLayout";
 
 const MAX_IMAGE_SIZE_BYTES = 15 * 1024 * 1024;
 
@@ -45,7 +44,7 @@ function SectionHeader({
 }) {
   return (
     <div className="flex items-center justify-between">
-      <h3 className="text-sm font-semibold text-slate-900">{title}</h3>
+      <h3 className="text-sm font-semibold text-slate-900 break-words">{title}</h3>
       <button
         type="button"
         onClick={onEdit}
@@ -63,11 +62,13 @@ function CardItem({
   subtitle,
   meta,
   onClick,
+  subtitleClassName = "",
 }: {
   title: string;
   subtitle: string;
   meta: string;
   onClick?: () => void;
+  subtitleClassName?: string;
 }) {
   return (
     <button
@@ -77,11 +78,11 @@ function CardItem({
         onClick ? "cursor-pointer hover:bg-slate-100" : ""
       }`}
     >
-      <div className="h-11 w-11 rounded-full bg-slate-200" />
-      <div>
-        <div className="text-sm font-semibold text-slate-900">{title}</div>
-        <div className="text-xs text-slate-600">{subtitle}</div>
-        <div className="text-xs text-slate-500">{meta}</div>
+      <div className="h-11 w-11 shrink-0 rounded-full bg-slate-200" />
+      <div className="min-w-0">
+        <div className="text-sm font-semibold text-slate-900 break-words">{title}</div>
+        <div className={`text-xs text-slate-600 break-words ${subtitleClassName}`}>{subtitle}</div>
+        <div className="text-xs text-slate-500 break-words">{meta}</div>
       </div>
     </button>
   );
@@ -100,7 +101,7 @@ function SkillApplicationSection({
     <div className="space-y-6">
       <div className="rounded-2xl border border-slate-100 bg-white p-4">
         <div className="flex items-center justify-between">
-          <h3 className="text-sm font-semibold text-slate-900">Your Skill</h3>
+          <h3 className="text-sm font-semibold text-slate-900 break-words">Your Skill</h3>
           <Button
             type="button"
             onClick={onNewSkill}
@@ -129,7 +130,7 @@ function SkillApplicationSection({
       </div>
 
       <div className="rounded-2xl border border-slate-100 bg-white p-4">
-        <h3 className="text-sm font-semibold text-slate-900">Your Application</h3>
+        <h3 className="text-sm font-semibold text-slate-900 break-words">Your Application</h3>
         <div className="mt-3 space-y-3">
           {defaultApplications.map((app) => (
             <div
@@ -138,11 +139,11 @@ function SkillApplicationSection({
             >
               <div className="h-12 w-12 rounded-2xl bg-slate-300" />
               <div>
-                <div className="text-sm font-semibold text-slate-900">
+                <div className="text-sm font-semibold text-slate-900 break-words">
                   {app.title}
                 </div>
                 <div className="text-xs text-slate-600">{app.company}</div>
-                <div className="text-xs text-slate-500">{app.note}</div>
+                <div className="text-xs text-slate-500 break-words">{app.note}</div>
               </div>
             </div>
           ))}
@@ -151,7 +152,7 @@ function SkillApplicationSection({
     </div>
   );
 }
-
+// คอมบาย
 export default function Profile() {
   const [profileUrl, setProfileUrl] = useState<string | null>(null);
   const [bannerUrl, setBannerUrl] = useState<string>(Thumbnail);
@@ -178,7 +179,6 @@ export default function Profile() {
   const [projectPreviewOpen, setProjectPreviewOpen] = useState(false);
   const [previewProjectId, setPreviewProjectId] = useState<number | null>(null);
   const [projectDirectEditMode, setProjectDirectEditMode] = useState(false);
-  const [skillInfoName, setSkillInfoName] = useState<string | null>(null);
   const [aboutText, setAboutText] = useState(defaultAboutText);
   const [education, setEducation] =
     useState<EducationItem[]>(defaultEducation);
@@ -197,12 +197,11 @@ export default function Profile() {
   const [editingImage, setEditingImage] = useState<string | null>(null);
   const projectImageListRef = useRef<HTMLDivElement | null>(null);
   const achievementImageListRef = useRef<HTMLDivElement | null>(null);
-  const navItem = [
-    { label: "Find Job", href: "/searchjob" },
-    { label: "Message", href: "/message", badge: "99+" },
-    { label: "Profile", href: "/profile", active: true },
-    { label: "Resume", href: "/resume" },
-  ];
+  // จนถึงนี้
+
+
+  // เปลี่ยนเอาออก
+
   const isDefaultBanner = bannerUrl === Thumbnail;
 
   const handleSelectImage = (file: File, target: "profile" | "banner") => {
@@ -274,35 +273,10 @@ export default function Profile() {
   };
 
   return (
+  <PageLayout>
     <div className="min-h-screen">
-      <div className="fixed inset-x-0 top-0 z-40 h-14 border-b border-slate-200 bg-white">
-        <div className="mx-auto flex h-full max-w-7xl items-center px-4">
-          <JobbyLogo height={36} width={110} />
-          <div className="ml-auto flex items-center gap-2">
-            {navItem.map((item) => (
-              <Link
-                key={item.label}
-                to={item.href}
-                className={`relative rounded-full px-3 py-1 text-sm ${
-                  item.active
-                    ? "bg-gradient-to-r from-main to-second text-white shadow-sm"
-                    : "text-slate-700 hover:bg-slate-100"
-                }`}
-              >
-                {item.label}
-                {item.badge && (
-                  <span className="absolute -right-1 -top-1 rounded-full bg-red-500 px-1.5 text-[10px] text-white">
-                    {item.badge}
-                  </span>
-                )}
-              </Link>
-            ))}
-            <div className="ml-2 h-8 w-8 rounded-full bg-slate-300" />
-          </div>
-        </div>
-      </div>
 
-      <div className="relative mx-auto mt-18 w-full max-w-[1411px] overflow-hidden rounded-[20px] bg-slate-100 aspect-[1411/275]">
+      <div className="relative mt-18 mx-4 sm:mx-6 w-auto overflow-hidden rounded-[20px] bg-slate-100 aspect-[1411/275]">
         {/* input upload */}
         <input
           id="banner-upload"
@@ -421,7 +395,7 @@ export default function Profile() {
                 title="About"
                 onEdit={() => setAboutDialogOpen(true)}
               />
-              <p className="mt-3 text-sm leading-relaxed text-slate-600">
+              <p className="mt-3 whitespace-pre-line break-all text-sm leading-relaxed text-slate-600">
                 {aboutText || "No about information yet."}
               </p>
             </div>
@@ -500,6 +474,7 @@ export default function Profile() {
                     title={item.name}
                     subtitle={item.description}
                     meta={item.date}
+                    subtitleClassName="line-clamp-4 whitespace-pre-line break-words"
                     onClick={() => handleOpenProjectPreview(item.id)}
                   />
                 ))}
@@ -528,6 +503,7 @@ export default function Profile() {
                     title={item.name}
                     subtitle={item.from}
                     meta={item.date}
+                    subtitleClassName="line-clamp-4 whitespace-pre-line break-words"
                     onClick={() => handleOpenAchievementPreview(item.id)}
                   />
                 ))}
@@ -711,7 +687,7 @@ export default function Profile() {
               </button>
             </div>
 
-            <p className="mb-3 text-sm leading-relaxed text-slate-700">
+            <p className="mb-3 whitespace-pre-line break-all text-sm leading-relaxed text-slate-700">
               {previewProject.description || "No description."}
             </p>
 
@@ -819,7 +795,7 @@ export default function Profile() {
               </button>
             </div>
 
-            <p className="mb-3 text-sm leading-relaxed text-slate-700">
+            <p className="mb-3 whitespace-pre-line break-all text-sm leading-relaxed text-slate-700">
               {previewAchievement.description || "No description."}
             </p>
 
@@ -862,10 +838,22 @@ export default function Profile() {
         </div>
       ) : null}
     </div>
+  </PageLayout>  
   );
 }
 
-// กูนึกว่าเพื่อนกูจะเดินไปใกล้กว่านี้ 
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

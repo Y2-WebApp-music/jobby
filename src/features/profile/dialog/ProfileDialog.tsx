@@ -117,11 +117,9 @@ export default function ProfileDialog({
     onClose();
   };
 
-  const enableLinkScroll = formValue.links.length > 3;
-
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-      <div className="w-full max-w-3xl rounded-3xl bg-white p-5 shadow-xl">
+      <div className="w-full max-w-3xl max-h-[85vh] overflow-y-auto rounded-3xl bg-white p-5 shadow-xl">
         <div className="mb-4 flex items-start justify-between">
           <div>
             <h2 className="text-2xl font-semibold text-slate-900">
@@ -242,11 +240,7 @@ export default function ProfileDialog({
             </div>
           </div>
 
-          <div
-            className={`space-y-2 ${
-              enableLinkScroll ? "max-h-[196px] overflow-y-auto pr-2" : ""
-            }`}
-          >
+          <div className="space-y-2">
             {formValue.links.map((item) => (
               <div
                 key={item.id}
@@ -438,6 +432,12 @@ export default function ProfileDialog({
     </div>
   );
 }
+
+
+
+
+
+
 
 
 
