@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { combine } from "zustand/middleware";
+import { combine, persist } from "zustand/middleware";
 
 type User = {
   id: string;
@@ -23,17 +23,23 @@ type AuthActions = {
 };
 
 export const useAuthStore = create(
-  combine<AuthState, AuthActions>(
+  persist(
+    combine<AuthState, AuthActions>(
+      {
+        user: null,
+        token: null,
+      },
+      (set, get) => ({
+        getUser: () => get().user,
+        getToken: () => get().token,
+        setUser: (user) => set({ user }),
+        setToken: (token) => set({ token }),
+        logout: () => set({ user: null, token: null }),
+      }),
+    ),
     {
-      user: null,
-      token: null,
+      name: "jobby-auth-store",
+      partialize: (state) => ({ user: state.user, token: state.token }),
     },
-    (set, get) => ({
-      getUser: () => get().user,
-      getToken: () => get().token,
-      setUser: (user) => set({ user }),
-      setToken: (token) => set({ token }),
-      logout: () => set({ user: null, token: null }),
-    }),
   ),
 );

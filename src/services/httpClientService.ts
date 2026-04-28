@@ -4,25 +4,13 @@ import { formatError } from "./serviceHandler";
 
 const httpClient: AxiosInstance = axios.create({
   timeout: 60000,
-  baseURL: import.meta.env.VITE_APP_BASE_URL,
+  baseURL: (import.meta.env.VITE_APP_BASE_URL ?? "").trim(),
   headers: { "Content-Type": "application/json" },
 });
 
 httpClient.interceptors.request.use(
   (config) => {
-    const rawPersistData = localStorage.getItem(
-      import.meta.env.VITE_APP_LOCAL_STORAGE,
-    );
-
-    if (rawPersistData) {
-      try {
-        // const persistData = deepParseJson(rawPersistData) as {
-        //   auth?: { session?: { token?: string } };
-        // };
-      } catch (error) {
-        console.error("Failed to parse persisted data:", error);
-      }
-    }
+    config.withCredentials = true;
 
     return config;
   },

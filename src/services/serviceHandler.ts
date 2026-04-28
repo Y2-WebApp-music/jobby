@@ -9,11 +9,20 @@ export const formatError = (err: unknown): ErrorResponseProps => {
     const response = err.response;
     const payload = response?.data ?? {};
 
-    if (payload) {
+    if (
+      payload &&
+      typeof payload === "object" &&
+      ("status" in payload || "code" in payload || "message" in payload)
+    ) {
+      const p = payload as Partial<ErrorResponseProps>;
       return {
-        status: payload.status,
-        code: payload.code,
-        message: payload.message,
+        status: p.status ?? response?.status ?? err.status ?? 0,
+        code: p.code ?? err.code ?? "000000",
+        message:
+          p.message ??
+          response?.statusText ??
+          err.message ??
+          "Unexpected error",
       };
     } else {
       const fallbackStatus = response?.status ?? err.status ?? 0;
