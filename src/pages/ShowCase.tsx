@@ -337,10 +337,12 @@ export default function ShowCase() {
           <div className="max-w-xs space-y-2">
             <Label className="text-base font-semibold">User Skill</Label>
             <div className="flex gap-2 items-center">
-              <p className="text-muted-foreground text-sm text-nowrap">More than</p>
+              <p className="text-muted-foreground text-sm text-nowrap">
+                More than
+              </p>
               <InputGroup className="gap-0 overflow-hidden rounded-xl border border-border bg-transparent">
                 <InputGroupInput
-                  type='number'
+                  type="number"
                   min={1}
                   defaultValue={1}
                   className="min-w-0 rounded-l-xl border-0 bg-transparent focus-visible:ring-0"

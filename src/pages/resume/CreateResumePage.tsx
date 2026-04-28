@@ -6,6 +6,7 @@ import RenderResume from "@/features/resume/RenderResume";
 import Template1 from "@/features/resume/resumeTemplate/template-1";
 import Template2 from "@/features/resume/resumeTemplate/template-2";
 import Template3 from "@/features/resume/resumeTemplate/template-3";
+import { mockResumeCreate } from "@/mock/resumePage";
 import { useAddressOptionStore } from "@/store/addressOption";
 import { usePropertiesStore } from "@/store/properties";
 import { initialResume, type ResumeCreateProps } from "@/types/resumeType";
@@ -16,7 +17,8 @@ import { useReactToPrint } from "react-to-print";
 
 export default function CreateResumePage() {
   const navigate = useNavigate();
-  const [resume, setResume] = useState<ResumeCreateProps>(initialResume);
+  // const [resume, setResume] = useState<ResumeCreateProps>(initialResume);
+  const [resume, setResume] = useState<ResumeCreateProps>(mockResumeCreate);
   const printRef = useRef<HTMLDivElement>(null);
 
   const updateData = <K extends keyof ResumeCreateProps["data"]>(

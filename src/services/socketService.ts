@@ -11,22 +11,34 @@ export const ChatMessageType = {
 } as const;
 
 /** Stored in DB `message_data` for attachments: JSON with public/signed URL + original filename */
-export function buildAttachmentMessageData(url: string, fileName: string): string {
+export function buildAttachmentMessageData(
+  url: string,
+  fileName: string,
+): string {
   return JSON.stringify({ url, name: fileName });
 }
 
-export function parseAttachmentMessageData(raw: string): { url: string; name?: string } | null {
+export function parseAttachmentMessageData(
+  raw: string,
+): { url: string; name?: string } | null {
   if (!raw?.trim()) return null;
   try {
     const parsed = JSON.parse(raw) as { url?: unknown; name?: unknown };
     if (typeof parsed?.url === "string" && parsed.url.length > 0) {
-      return { url: parsed.url, name: typeof parsed.name === "string" ? parsed.name : undefined };
+      return {
+        url: parsed.url,
+        name: typeof parsed.name === "string" ? parsed.name : undefined,
+      };
     }
   } catch {
     // plain URL or legacy data URL / raw text
   }
   const t = raw.trim();
-  if (t.startsWith("http://") || t.startsWith("https://") || t.startsWith("data:")) {
+  if (
+    t.startsWith("http://") ||
+    t.startsWith("https://") ||
+    t.startsWith("data:")
+  ) {
     return { url: t };
   }
   return null;
@@ -36,8 +48,13 @@ export function inferMessageTypeFromFile(file: File): number {
   const mime = file.type.toLowerCase();
   const ext = file.name.split(".").pop()?.toLowerCase() ?? "";
   if (mime.startsWith("image/")) return ChatMessageType.Image;
-  if (ext === "pdf" || mime === "application/pdf") return ChatMessageType.FilePdf;
-  if (["doc", "docx"].includes(ext) || mime.includes("wordprocessingml") || mime.includes("msword")) {
+  if (ext === "pdf" || mime === "application/pdf")
+    return ChatMessageType.FilePdf;
+  if (
+    ["doc", "docx"].includes(ext) ||
+    mime.includes("wordprocessingml") ||
+    mime.includes("msword")
+  ) {
     return ChatMessageType.FileWord;
   }
   if (ext === "txt" || mime === "text/plain") return ChatMessageType.FileTxt;

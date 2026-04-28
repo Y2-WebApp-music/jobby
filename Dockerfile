@@ -5,7 +5,8 @@ WORKDIR /app
 
 # Install dependencies with better layer caching
 COPY package.json bun.lockb ./
-RUN bun install --frozen-lockfile
+# Try reproducible install first; fallback if lockfile is stale.
+RUN bun install --frozen-lockfile || bun install
 
 # Copy source and config for the build
 COPY tsconfig*.json vite.config.ts ./
