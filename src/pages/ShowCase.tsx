@@ -72,6 +72,7 @@ import {
   InputGroupAddon,
   InputGroupButton,
   InputGroupInput,
+  InputGroupText,
 } from "@/components/ui/input-group";
 import { Label } from "@/components/ui/label";
 import { MultiSelect } from "@/components/ui/multi-select";
@@ -105,6 +106,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Search } from "lucide-react";
+import { ModeToggle } from "@/components/mode-toggle";
 
 function ShowCaseSection({
   title,
@@ -152,6 +154,7 @@ export default function ShowCase() {
               src/components/ui/
             </code>
           </p>
+          <ModeToggle />
         </header>
 
         <ShowCaseSection title="Button">
@@ -328,6 +331,26 @@ export default function ShowCase() {
               <InputGroupButton>Search</InputGroupButton>
             </InputGroupAddon>
           </InputGroup>
+        </ShowCaseSection>
+
+        <ShowCaseSection title="Input with end unit (suffix)">
+          <div className="max-w-xs space-y-2">
+            <Label className="text-base font-semibold">User Skill</Label>
+            <div className="flex gap-2 items-center">
+              <p className="text-muted-foreground text-sm text-nowrap">More than</p>
+              <InputGroup className="gap-0 overflow-hidden rounded-xl border border-border bg-transparent">
+                <InputGroupInput
+                  type='number'
+                  min={1}
+                  defaultValue={1}
+                  className="min-w-0 rounded-l-xl border-0 bg-transparent focus-visible:ring-0"
+                />
+                <InputGroupAddon align="inline-end" className="pr-3">
+                  <InputGroupText>Skills</InputGroupText>
+                </InputGroupAddon>
+              </InputGroup>
+            </div>
+          </div>
         </ShowCaseSection>
 
         <ShowCaseSection title="Card">
