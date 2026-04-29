@@ -2,16 +2,13 @@ import * as React from "react";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
 import {
-  XIcon,
   CheckCircle2,
   Info,
   AlertTriangle,
   OctagonXIcon,
   Loader2,
 } from "lucide-react";
-import Success_icon from "/src/assets/icons/Success.png";
 
 const dialogVariants = cva(
   "bg-background data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 grid max-w-[calc(100%-2rem)] gap-6 rounded-xl p-6 text-sm duration-100 sm:max-w-md fixed top-1/2 left-1/2 z-50 w-full -translate-x-1/2 -translate-y-1/2",
@@ -127,7 +124,7 @@ function DialogContent({
         >
           {isSpecialVariant && <div className="shrink-0">{renderIcon()}</div>}
 
-          <div className="flex-1 flex flex-col gap-2 justify-center min-h-[2rem] mt-[-4px] mb-[-4px]">
+          <div className="flex-1 flex flex-col gap-2 justify-center min-h-8 mt-[-4px] mb-[-4px]">
             {children}
           </div>
         </div>
@@ -156,7 +153,7 @@ function DialogFooter({
   return (
     <div
       className={cn(
-        "gap-2 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end",
+        "gap-2 flex flex-col-reverse sm:flex-row sm:justify-end",
         className,
       )}
       {...props}
@@ -173,7 +170,7 @@ function DialogTitle({
   return (
     <DialogPrimitive.Title
       className={cn(
-        "leading-none font-normal text-[19px] flex items-center pt-2",
+        "leading-none font-normal text-[19px] flex items-center",
         className,
       )}
       {...props}

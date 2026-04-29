@@ -1,4 +1,5 @@
 import PageLayout from "@/components/layout/PageLayout";
+import { Button } from "@/components/ui/button";
 
 export default function LandingPage() {
   return (
@@ -21,7 +22,16 @@ export default function LandingPage() {
           ipsam praesentium officia corporis est a dolor, nemo aspernatur ab
           minima asperiores illo! Id, rerum expedita.
         </p>
-        <p className=" text-second">ที่ทดสอบ</p>
+        <p className=" text-second"> Button Test </p>
+
+        <div className="flex gap-2 p-4">
+          <Button variant="default"> Test button </Button>
+          <Button variant="outline"> Test button </Button>
+          <Button variant="ghost"> Test button </Button>
+          <Button variant="destructive"> Test button </Button>
+          <Button variant="link"> Test button </Button>
+          <Button variant="secondary"> Test button </Button>
+        </div>
       </div>
     </PageLayout>
   );
