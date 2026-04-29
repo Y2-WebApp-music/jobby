@@ -10,7 +10,6 @@ import { CgClose } from "react-icons/cg";
 import { IoIosMore } from "react-icons/io";
 import { HiOutlineSelector } from "react-icons/hi";
 import { IoIosArrowForward, IoIosArrowBack } from "react-icons/io";
-import { ApplyDialog } from "@/features/searchJob/dialogs/ApplyDialog";
 
 export default function SearchJobPage() {
   const navItem = [
@@ -267,8 +266,6 @@ export default function SearchJobPage() {
     "relevance" | "date" | "unviewed"
   >("relevance");
   const [messageCount, setMessageCount] = useState<number>(0);
-  const [applyOpen, setApplyOpen] = useState(false);
-  const [applyDialogKey, setApplyDialogKey] = useState(0);
 
   const skillOptions = [
     "Front-End",
@@ -977,10 +974,7 @@ export default function SearchJobPage() {
 
               <div className="flex gap-3 mt-4">
                 <Button
-                  onClick={() => {
-                    setApplyDialogKey((prev) => prev + 1);
-                    setApplyOpen(true);
-                  }}
+                  onClick={() => console.log("Apply This Job")}
                   className="rounded-full px-4 py-2 bg-[linear-gradient(90deg,var(--color-main),var(--color-second))] text-white hover:opacity-90"
                 >
                   Apply This Job
@@ -1025,8 +1019,6 @@ export default function SearchJobPage() {
           )}
         </div>
       </div>
-
-      {selectedJob && <>{/* <ApplyDialog /> */}</>}
     </div>
   );
 }
