@@ -2,7 +2,6 @@ import PageLayout from "@/components/layout/PageLayout";
 import { Button } from "@/components/ui/button";
 
 export default function LandingPage() {
-
   return (
     <PageLayout>
       <div className="bg-background h-full w-full py-2 flex flex-col justify-center items-center">
@@ -33,7 +32,6 @@ export default function LandingPage() {
           <Button variant="link"> Test button </Button>
           <Button variant="secondary"> Test button </Button>
         </div>
-
       </div>
     </PageLayout>
   );
