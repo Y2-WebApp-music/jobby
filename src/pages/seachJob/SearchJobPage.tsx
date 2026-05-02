@@ -115,7 +115,7 @@ export default function SearchJobPage() {
         option.district_code === district_id,
     );
     if (!selected) return "Any Place";
-    return `${selected.province_name}, ${selected.district_name}`;
+    return `${selected.province_name} / ${selected.district_name}`;
   }, [searchPayload.place]);
 
   const filteredJobs = jobs
@@ -330,7 +330,7 @@ export default function SearchJobPage() {
     }
 
     const selected = placeOptions.find(
-      (option) => `${option.province_name}, ${option.district_name}` === label,
+      (option) => `${option.province_name} / ${option.district_name}` === label,
     );
     if (!selected) return;
 
@@ -353,7 +353,7 @@ export default function SearchJobPage() {
             </h1>
 
             <div className="flex min-w-0 flex-1 flex-wrap items-center gap-3">
-              <div className="flex min-w-[420px] flex-1 items-center gap-3 rounded-[18px] border border-[#d9d9d9] bg-none px-4 py-2 shadow-[0_2px_14px_rgba(0,0,0,0.09)]">
+              <div className="flex min-w-[420px] flex-1 items-center gap-3 rounded-[18px] border border-[#d9d9d9] bg-white px-4 py-2 shadow-[0_2px_14px_rgba(0,0,0,0.09)]">
                 <Input
                   placeholder="Software Engineer"
                   value={searchPayload.search_text}
@@ -530,7 +530,14 @@ export default function SearchJobPage() {
             </div>
 
             <div className="relative">
-              <Combobox items={["Any Place", ...placeOptions.map((option) => `${option.province_name} / ${option.district_name}`)]}>
+              <Combobox
+                items={[
+                  "Any Place",
+                  ...placeOptions.map(
+                    (option) => `${option.province_name} / ${option.district_name}`,
+                  ),
+                ]}
+              >
                 <ComboboxInput
                   placeholder={selectedPlaceLabel}
                   className="h-10 w-full rounded-full border border-[#e5e5e5] bg-white px-4 pr-8 text-sm text-[#A1A1A1] shadow-[0_2px_10px_rgba(0,0,0,0.06)] outline-none [&_[data-slot=input-group-control]]:border-0 [&_[data-slot=input-group-control]]:bg-transparent [&_[data-slot=input-group-control]]:shadow-none [&_[data-slot=input-group-button]]:!bg-none [&_[data-slot=input-group-button]]:!bg-transparent [&_[data-slot=input-group-button]]:hover:!bg-transparent"
@@ -712,7 +719,7 @@ export default function SearchJobPage() {
                             e.stopPropagation();
                             handleDelete(job.id);
                           }}
-                          className="absolute right-3 top-3 text-slate-500 opacity-0 transition group-hover:opacity-100 hover:text-slate-950"
+                          className="absolute right-3 top-3 text-slate-500 hover:text-slate-950"
                           aria-label="delete"
                           type="button"
                         >
@@ -822,10 +829,10 @@ export default function SearchJobPage() {
 
                   <div className="mt-3 flex gap-2">
                     <span className="inline-flex h-7 items-center rounded-full bg-[#f1f1f1] px-3 text-xs text-slate-700">
-                      On-site
+                      {selectedJob.workOption}
                     </span>
                     <span className="inline-flex h-7 items-center rounded-full bg-[#f1f1f1] px-3 text-xs text-slate-700">
-                      Internship
+                      {selectedJob.workType}
                     </span>
                   </div>
 

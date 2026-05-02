@@ -2,6 +2,8 @@ import { useMemo, useState } from "react";
 import { CgClose } from "react-icons/cg";
 import { CiSearch } from "react-icons/ci";
 import { Button } from "@/components/ui/button";
+import ExamDialog from "@/features/profile/dialog/ExamDialog";
+import { getSkillExam } from "@/types/skillExam";
 import { profileSkillCatalog } from "@/types/skill";
 
 interface AddskillDialogProps {
@@ -11,6 +13,7 @@ interface AddskillDialogProps {
   onRemoveSkill?: (skill: string) => void;
   existingSkills?: string[];
   showSkillsList?: boolean;
+  enableSkillExam?: boolean;
 }
 
 const normalizeSkill = (value: string) => value.trim().replace(/\s+/g, " ");
@@ -22,10 +25,14 @@ export default function AddskillDialog({
   onRemoveSkill,
   existingSkills = [],
   showSkillsList = false,
+  enableSkillExam = false,
 }: AddskillDialogProps) {
   const [input, setInput] = useState("");
   const [selectedSkillName, setSelectedSkillName] = useState<string | null>(null);
   const [draftSkills, setDraftSkills] = useState<string[]>(existingSkills);
+  const [pendingExamSkillName, setPendingExamSkillName] = useState<string | null>(
+    null,
+  );
   const keyword = input.trim().toLowerCase();
 
 
@@ -47,6 +54,8 @@ export default function AddskillDialog({
   );
 
   const shouldShowSkillsList = showSkillsList && !keyword && !selectedSkill;
+  const shouldShowSuggestions = suggestions.length > 0;
+  const shouldShowNotFound = keyword && suggestions.length === 0 && !selectedSkill;
 
   const hasSkillChanges = useMemo(() => {
     if (!showSkillsList) return false;
@@ -60,6 +69,17 @@ export default function AddskillDialog({
   }, [draftSkills, existingSkills, showSkillsList]);
 
   if (!open) return null;
+
+  const commitSkillAdd = (skillName: string) => {
+    if (showSkillsList) {
+      setDraftSkills((prev) => [...prev, skillName]);
+    } else {
+      onAddSkill(skillName);
+    }
+
+    setInput("");
+    setSelectedSkillName(null);
+  };
 
   const addToDraft = (raw: string) => {
     const next = normalizeSkill(raw);
@@ -75,20 +95,19 @@ export default function AddskillDialog({
     );
     if (exists) return;
 
-    if (showSkillsList) {
-      setDraftSkills((prev) => [...prev, preparedSkill.name]);
-    } else {
-      onAddSkill(preparedSkill.name);
+    if (enableSkillExam && getSkillExam(preparedSkill.name)) {
+      setPendingExamSkillName(preparedSkill.name);
+      return;
     }
 
-    setInput("");
-    setSelectedSkillName(null);
+    commitSkillAdd(preparedSkill.name);
   };
 
   const handleClose = () => {
     setInput("");
     setSelectedSkillName(null);
     setDraftSkills(existingSkills);
+    setPendingExamSkillName(null);
     onClose();
   };
 
@@ -98,6 +117,11 @@ export default function AddskillDialog({
       return;
     }
     onRemoveSkill?.(name);
+  };
+
+  const handleSelectSuggestion = (skillName: string) => {
+    setInput(skillName);
+    setSelectedSkillName(skillName);
   };
 
   const handleAddAllSkills = () => {
@@ -178,20 +202,20 @@ export default function AddskillDialog({
           </div>
         </div>
 
-        {suggestions.length > 0 ? (
-          <div className="mt-3 max-h-56 space-y-2 overflow-y-auto pr-1">
+        {shouldShowSuggestions ? (
+          <div className="mt-3 flex max-h-56 flex-wrap gap-2 overflow-y-auto pr-1">
             {suggestions.map((skill) => (
               <button
                 key={skill.name}
                 type="button"
-                onClick={() => setSelectedSkillName(skill.name)}
-                className="block w-fit max-w-full rounded-full border border-transparent px-3 py-1 text-xs text-primary-pink [background:linear-gradient(var(--color-background),var(--color-background))_padding-box,linear-gradient(to_right,var(--color-main),var(--color-second))_border-box] hover:opacity-90"
+                onClick={() => handleSelectSuggestion(skill.name)}
+                className="inline-flex w-fit max-w-full items-center rounded-full border border-transparent px-3 py-1 text-xs text-primary-pink [background:linear-gradient(var(--color-background),var(--color-background))_padding-box,linear-gradient(to_right,var(--color-main),var(--color-second))_border-box] hover:opacity-90"
               >
                 {skill.name}
               </button>
             ))}
           </div>
-        ) : keyword ? (
+        ) : shouldShowNotFound ? (
           <div className="mt-3 flex h-24 items-center justify-center rounded-xl bg-[#FFFFFF] px-4 text-center text-base font-medium text-slate-500">Not Found Skill</div>
         ) : null}
 
@@ -247,7 +271,7 @@ export default function AddskillDialog({
                 listSkills.map((skill) => (
                   <span
                     key={skill}
-                    className="inline-flex items-center gap-2 rounded-full border border-transparent px-4 py-1 text-xl text-primary-pink [background:linear-gradient(var(--color-background),var(--color-background))_padding-box,linear-gradient(to_right,var(--color-main),var(--color-second))_border-box]"
+                    className="inline-flex items-center gap-1.5 rounded-full border border-transparent px-3 py-1 text-sm text-primary-pink [background:linear-gradient(var(--color-background),var(--color-background))_padding-box,linear-gradient(to_right,var(--color-main),var(--color-second))_border-box]"
                   >
                     {skill}
                     <button
@@ -256,7 +280,7 @@ export default function AddskillDialog({
                       aria-label={`Remove ${skill}`}
                       className="text-primary-pink"
                     >
-                      <CgClose className="h-5 w-5" />
+                      <CgClose className="h-4 w-4" />
                     </button>
                   </span>
                 ))
@@ -278,11 +302,16 @@ export default function AddskillDialog({
           </div>
         ) : null}
       </div>
+
+      <ExamDialog
+        open={Boolean(pendingExamSkillName)}
+        skillName={pendingExamSkillName}
+        onClose={() => setPendingExamSkillName(null)}
+        onPass={(skillName) => {
+          setPendingExamSkillName(null);
+          commitSkillAdd(skillName);
+        }}
+      />
     </div>
   );
 }
-
-
-
-
-

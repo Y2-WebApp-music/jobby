@@ -56,13 +56,13 @@ const baseProfileSkillCatalog: SkillCatalogItem[] = [
     categories: ["Database", "Data"],
   },
   {
-    name: "Keyes",
+    name: "Ke yes",
     description: "A person who always agrees with others.",
     preSkills: ["Active Listening", "Team Communication", "Constructive Feedback"],
     categories: ["Productivity", "Tooling"],
   },
   {
-    name: "Kemou",
+    name: "Ke mou",
     description: "A person who boasts or exaggerates..",
     preSkills: ["Self-awareness", "Honest Communication", "Professional Etiquette"],
     categories: ["Collaboration", "Project"],

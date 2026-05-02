@@ -13,7 +13,8 @@ import WorkexpDialog, {
   type WorkExperienceItem,
 } from "../../features/profile/dialog/WorkexpDialog";
 import AddskillDialog from "../../features/profile/dialog/AddskillDialog";
-import UserskillDialog from "../../features/profile/dialog/UserskillDialog";
+import SkillinfoDialog from "../../features/profile/dialog/SkillinfoDialog";
+// import UserskillDialog from "../../features/profile/dialog/UserskillDialog";
 import AchievementDialog, {
   type AchievementItem,
 } from "../../features/profile/dialog/AchievementDialog";
@@ -34,6 +35,26 @@ import {
 import PageLayout from "@/components/layout/PageLayout";
 
 const MAX_IMAGE_SIZE_BYTES = 15 * 1024 * 1024;
+
+const DialogID = {
+  PROFILE_EDIT: "profile-edit",
+  ABOUT: "about",
+  SKILL_ADD: "skill-add",
+  EDUCATION: "education",
+  WORK_EXPERIENCE: "work-experience",
+  ACHIEVEMENT: "achievement",
+  PROJECT: "project",
+  PROJECT_PREVIEW: "project-preview",
+  ACHIEVEMENT_PREVIEW: "achievement-preview",
+} as const;
+
+const OverlayDialogID = {
+  IMAGE_EDITOR: "image-editor",
+  SKILL_INFO: "skill-info",
+} as const;
+
+type DialogId = (typeof DialogID)[keyof typeof DialogID];
+type OverlayDialogId = (typeof OverlayDialogID)[keyof typeof OverlayDialogID];
 
 function SectionHeader({
   title,
@@ -91,11 +112,13 @@ function CardItem({
 function SkillApplicationSection({
   skills,
   onNewSkill,
+  onOpenSkillInfo,
   onShowMore,
 }: {
   skills: string[];
   onNewSkill: () => void;
-  onShowMore: () => void;
+  onOpenSkillInfo: (skill: string) => void;
+  onShowMore?: () => void;
 }) {
   return (
     <div className="space-y-6">
@@ -112,21 +135,25 @@ function SkillApplicationSection({
         </div>
         <div className="mt-3 flex flex-wrap gap-2">
           {skills.map((skill) => (
-            <span
+            <button
+              type="button"
+              onClick={() => onOpenSkillInfo(skill)}
               key={skill}
               className="rounded-full border border-transparent px-3 py-1 text-xs text-primary-pink [background:linear-gradient(var(--color-background),var(--color-background))_padding-box,linear-gradient(to_right,var(--color-main),var(--color-second))_border-box]"
             >
               {skill}
-            </span>
+            </button>
           ))}
         </div>
-        <button
-          type="button"
-          onClick={onShowMore}
-          className="mt-3 block mx-auto text-xs text-main"
-        >
-          Show more
-        </button>
+        {onShowMore ? (
+          <button
+            type="button"
+            onClick={onShowMore}
+            className="mt-3 block mx-auto text-xs text-main"
+          >
+            Show more
+          </button>
+        ) : null}
       </div>
 
       <div className="rounded-2xl border border-slate-100 bg-white p-4">
@@ -152,55 +179,35 @@ function SkillApplicationSection({
     </div>
   );
 }
+
 // คอมบาย
 export default function Profile() {
   const [profileUrl, setProfileUrl] = useState<string | null>(null);
   const [bannerUrl, setBannerUrl] = useState<string>(Thumbnail);
-  const [editorOpen, setEditorOpen] = useState(false);
-  const [profileDialogOpen, setProfileDialogOpen] = useState(false);
-  const [aboutDialogOpen, setAboutDialogOpen] = useState(false);
-  const [addProfileSkillDialogOpen, setAddProfileSkillDialogOpen] =
-    useState(false);
-  const [userskillDialogOpen, setUserskillDialogOpen] = useState(false);
-  const [educationDialogOpen, setEducationDialogOpen] = useState(false);
-  const [workexpDialogOpen, setWorkexpDialogOpen] = useState(false);
-  const [achievementDialogOpen, setAchievementDialogOpen] = useState(false);
-  const [projectDialogOpen, setProjectDialogOpen] = useState(false);
-  const [achievementEditingId, setAchievementEditingId] = useState<
-    number | null
-  >(null);
-  const [achievementPreviewOpen, setAchievementPreviewOpen] = useState(false);
-  const [previewAchievementId, setPreviewAchievementId] = useState<
-    number | null
-  >(null);
-  const [achievementDirectEditMode, setAchievementDirectEditMode] =
-    useState(false);
+  const [openDialog, setOpenDialog] = useState<DialogId | null>(null);
+  const [openOverlayDialog, setOpenOverlayDialog] =
+    useState<OverlayDialogId | null>(null);
+  const [selectedSkillName, setSelectedSkillName] = useState<string | null>(null);
+  const [achievementEditingId, setAchievementEditingId] = useState< number | null >(null);
+  const [previewAchievementId, setPreviewAchievementId] = useState< number | null >(null);
+  const [achievementDirectEditMode, setAchievementDirectEditMode] = useState(false);
   const [projectEditingId, setProjectEditingId] = useState<number | null>(null);
-  const [projectPreviewOpen, setProjectPreviewOpen] = useState(false);
   const [previewProjectId, setPreviewProjectId] = useState<number | null>(null);
   const [projectDirectEditMode, setProjectDirectEditMode] = useState(false);
   const [aboutText, setAboutText] = useState(defaultAboutText);
-  const [education, setEducation] =
-    useState<EducationItem[]>(defaultEducation);
+  const [education, setEducation] = useState<EducationItem[]> (defaultEducation);
   const [workExperience, setWorkExperience] = useState<WorkExperienceItem[]>(
     defaultWorkExperience,
   );
-  const [achievements, setAchievements] =
-    useState<AchievementItem[]>(defaultAchievements);
+  const [achievements, setAchievements] = useState<AchievementItem[]>(defaultAchievements);
   const [projects, setProjects] = useState<ProjectItem[]>(defaultProjects);
-  const [profileForm, setProfileForm] =
-    useState<ProfileFormValue>(defaultProfileForm);
+  const [profileForm, setProfileForm] = useState<ProfileFormValue>(defaultProfileForm);
   const [userSkills, setUserSkills] = useState<string[]>([]);
-  const [editingTarget, setEditingTarget] = useState<
-    "profile" | "banner" | null
-  >(null);
+  const [editingTarget, setEditingTarget] = useState< "profile" | "banner" | null >(null);
   const [editingImage, setEditingImage] = useState<string | null>(null);
   const projectImageListRef = useRef<HTMLDivElement | null>(null);
   const achievementImageListRef = useRef<HTMLDivElement | null>(null);
   // จนถึงนี้
-
-
-  // เปลี่ยนเอาออก
 
   const isDefaultBanner = bannerUrl === Thumbnail;
 
@@ -213,11 +220,11 @@ export default function Profile() {
     const url = URL.createObjectURL(file);
     setEditingImage(url);
     setEditingTarget(target);
-    setEditorOpen(true);
+    setOpenOverlayDialog(OverlayDialogID.IMAGE_EDITOR);
   };
 
   const handleCloseEditor = () => {
-    setEditorOpen(false);
+    setOpenOverlayDialog(null);
     if (editingImage?.startsWith("blob:")) {
       URL.revokeObjectURL(editingImage);
     }
@@ -236,11 +243,11 @@ export default function Profile() {
 
   const handleOpenProjectPreview = (projectId: number) => {
     setPreviewProjectId(projectId);
-    setProjectPreviewOpen(true);
+    setOpenDialog(DialogID.PROJECT_PREVIEW);
   };
   const handleOpenAchievementPreview = (achievementId: number) => {
     setPreviewAchievementId(achievementId);
-    setAchievementPreviewOpen(true);
+    setOpenDialog(DialogID.ACHIEVEMENT_PREVIEW);
   };
 
   const handleScrollProjectImages = (direction: "left" | "right") => {
@@ -272,12 +279,16 @@ export default function Profile() {
     setUserSkills((prev) => prev.filter((item) => item !== skill));
   };
 
+  const handleOpenSkillInfo = (skill: string) => {
+    setSelectedSkillName(skill);
+    setOpenOverlayDialog(OverlayDialogID.SKILL_INFO);
+  };
+
   return (
   <PageLayout>
     <div className="min-h-screen">
 
-      <div className="relative mt-18 mx-4 sm:mx-6 w-auto overflow-hidden rounded-[20px] bg-slate-100 aspect-[1411/275]">
-        {/* input upload */}
+      <div className="relative mt-6 mx-4 w-auto overflow-hidden rounded-[20px] bg-slate-100 aspect-[1411/275] sm:mx-6 sm:mt-8">
         <input
           id="banner-upload"
           type="file"
@@ -290,14 +301,14 @@ export default function Profile() {
           }}
         />
 
-        {/* banner image */}
+        
         <img
           src={bannerUrl}
           alt="Banner"
           className={`h-full w-full ${isDefaultBanner ? "object-contain" : "object-cover"}`}
         />
 
-        {/* hover overlay */}
+        
         <label
           htmlFor="banner-upload"
           className="absolute inset-0 flex cursor-pointer items-center justify-center
@@ -346,7 +357,7 @@ export default function Profile() {
               </h2>
               <button
                 type="button"
-                onClick={() => setProfileDialogOpen(true)}
+                onClick={() => setOpenDialog(DialogID.PROFILE_EDIT)}
                 className="rounded-full bg-slate-100 p-1 text-slate-500 hover:bg-slate-200"
                 aria-label="Edit profile"
               >
@@ -393,7 +404,7 @@ export default function Profile() {
             <div className="rounded-2xl border border-slate-100 bg-white p-4">
               <SectionHeader
                 title="About"
-                onEdit={() => setAboutDialogOpen(true)}
+                onEdit={() => setOpenDialog(DialogID.ABOUT)}
               />
               <p className="mt-3 whitespace-pre-line break-all text-sm leading-relaxed text-slate-600">
                 {aboutText || "No about information yet."}
@@ -403,15 +414,15 @@ export default function Profile() {
             <div className="lg:hidden">
               <SkillApplicationSection
                 skills={userSkills}
-                onNewSkill={() => setAddProfileSkillDialogOpen(true)}
-                onShowMore={() => setUserskillDialogOpen(true)}
+                onNewSkill={() => setOpenDialog(DialogID.SKILL_ADD)}
+                onOpenSkillInfo={handleOpenSkillInfo}
               />
             </div>
 
             <div className="rounded-2xl border border-slate-100 bg-white p-4">
               <SectionHeader
                 title="Education"
-                onEdit={() => setEducationDialogOpen(true)}
+                onEdit={() => setOpenDialog(DialogID.EDUCATION)}
               />
               <div
                 className={`mt-3 space-y-3 ${
@@ -434,7 +445,7 @@ export default function Profile() {
             <div className="rounded-2xl border border-slate-100 bg-white p-4">
               <SectionHeader
                 title="Work Experience"
-                onEdit={() => setWorkexpDialogOpen(true)}
+                onEdit={() => setOpenDialog(DialogID.WORK_EXPERIENCE)}
               />
               <div
                 className={`mt-3 space-y-3 ${
@@ -460,7 +471,7 @@ export default function Profile() {
                 onEdit={() => {
                   setProjectEditingId(null);
                   setProjectDirectEditMode(false);
-                  setProjectDialogOpen(true);
+                  setOpenDialog(DialogID.PROJECT);
                 }}
               />
               <div
@@ -487,7 +498,7 @@ export default function Profile() {
                 onEdit={() => {
                   setAchievementEditingId(null);
                   setAchievementDirectEditMode(false);
-                  setAchievementDialogOpen(true);
+                  setOpenDialog(DialogID.ACHIEVEMENT);
                 }}
               />
               <div
@@ -515,8 +526,8 @@ export default function Profile() {
             <div className="hidden lg:block">
               <SkillApplicationSection
                 skills={userSkills}
-                onNewSkill={() => setAddProfileSkillDialogOpen(true)}
-                onShowMore={() => setUserskillDialogOpen(true)}
+                onNewSkill={() => setOpenDialog(DialogID.SKILL_ADD)}
+                onOpenSkillInfo={handleOpenSkillInfo}
               />
             </div>
           </div>
@@ -525,7 +536,7 @@ export default function Profile() {
 
       {editingImage && editingTarget ? (
         <ImageEditor
-          open={editorOpen}
+          open={openOverlayDialog === OverlayDialogID.IMAGE_EDITOR}
           image={editingImage}
           outputSize={
             editingTarget === "banner"
@@ -538,64 +549,55 @@ export default function Profile() {
       ) : null}
 
       <ProfileDialog
-        key={profileDialogOpen ? "open" : "closed"}
-        open={profileDialogOpen}
-        onClose={() => setProfileDialogOpen(false)}
+        key={openDialog === DialogID.PROFILE_EDIT ? "open" : "closed"}
+        open={openDialog === DialogID.PROFILE_EDIT}
+        onClose={() => setOpenDialog(null)}
         onSave={setProfileForm}
         initialData={profileForm}
       />
 
       <AboutDialog
-        key={aboutDialogOpen ? "open" : "closed"}
-        open={aboutDialogOpen}
+        key={openDialog === DialogID.ABOUT ? "open" : "closed"}
+        open={openDialog === DialogID.ABOUT}
         initialValue={aboutText}
-        onClose={() => setAboutDialogOpen(false)}
+        onClose={() => setOpenDialog(null)}
         onSave={setAboutText}
       />
 
       <AddskillDialog
-        open={addProfileSkillDialogOpen}
-        onClose={() => setAddProfileSkillDialogOpen(false)}
+        open={openDialog === DialogID.SKILL_ADD}
+        onClose={() => setOpenDialog(null)}
         existingSkills={userSkills}
         onAddSkill={handleAddProfileSkill}
         onRemoveSkill={handleRemoveProfileSkill}
         showSkillsList
-      />
-
-      <UserskillDialog
-        open={userskillDialogOpen}
-        skills={userSkills}
-        onClose={() => setUserskillDialogOpen(false)}
-        onNewSkill={() => {
-          setUserskillDialogOpen(false);
-          setAddProfileSkillDialogOpen(true);
-        }}
+        enableSkillExam
       />
 
       <EducateDialog
-        key={educationDialogOpen ? "open" : "closed"}
-        open={educationDialogOpen}
+        key={openDialog === DialogID.EDUCATION ? "open" : "closed"}
+        open={openDialog === DialogID.EDUCATION}
         initialData={education}
-        onClose={() => setEducationDialogOpen(false)}
+        onClose={() => setOpenDialog(null)}
         onSave={setEducation}
       />
 
       <WorkexpDialog
-        key={workexpDialogOpen ? "open" : "closed"}
-        open={workexpDialogOpen}
+        key={openDialog === DialogID.WORK_EXPERIENCE ? "open" : "closed"}
+        open={openDialog === DialogID.WORK_EXPERIENCE}
         initialData={workExperience}
-        onClose={() => setWorkexpDialogOpen(false)}
+        onClose={() => setOpenDialog(null)}
         onSave={setWorkExperience}
       />
 
       <AchievementDialog
-        key={achievementDialogOpen ? "open" : "closed"}
-        open={achievementDialogOpen}
+        key={openDialog === DialogID.ACHIEVEMENT ? "open" : "closed"}
+        open={openDialog === DialogID.ACHIEVEMENT}
         initialData={achievements}
         initialEditingId={achievementEditingId}
         directEditMode={achievementDirectEditMode}
         onClose={() => {
-          setAchievementDialogOpen(false);
+          setOpenDialog(null);
           setAchievementEditingId(null);
           setAchievementDirectEditMode(false);
         }}
@@ -607,13 +609,13 @@ export default function Profile() {
       />
 
       <ProjectDialog
-        key={projectDialogOpen ? "open" : "closed"}
-        open={projectDialogOpen}
+        key={openDialog === DialogID.PROJECT ? "open" : "closed"}
+        open={openDialog === DialogID.PROJECT}
         initialData={projects}
         initialEditingId={projectEditingId}
         directEditMode={projectDirectEditMode}
         onClose={() => {
-          setProjectDialogOpen(false);
+          setOpenDialog(null);
           setProjectEditingId(null);
           setProjectDirectEditMode(false);
         }}
@@ -624,7 +626,7 @@ export default function Profile() {
         }}
       />
 
-      {projectPreviewOpen && previewProject ? (
+      {openDialog === DialogID.PROJECT_PREVIEW && previewProject ? (
         <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/60 p-4">
           <div className="w-full max-w-4xl rounded-3xl bg-white p-5 shadow-xl">
             <div className="mb-4 flex items-start justify-between">
@@ -639,7 +641,7 @@ export default function Profile() {
               <button
                 type="button"
                 onClick={() => {
-                  setProjectPreviewOpen(false);
+                  setOpenDialog(null);
                   setPreviewProjectId(null);
                 }}
                 className="rounded-full bg-slate-100 p-1 text-slate-700 hover:bg-slate-200"
@@ -695,15 +697,17 @@ export default function Profile() {
               <h3 className="mb-2 text-base font-medium text-slate-900">
                 Skill use
               </h3>
-              <div className="flex flex-wrap gap-2">
-                {previewProject.skills.length > 0 ? (
-                  previewProject.skills.map((skill) => (
-                    <span
+                <div className="flex flex-wrap gap-2">
+                  {previewProject.skills.length > 0 ? (
+                    previewProject.skills.map((skill) => (
+                    <button
+                      type="button"
                       key={skill}
+                      onClick={() => handleOpenSkillInfo(skill)}
                       className="rounded-full border border-transparent px-3 py-1 text-xs text-primary-pink [background:linear-gradient(var(--color-background),var(--color-background))_padding-box,linear-gradient(to_right,var(--color-main),var(--color-second))_border-box]"
                     >
                       {skill}
-                    </span>
+                    </button>
                   ))
                 ) : (
                   <span className="text-sm text-slate-400">No skills</span>
@@ -716,8 +720,7 @@ export default function Profile() {
                 onClick={() => {
                   setProjectEditingId(previewProject.id);
                   setProjectDirectEditMode(true);
-                  setProjectPreviewOpen(false);
-                  setProjectDialogOpen(true);
+                  setOpenDialog(DialogID.PROJECT);
                 }}
                 className="inline-flex items-center gap-1 rounded-full border border-slate-300 px-4 py-1.5 text-sm text-slate-600 hover:bg-slate-50"
               >
@@ -729,7 +732,7 @@ export default function Profile() {
         </div>
       ) : null}
 
-      {achievementPreviewOpen && previewAchievement ? (
+      {openDialog === DialogID.ACHIEVEMENT_PREVIEW && previewAchievement ? (
         <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/60 p-4">
           <div className="w-full max-w-4xl rounded-3xl bg-white p-5 shadow-xl">
             <div className="mb-4 flex items-start justify-between">
@@ -747,7 +750,7 @@ export default function Profile() {
               <button
                 type="button"
                 onClick={() => {
-                  setAchievementPreviewOpen(false);
+                  setOpenDialog(null);
                   setPreviewAchievementId(null);
                 }}
                 className="rounded-full bg-slate-100 p-1 text-slate-700 hover:bg-slate-200"
@@ -806,12 +809,14 @@ export default function Profile() {
               <div className="flex flex-wrap gap-2">
                 {previewAchievement.skills.length > 0 ? (
                   previewAchievement.skills.map((skill) => (
-                    <span
+                    <button
+                      type="button"
                       key={skill}
+                      onClick={() => handleOpenSkillInfo(skill)}
                       className="rounded-full border border-transparent px-3 py-1 text-xs text-primary-pink [background:linear-gradient(var(--color-background),var(--color-background))_padding-box,linear-gradient(to_right,var(--color-main),var(--color-second))_border-box]"
                     >
                       {skill}
-                    </span>
+                    </button>
                   ))
                 ) : (
                   <span className="text-sm text-slate-400">No skills</span>
@@ -825,8 +830,7 @@ export default function Profile() {
                 onClick={() => {
                   setAchievementEditingId(previewAchievement.id);
                   setAchievementDirectEditMode(true);
-                  setAchievementPreviewOpen(false);
-                  setAchievementDialogOpen(true);
+                  setOpenDialog(DialogID.ACHIEVEMENT);
                 }}
                 className="inline-flex items-center gap-1 rounded-full border border-slate-300 px-4 py-1.5 text-sm text-slate-600 hover:bg-slate-50"
               >
@@ -837,6 +841,12 @@ export default function Profile() {
           </div>
         </div>
       ) : null}
+
+      <SkillinfoDialog
+        open={openOverlayDialog === OverlayDialogID.SKILL_INFO}
+        onClose={() => setOpenOverlayDialog(null)}
+        skillName={selectedSkillName}
+      />
     </div>
   </PageLayout>  
   );
