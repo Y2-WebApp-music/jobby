@@ -12,7 +12,6 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import AddskillDialog from "@/features/profile/dialog/AddskillDialog";
-// import SkillinfoDialog from "@/features/profile/dialog/SkillinfoDialog";
 
 export type ProjectItem = {
   id: number;

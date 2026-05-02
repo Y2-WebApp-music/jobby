@@ -15,6 +15,10 @@ export type Job = {
   aboutTitle: string;
   companyDescription: string;
   extraDescription: string;
+  saved?: boolean;
+  applied?: boolean;
+  archived?: boolean;
+  status?: "inreview" | "interview" | "reject" | "accept";
 };
 
 export const initialJobs: Job[] = [
@@ -262,9 +266,7 @@ export const useSearchJobState = () => {
     initialJobs[0]?.id ?? null,
   );
   const [viewed, setViewed] = useState<Set<number>>(new Set());
-  const [selectedSkills, setSelectedSkills] = useState<Set<string>>(
-    new Set(["Front-End", "Back-End", "React"]),
-  );
+  const [selectedSkills, setSelectedSkills] = useState<Set<string>>(new Set());
   const [searchType, setSearchType] = useState<SearchType>("any");
   const [skillOpen, setSkillOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");

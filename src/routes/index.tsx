@@ -2,9 +2,15 @@ import LandingPage from "@/pages/LandingPage";
 import CreateResumePage from "@/pages/resume/CreateResumePage";
 import ResumePage from "@/pages/resume/ResumePage";
 import ShowCase from "@/pages/ShowCase";
+import ShowCaseDialogs from "@/pages/ShowCaseDialogs";
+
 import { createBrowserRouter } from "react-router-dom";
 import SearchJobPage from "@/pages/seachJob/SearchJobPage";
 import Profile from "@/pages/profile/Profile";
+import Message from "@/pages/message/MessagePage";
+import AppliedHis from "@/pages/myjob/AppliedHis";
+import SignInPage from "@/pages/auth/SignInPage";
+import RegisterPage from "@/pages/auth/RegisterPage";
 
 export const router = createBrowserRouter(
   [
@@ -28,9 +34,35 @@ export const router = createBrowserRouter(
       path: "/showcase",
       element: <ShowCase />,
     },
-    { path: "*", element: <div>Not Found ESUS</div> },
-    { path: "/searchjob", element: <SearchJobPage /> },
-    { path: "/profile", element: <Profile /> },
+    {
+      path: "/showcase/dialogs",
+      element: <ShowCaseDialogs />,
+    },
+    {
+      path: "/message",
+      element: <Message />,
+    },
+    {
+      path: "/signin",
+      element: <SignInPage />,
+    },
+    {
+      path: "/register",
+      element: <RegisterPage />,
+    },
+    { 
+      path: "*", 
+      element: <div>Not Found ESUS</div> 
+    },
+    { path: "/searchjob", 
+      element: <SearchJobPage /> 
+    },
+    { path: "/profile", 
+      element: <Profile /> 
+    },
+    { path: "/myjobs", 
+      element: <AppliedHis/>
+    },
   ],
   {
     basename: import.meta.env.VITE_BASE_URL,

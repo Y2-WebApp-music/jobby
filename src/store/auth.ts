@@ -12,13 +12,16 @@ type User = {
 type AuthState = {
   user: User | null;
   token: string | null;
+  forceGuestNav: boolean;
 };
 
 type AuthActions = {
   getUser: () => AuthState["user"];
   getToken: () => AuthState["token"];
+  getForceGuestNav: () => AuthState["forceGuestNav"];
   setUser: (user: AuthState["user"]) => void;
   setToken: (token: AuthState["token"]) => void;
+  setForceGuestNav: (forceGuestNav: boolean) => void;
   logout: () => void;
 };
 
@@ -27,13 +30,24 @@ export const useAuthStore = create(
     {
       user: null,
       token: null,
+      forceGuestNav: false,
     },
     (set, get) => ({
       getUser: () => get().user,
       getToken: () => get().token,
-      setUser: (user) => set({ user }),
-      setToken: (token) => set({ token }),
-      logout: () => set({ user: null, token: null }),
+      getForceGuestNav: () => get().forceGuestNav,
+      setUser: (user) =>
+        set({
+          user,
+          forceGuestNav: user === null ? get().forceGuestNav : false,
+        }),
+      setToken: (token) =>
+        set({
+          token,
+          forceGuestNav: token === null ? get().forceGuestNav : false,
+        }),
+      setForceGuestNav: (forceGuestNav) => set({ forceGuestNav }),
+      logout: () => set({ user: null, token: null, forceGuestNav: true }),
     }),
   ),
 );

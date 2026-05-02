@@ -1,7 +1,7 @@
 import PageLayout from "@/components/layout/PageLayout";
 import { Button } from "@/components/ui/button";
 import { ApplyDialog } from "@/features/searchJob/dialogs/ApplyDialog";
-import { mockApplyDialogJob, mockResumeList } from "@/mock/searchjob";
+import { mockApplyDialogJob, mockResumeList } from "@/mock/searchJob";
 
 import {
   initialApplyDialogJob,

@@ -1,7 +1,20 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+const now = Date.now();
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
+import {
+  Combobox,
+  ComboboxChip,
+  ComboboxChips,
+  ComboboxChipsInput,
+  ComboboxContent,
+  ComboboxEmpty,
+  ComboboxItem,
+  ComboboxList,
+  ComboboxTrigger,
+  useComboboxAnchor,
+} from "@/components/ui/combobox";
 import {
   categoryOptions,
   pageSize,
@@ -10,11 +23,54 @@ import {
   workOptionOptions,
   workTypeOptions,
 } from "@/types/job";
-import type { Job } from "@/types/job";
+import type { Job, SearchType } from "@/types/job";
+import { ANY_PLACE, placeOfJobOptions } from "@/types/placeofjob";
 import PageLayout from "@/components/layout/PageLayout";
+import { cn } from "@/lib/utils";
+import SkillinfoDialog from "@/features/profile/dialog/SkillinfoDialog";
 import { CgClose } from "react-icons/cg";
 import { IoIosMore, IoIosArrowForward, IoIosArrowBack } from "react-icons/io";
 import { HiOutlineSelector } from "react-icons/hi";
+
+const normalizeTerm = (value: string) => value.trim().toLowerCase();
+const filterFieldClassName =
+  "flex h-10 w-full min-w-0 items-center rounded-full border border-[#e5e5e5] bg-white px-4 text-sm text-[#A1A1A1] shadow-[0_2px_10px_rgba(0,0,0,0.06)]";
+const filterChipClassName =
+  "inline-flex h-6 items-center rounded-full bg-[#efefef] px-2 text-xs text-slate-900";
+const gradientOutlineChipClassName =
+  "inline-flex items-center rounded-full border border-transparent px-3 text-xs text-primary-pink [background:linear-gradient(var(--color-background),var(--color-background))_padding-box,linear-gradient(90deg,var(--color-main),var(--color-second))_border-box]";
+
+type SearchSuggestion = {
+  term: string;
+  type: Exclude<SearchType, "any">;
+  normalizedTerm: string;
+  score: number;
+};
+
+const levenshteinDistance = (a: string, b: string) => {
+  if (a.length === 0) return b.length;
+  if (b.length === 0) return a.length;
+
+  const dp = Array.from({ length: a.length + 1 }, () =>
+    Array<number>(b.length + 1).fill(0),
+  );
+
+  for (let i = 0; i <= a.length; i += 1) dp[i][0] = i;
+  for (let j = 0; j <= b.length; j += 1) dp[0][j] = j;
+
+  for (let i = 1; i <= a.length; i += 1) {
+    for (let j = 1; j <= b.length; j += 1) {
+      const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+      dp[i][j] = Math.min(
+        dp[i - 1][j] + 1,
+        dp[i][j - 1] + 1,
+        dp[i - 1][j - 1] + cost,
+      );
+    }
+  }
+
+  return dp[a.length][b.length];
+};
 
 export default function SearchJobPage() {
   const {
@@ -40,8 +96,6 @@ export default function SearchJobPage() {
     setSelectedWorkTypes,
     selectedWorkOptions,
     setSelectedWorkOptions,
-    categoryOpen,
-    setCategoryOpen,
     workTypeOpen,
     setWorkTypeOpen,
     workOptionOpen,
@@ -57,13 +111,111 @@ export default function SearchJobPage() {
   const query = searchQuery.trim().toLowerCase();
   const skillInfoRef = useRef<HTMLDivElement | null>(null);
   const jobListScrollRef = useRef<HTMLDivElement | null>(null);
+  const categoryAnchorRef = useComboboxAnchor();
+  const categoryChipMeasureRefs = useRef<Record<string, HTMLSpanElement | null>>(
+    {},
+  );
+  const categoryOverflowMeasureRefs = useRef<
+    Record<number, HTMLSpanElement | null>
+  >({});
+  const [isSearchFocused, setIsSearchFocused] = useState(false);
+  const [activeSuggestionIndex, setActiveSuggestionIndex] = useState(0);
+  const [skillInfoOpen, setSkillInfoOpen] = useState(false);
+  const [selectedSkillName, setSelectedSkillName] = useState<string | null>(
+    null,
+  );
+  const [visibleCategoryCount, setVisibleCategoryCount] = useState(0);
+
+  const getSearchSuggestionClassName = (
+    type: Exclude<SearchType, "any">,
+  ) =>
+    type === "skill"
+      ? "border-[var(--color-second)] text-[var(--color-second)]"
+      : "border-[var(--color-main)] text-[var(--color-main)]";
+
+  const searchableTerms = useMemo(() => {
+    const terms = new Map<string, Omit<SearchSuggestion, "score">>();
+
+    if (searchType !== "skill") {
+      jobs.forEach((job) => {
+        const normalizedTerm = normalizeTerm(job.title);
+        terms.set(`job:${normalizedTerm}`, {
+          term: job.title,
+          type: "job",
+          normalizedTerm,
+        });
+      });
+    }
+
+    if (searchType !== "job") {
+      jobs.forEach((job) => {
+        job.skills.forEach((skill) => {
+          const normalizedTerm = normalizeTerm(skill);
+          terms.set(`skill:${normalizedTerm}`, {
+            term: skill,
+            type: "skill",
+            normalizedTerm,
+          });
+        });
+      });
+      skillOptions.forEach((skill) => {
+        const normalizedTerm = normalizeTerm(skill);
+        terms.set(`skill:${normalizedTerm}`, {
+          term: skill,
+          type: "skill",
+          normalizedTerm,
+        });
+      });
+    }
+
+    return Array.from(terms.values());
+  }, [jobs, searchType]);
+
+  const searchSuggestions = useMemo(() => {
+    const normalizedQuery = normalizeTerm(searchQuery);
+    if (!normalizedQuery) return [];
+
+    const scored = searchableTerms
+      .map((item) => {
+        const normalizedTerm = item.normalizedTerm;
+        if (!normalizedTerm || normalizedTerm === normalizedQuery) return null;
+
+        let score = -1;
+
+        if (normalizedTerm.startsWith(normalizedQuery)) {
+          score = 100 - (normalizedTerm.length - normalizedQuery.length) * 0.2;
+        } else if (normalizedTerm.includes(normalizedQuery)) {
+          score = 80 - normalizedTerm.indexOf(normalizedQuery) * 0.5;
+        } else if (normalizedQuery.length >= 3) {
+          const distance = levenshteinDistance(normalizedQuery, normalizedTerm);
+          const maxLen = Math.max(
+            normalizedQuery.length,
+            normalizedTerm.length,
+          );
+          const similarity = 1 - distance / maxLen;
+
+          if (distance <= 2 || similarity >= 0.65) {
+            score = 60 + similarity * 10 - distance;
+          }
+        }
+
+        if (score < 0) return null;
+        return { ...item, score };
+      })
+      .filter((item): item is SearchSuggestion => item !== null)
+      .sort((a, b) => b.score - a.score);
+
+    return scored.slice(0, 6);
+  }, [searchQuery, searchableTerms]);
+
+  const showSearchSuggestions = isSearchFocused && searchSuggestions.length > 0;
 
   const filteredJobs = jobs
     .filter((job) => {
       const matchesCategory =
         selectedCategories.size === 0 || selectedCategories.has(job.category);
       const matchesPlace =
-        placeFilter === "Any Place" || job.place === placeFilter;
+        placeFilter === ANY_PLACE || job.place === placeFilter;
       const matchesWorkType =
         selectedWorkTypes.size === 0 || selectedWorkTypes.has(job.workType);
       const matchesWorkOption =
@@ -79,10 +231,7 @@ export default function SearchJobPage() {
         );
       }
 
-      const queryInJob = [job.title, job.company, job.location]
-        .join(" ")
-        .toLowerCase()
-        .includes(query);
+      const queryInJob = job.title.toLowerCase().includes(query);
       const queryInSkill = job.skills.some((skill) =>
         skill.toLowerCase().includes(query),
       );
@@ -114,10 +263,7 @@ export default function SearchJobPage() {
 
       const score = (job: Job) => {
         let points = 0;
-        const queryInJob = [job.title, job.company, job.location]
-          .join(" ")
-          .toLowerCase()
-          .includes(query);
+        const queryInJob = job.title.toLowerCase().includes(query);
         const queryInSkill = job.skills.some((skill) =>
           skill.toLowerCase().includes(query),
         );
@@ -155,10 +301,74 @@ export default function SearchJobPage() {
   const selectedCategoriesList = Array.from(selectedCategories);
   const selectedWorkTypesList = Array.from(selectedWorkTypes);
   const selectedWorkOptionsList = Array.from(selectedWorkOptions);
+  const visibleCategories = selectedCategoriesList.slice(0, visibleCategoryCount);
+  const hiddenCategoryCount = Math.max(
+    0,
+    selectedCategoriesList.length - visibleCategoryCount,
+  );
+
+  useLayoutEffect(() => {
+    const container = categoryAnchorRef.current;
+
+    if (!container) return;
+
+    const calculateVisibleCategories = () => {
+      if (selectedCategoriesList.length === 0) {
+        setVisibleCategoryCount(0);
+        return;
+      }
+
+      const availableWidth = container.clientWidth - 72 - 32;
+
+      if (availableWidth <= 0) {
+        setVisibleCategoryCount(0);
+        return;
+      }
+
+      const chipGap = 6;
+      let nextVisibleCount = 0;
+
+      for (let count = selectedCategoriesList.length; count >= 0; count -= 1) {
+        const hiddenCount = selectedCategoriesList.length - count;
+        let usedWidth = 0;
+
+        for (let index = 0; index < count; index += 1) {
+          const item = selectedCategoriesList[index];
+          const chipWidth =
+            categoryChipMeasureRefs.current[item]?.offsetWidth ?? 0;
+          usedWidth += chipWidth;
+          if (index < count - 1) usedWidth += chipGap;
+        }
+
+        if (hiddenCount > 0) {
+          if (count > 0) usedWidth += chipGap;
+          usedWidth +=
+            categoryOverflowMeasureRefs.current[hiddenCount]?.offsetWidth ?? 0;
+        }
+
+        if (usedWidth <= availableWidth) {
+          nextVisibleCount = count;
+          break;
+        }
+      }
+
+      setVisibleCategoryCount((prev) =>
+        prev === nextVisibleCount ? prev : nextVisibleCount,
+      );
+    };
+
+    calculateVisibleCategories();
+
+    const observer = new ResizeObserver(calculateVisibleCategories);
+    observer.observe(container);
+
+    return () => observer.disconnect();
+  }, [categoryAnchorRef, selectedCategoriesList]);
 
   useEffect(() => {
     jobListScrollRef.current?.scrollTo({ top: 0 });
   }, [currentPage]);
+
   const headerSkills = selectedSkillsList.slice(0, 4);
   const headerSkillsOverflow = Math.max(0, selectedSkillsList.length - 4);
 
@@ -186,15 +396,6 @@ export default function SearchJobPage() {
       if (!prev.has(id)) return prev;
       const next = new Set(prev);
       next.delete(id);
-      return next;
-    });
-  };
-
-  const toggleCategory = (value: string) => {
-    setSelectedCategories((prev) => {
-      const next = new Set(prev);
-      if (next.has(value)) next.delete(value);
-      else next.add(value);
       return next;
     });
   };
@@ -231,6 +432,33 @@ export default function SearchJobPage() {
     skillInfoRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
+  const handleOpenSkillInfo = (skill: string) => {
+    setSelectedSkillName(skill);
+    setSkillInfoOpen(true);
+  };
+
+  const applySuggestion = (suggestion: SearchSuggestion) => {
+    setSearchQuery(suggestion.term);
+    setIsSearchFocused(false);
+  };
+  const formatPostedAt = (postedAt: string) => {
+    const postedTime = new Date(postedAt).getTime();
+    const diffDays = Math.max(
+      0,
+      Math.floor((now - postedTime) / (1000 * 60 * 60 * 24)),
+    );
+
+    if (diffDays === 0) return "Posted today";
+    if (diffDays === 1) return "Posted 1 day ago";
+    if (diffDays < 7) return `Posted ${diffDays} days ago`;
+    const weeks = Math.floor(diffDays / 7);
+    if (weeks === 1) return "Posted 1 week ago";
+    if (weeks < 5) return `Posted ${weeks} weeks ago`;
+    const months = Math.floor(diffDays / 30);
+    if (months === 1) return "Posted 1 month ago";
+    return `Posted ${months} months ago`;
+  };
+
   return (
     <PageLayout>
       <div className="h-[calc(100vh-56px)] min-h-0 overflow-hidden bg-white">
@@ -241,12 +469,50 @@ export default function SearchJobPage() {
             </h1>
 
             <div className="flex min-w-0 flex-1 flex-wrap items-center gap-3">
-              <div className="flex min-w-[420px] flex-1 items-center gap-3 rounded-[18px] border border-[#d9d9d9] bg-white px-4 py-2 shadow-[0_2px_14px_rgba(0,0,0,0.09)]">
+              <div className="relative flex min-w-[420px] flex-1 items-center gap-3 rounded-[18px] border border-[#d9d9d9] px-4 py-2">
                 <Input
                   placeholder="Software Engineer"
                   value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="h-9 min-w-0 flex-1 rounded-full border-0 px-0 text-sm shadow-none focus-visible:ring-0"
+                  onChange={(e) => {
+                    setSearchQuery(e.target.value);
+                    setActiveSuggestionIndex(0);
+                  }}
+                  onFocus={() => {
+                    setIsSearchFocused(true);
+                    setActiveSuggestionIndex(0);
+                  }}
+                  onBlur={() => setIsSearchFocused(false)}
+                  onKeyDown={(e) => {
+                    if (!showSearchSuggestions) return;
+
+                    if (e.key === "ArrowDown") {
+                      e.preventDefault();
+                      setActiveSuggestionIndex((prev) =>
+                        prev >= searchSuggestions.length - 1 ? 0 : prev + 1,
+                      );
+                    }
+
+                    if (e.key === "ArrowUp") {
+                      e.preventDefault();
+                      setActiveSuggestionIndex((prev) =>
+                        prev <= 0 ? searchSuggestions.length - 1 : prev - 1,
+                      );
+                    }
+
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      const selectedSuggestion =
+                        searchSuggestions[activeSuggestionIndex];
+                      if (selectedSuggestion) {
+                        applySuggestion(selectedSuggestion);
+                      }
+                    }
+
+                    if (e.key === "Escape") {
+                      setIsSearchFocused(false);
+                    }
+                  }}
+                  className="h-5 min-w-0 flex-1 rounded-full border-0 bg-white px-0 text-sm shadow-none focus-visible:ring-0"
                 />
                 <div className="relative shrink-0">
                   <select
@@ -276,9 +542,41 @@ export default function SearchJobPage() {
                     }`}
                   />
                 </div>
-              </div>
 
-              <div className="relative flex min-w-0 flex-1 items-center gap-3 rounded-[18px] border border-[#d9d9d9] bg-white px-4 py-2 shadow-[0_2px_14px_rgba(0,0,0,0.09)]">
+                {showSearchSuggestions ? (
+                  <div className="absolute left-0 right-0 top-full z-30 mt-2 overflow-hidden rounded-2xl border border-[#e2e2e2] bg-white py-1 shadow-lg">
+                    {searchSuggestions.map((suggestion, index) => {
+                      const isActive = index === activeSuggestionIndex;
+                      return (
+                        <button
+                          key={`${suggestion.type}-${suggestion.term}-${index}`}
+                          type="button"
+                          onMouseDown={(e) => e.preventDefault()}
+                          onClick={() => applySuggestion(suggestion)}
+                          className={`flex w-full items-center justify-between gap-3 px-4 py-3 text-left ${
+                            isActive
+                              ? "bg-[#f6f6f6] text-slate-950"
+                              : "text-[#666666] hover:bg-[#f6f6f6]"
+                          }`}
+                        >
+                          <span className="truncate text-[15px] font-medium text-[#2b2b2b]">
+                            {suggestion.term}
+                          </span>
+                          <span
+                            className={cn(
+                              "inline-flex h-7 shrink-0 items-center rounded-full border bg-white px-5 text-sm font-medium",
+                              getSearchSuggestionClassName(suggestion.type),
+                            )}
+                          >
+                            {suggestion.type === "skill" ? "Skill" : "Job"}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                ) : null}
+              </div>
+              <div className="h-12.5 relative flex min-w-0 flex-1 items-center gap-3 rounded-[18px] border border-[#d9d9d9] bg-white px-4 py-2 shadow-[0_2px_14px_rgba(0,0,0,0.09)]">
                 <button
                   type="button"
                   onClick={handleScrollToSkillInfo}
@@ -292,7 +590,7 @@ export default function SearchJobPage() {
                       key={skill}
                       type="button"
                       onClick={() => toggleSkill(skill)}
-                      className="inline-flex h-7 items-center rounded-full border border-transparent bg-[linear-gradient(90deg,var(--color-main),var(--color-second))] px-3 text-xs whitespace-nowrap text-white"
+                      className={`${gradientOutlineChipClassName} h-7 whitespace-nowrap`}
                     >
                       {skill}
                     </button>
@@ -332,7 +630,7 @@ export default function SearchJobPage() {
                             onClick={() => toggleSkill(skill)}
                             className={`h-8 rounded-full border px-3 text-xs ${
                               active
-                                ? "border-transparent bg-[linear-gradient(90deg,var(--color-main),var(--color-second))] text-white"
+                                ? "border-transparent text-primary-pink [background:linear-gradient(var(--color-background),var(--color-background))_padding-box,linear-gradient(90deg,var(--color-main),var(--color-second))_border-box]"
                                 : "border-[#e2e2e2] bg-white text-[#666666]"
                             }`}
                           >
@@ -348,77 +646,133 @@ export default function SearchJobPage() {
           </div>
 
           <div className="grid grid-cols-4 gap-3">
-            <div className="relative">
-              <button
-                type="button"
-                onClick={() => setCategoryOpen((prev) => !prev)}
-                className="flex h-10 w-full items-center rounded-full border border-[#e5e5e5] bg-white px-4 text-sm text-[#A1A1A1] shadow-[0_2px_10px_rgba(0,0,0,0.06)]"
+            <div className="relative min-w-0">
+              <Combobox
+                multiple
+                items={categoryOptions}
+                value={selectedCategoriesList}
+                onValueChange={(value) =>
+                  setSelectedCategories(new Set((value ?? []) as string[]))
+                }
               >
-                <div className="flex min-w-0 flex-1 items-center gap-1.5 overflow-hidden">
-                  {selectedCategoriesList.length === 0 ? (
-                    <span className="truncate text-[#A1A1A1]">Any Category</span>
+                <ComboboxChips
+                  ref={categoryAnchorRef}
+                  className="min-h-10 w-full flex-nowrap overflow-hidden rounded-full border border-[#e5e5e5] bg-white px-4 py-1 text-sm shadow-[0_2px_10px_rgba(0,0,0,0.06)] focus-within:border-[#e5e5e5] focus-within:ring-0"
+                >
+                  {visibleCategories.map((item) => (
+                    <ComboboxChip
+                      key={item}
+                      showRemove={false}
+                      className="h-6 shrink-0 rounded-full bg-[#efefef] px-2 text-xs text-slate-900"
+                    >
+                      {item}
+                    </ComboboxChip>
+                  ))}
+                  {hiddenCategoryCount > 0 ? (
+                    <span className="inline-flex h-6 shrink-0 items-center rounded-full bg-[#efefef] px-2 text-xs text-slate-900">
+                      +{hiddenCategoryCount}
+                    </span>
+                  ) : null}
+                  <ComboboxChipsInput
+                    aria-label="Search categories"
+                    placeholder={
+                      selectedCategoriesList.length === 0 ? "Any Category" : ""
+                    }
+                    className="w-0 min-w-[72px] flex-1 bg-transparent text-sm text-slate-900 placeholder:text-[#A1A1A1]"
+                  />
+                </ComboboxChips>
+
+                <ComboboxTrigger className="absolute top-1/2 right-4 z-10 -translate-y-1/2 text-[#A1A1A1]" />
+
+                <ComboboxContent
+                  anchor={categoryAnchorRef}
+                  className="rounded-2xl border border-[#e2e2e2] bg-white p-1 shadow-lg"
+                >
+                  <ComboboxEmpty>No categories found.</ComboboxEmpty>
+                  <ComboboxList>
+                    {(item) => (
+                      <ComboboxItem key={item} value={item}>
+                        {item}
+                      </ComboboxItem>
+                    )}
+                  </ComboboxList>
+                </ComboboxContent>
+
+                <div className="pointer-events-none absolute -z-10 overflow-hidden opacity-0">
+                  {selectedCategoriesList.map((item) => (
+                    <span
+                      key={`measure-${item}`}
+                      ref={(node) => {
+                        categoryChipMeasureRefs.current[item] = node;
+                      }}
+                      className="inline-flex h-6 shrink-0 items-center rounded-full bg-[#efefef] px-2 text-xs text-slate-900"
+                    >
+                      {item}
+                    </span>
+                  ))}
+                  {Array.from(
+                    { length: selectedCategoriesList.length },
+                    (_, index) => index + 1,
+                  ).map((count) => (
+                    <span
+                      key={`measure-overflow-${count}`}
+                      ref={(node) => {
+                        categoryOverflowMeasureRefs.current[count] = node;
+                      }}
+                      className="inline-flex h-6 shrink-0 items-center rounded-full bg-[#efefef] px-2 text-xs text-slate-900"
+                    >
+                      +{count}
+                    </span>
+                  ))}
+                </div>
+              </Combobox>
+            </div>
+
+            <div className="relative min-w-0">
+              <div className={`${filterFieldClassName} relative pr-18`}>
+                <select
+                  value={placeFilter}
+                  onChange={(e) => setPlaceFilter(e.target.value)}
+                  className="absolute inset-0 z-10 h-full w-full cursor-pointer appearance-none rounded-full opacity-0 outline-none"
+                >
+                  <option value={ANY_PLACE}>{ANY_PLACE}</option>
+                  {placeOfJobOptions.map((place) => (
+                    <option key={place} value={place}>
+                      {place}
+                    </option>
+                  ))}
+                </select>
+
+                <div className="flex min-w-0 flex-1 items-center gap-2 overflow-hidden">
+                  {placeFilter !== ANY_PLACE ? (
+                    <span className="inline-flex h-8 max-w-full items-center truncate rounded-full bg-[rgba(193,193,193,0.3)] px-3 text-[13px] text-[#000000]">
+                      {placeFilter}
+                    </span>
                   ) : (
-                    <>
-                      {selectedCategoriesList.slice(0, 2).map((item) => (
-                        <span
-                          key={item}
-                          className="inline-flex h-6 items-center rounded-full bg-[#efefef] px-2 text-xs text-slate-900"
-                        >
-                          {item}
-                        </span>
-                      ))}
-                      {selectedCategoriesList.length > 2 ? (
-                        <span className="inline-flex h-6 items-center rounded-full bg-[#efefef] px-2 text-xs text-slate-900">
-                          +{selectedCategoriesList.length - 2}
-                        </span>
-                      ) : null}
-                    </>
+                    <span className="truncate text-[#A1A1A1]">{ANY_PLACE}</span>
                   )}
                 </div>
-                <HiOutlineSelector className="ml-auto h-4 w-4 shrink-0 text-[#A1A1A1]" />
-              </button>
-              {categoryOpen ? (
-                <div className="absolute left-0 top-full z-30 mt-2 w-full rounded-2xl border border-[#e2e2e2] bg-white p-2 shadow-lg">
-                  <div className="flex flex-wrap gap-2">
-                    {categoryOptions.map((option) => {
-                      const active = selectedCategories.has(option);
-                      return (
-                        <button
-                          key={option}
-                          type="button"
-                          onClick={() => toggleCategory(option)}
-                          className={`h-7 rounded-full border px-3 text-xs ${
-                            active
-                              ? "border-transparent bg-[linear-gradient(90deg,var(--color-main),var(--color-second))] text-white"
-                              : "border-[#e2e2e2] bg-white text-[#666666]"
-                          }`}
-                        >
-                          {option}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              ) : null}
+
+                {placeFilter !== ANY_PLACE ? (
+                  <button
+                    type="button"
+                    onClick={() => setPlaceFilter(ANY_PLACE)}
+                    className="absolute right-4 top-1/2 z-20 inline-flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full text-[#A1A1A1] hover:bg-slate-100"
+                    aria-label="clear place filter"
+                  >
+                    <CgClose className="h-4 w-4" />
+                  </button>
+                ) : null}
+
+                <HiOutlineSelector className="pointer-events-none absolute right-10 top-1/2 z-20 h-4 w-4 -translate-y-1/2 text-[#A1A1A1]" />
+              </div>
             </div>
 
-            <div className="relative">
-              <select
-                value={placeFilter}
-                onChange={(e) => setPlaceFilter(e.target.value)}
-                className="h-10 w-full appearance-none rounded-full border border-[#e5e5e5] bg-white px-4 pr-8 text-sm text-[#A1A1A1] shadow-[0_2px_10px_rgba(0,0,0,0.06)] outline-none"
-              >
-                <option>Any Place</option>
-                <option>Bangkok</option>
-              </select>
-              <HiOutlineSelector className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#A1A1A1]" />
-            </div>
-
-            <div className="relative">
+            <div className="relative min-w-0">
               <button
                 type="button"
                 onClick={() => setWorkTypeOpen((prev) => !prev)}
-                className="flex h-10 w-full items-center rounded-full border border-[#e5e5e5] bg-white px-4 text-sm text-[#A1A1A1] shadow-[0_2px_10px_rgba(0,0,0,0.06)]"
+                className={filterFieldClassName}
               >
                 <div className="flex min-w-0 flex-1 items-center gap-1.5 overflow-hidden">
                   {selectedWorkTypesList.length === 0 ? (
@@ -428,13 +782,13 @@ export default function SearchJobPage() {
                       {selectedWorkTypesList.slice(0, 2).map((item) => (
                         <span
                           key={item}
-                          className="inline-flex h-6 items-center rounded-full bg-[#efefef] px-2 text-xs text-slate-900"
+                          className={filterChipClassName}
                         >
                           {item}
                         </span>
                       ))}
                       {selectedWorkTypesList.length > 2 ? (
-                        <span className="inline-flex h-6 items-center rounded-full bg-[#efefef] px-2 text-xs text-slate-900">
+                        <span className={filterChipClassName}>
                           +{selectedWorkTypesList.length - 2}
                         </span>
                       ) : null}
@@ -468,11 +822,11 @@ export default function SearchJobPage() {
               ) : null}
             </div>
 
-            <div className="relative">
+            <div className="relative min-w-0">
               <button
                 type="button"
                 onClick={() => setWorkOptionOpen((prev) => !prev)}
-                className="flex h-10 w-full items-center rounded-full border border-[#e5e5e5] bg-white px-4 text-sm text-[#A1A1A1] shadow-[0_2px_10px_rgba(0,0,0,0.06)]"
+                className={filterFieldClassName}
               >
                 <div className="flex min-w-0 flex-1 items-center gap-1.5 overflow-hidden">
                   {selectedWorkOptionsList.length === 0 ? (
@@ -482,13 +836,13 @@ export default function SearchJobPage() {
                       {selectedWorkOptionsList.slice(0, 2).map((item) => (
                         <span
                           key={item}
-                          className="inline-flex h-6 items-center rounded-full bg-[#efefef] px-2 text-xs text-slate-900"
+                          className={filterChipClassName}
                         >
                           {item}
                         </span>
                       ))}
                       {selectedWorkOptionsList.length > 2 ? (
-                        <span className="inline-flex h-6 items-center rounded-full bg-[#efefef] px-2 text-xs text-slate-900">
+                        <span className={filterChipClassName}>
                           +{selectedWorkOptionsList.length - 2}
                         </span>
                       ) : null}
@@ -587,7 +941,7 @@ export default function SearchJobPage() {
                             e.stopPropagation();
                             handleDelete(job.id);
                           }}
-                          className="absolute right-3 top-3 text-slate-500 opacity-0 transition group-hover:opacity-100 hover:text-slate-950"
+                          className="absolute right-3 top-3 text-slate-500 transition hover:text-slate-950"
                           aria-label="delete"
                           type="button"
                         >
@@ -673,30 +1027,34 @@ export default function SearchJobPage() {
                 </div>
               ) : (
                 <div className="pt-2">
-                  <div className="flex items-start gap-3">
+                  <div className="flex items-center gap-3">
                     <div className="h-10 w-10 rounded-full bg-[#e0e0e0]" />
-                    <div className="min-w-0">
-                      <div className="text-sm text-slate-500">
+                    <div className="min-w-0 flex-1">
+                      <div className="text-sm font-medium text-slate-500">
                         {selectedJob.company}
                       </div>
-                      <h2 className="text-[22px] font-semibold leading-tight text-slate-950">
-                        {selectedJob.title}
-                      </h2>
-                      <p className="text-sm text-slate-500">
-                        {selectedJob.location} • posted 1 week ago
-                      </p>
                     </div>
                     <button className="ml-auto text-slate-700 hover:text-slate-950" type="button">
                       <IoIosMore size={20} />
                     </button>
                   </div>
 
-                  <div className="mt-3 flex gap-2">
+                  <div className="mt-3 text-[22px] font-semibold leading-tight text-slate-950">
+                    {selectedJob.title}
+                  </div>
+
+                  <div className="mt-2 flex flex-wrap items-center gap-2 text-sm text-slate-500">
+                    <span>{selectedJob.location}</span>
+                    <span>•</span>
+                    <span>{formatPostedAt(selectedJob.postedAt)}</span>
+                  </div>
+
+                  <div className="mt-3 flex flex-wrap gap-2">
                     <span className="inline-flex h-7 items-center rounded-full bg-[#f1f1f1] px-3 text-xs text-slate-700">
-                      On-site
+                      {selectedJob.workOption}
                     </span>
                     <span className="inline-flex h-7 items-center rounded-full bg-[#f1f1f1] px-3 text-xs text-slate-700">
-                      Internship
+                      {selectedJob.workType}
                     </span>
                   </div>
 
@@ -724,12 +1082,14 @@ export default function SearchJobPage() {
                     </h3>
                     <div className="flex flex-wrap gap-2">
                       {selectedJob.skills?.map((skill) => (
-                        <span
+                        <button
                           key={skill}
-                          className="inline-flex h-8 items-center rounded-full border border-[#ff9ad3] bg-white px-3 text-xs text-[#ff5db1]"
+                          type="button"
+                          onClick={() => handleOpenSkillInfo(skill)}
+                          className={`${gradientOutlineChipClassName} h-8 hover:bg-[#fff8fc]`}
                         >
                           {skill}
-                        </span>
+                        </button>
                       ))}
                     </div>
                   </div>
@@ -756,22 +1116,12 @@ export default function SearchJobPage() {
           </div>
         </div>
       </div>
+
+      <SkillinfoDialog
+        open={skillInfoOpen}
+        onClose={() => setSkillInfoOpen(false)}
+        skillName={selectedSkillName}
+      />
     </PageLayout>
   );
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
