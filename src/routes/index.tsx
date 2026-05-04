@@ -11,6 +11,8 @@ import Message from "@/pages/message/MessagePage";
 import AppliedHis from "@/pages/myjob/AppliedHis";
 import SignInPage from "@/pages/auth/SignInPage";
 import RegisterPage from "@/pages/auth/RegisterPage";
+import ForgotPasswordPage from "@/pages/auth/ForgotPasswordPage";
+import AccountSettingsPage from "@/pages/settings/AccountSettingsPage";
 
 export const router = createBrowserRouter(
   [
@@ -50,6 +52,10 @@ export const router = createBrowserRouter(
       path: "/register",
       element: <RegisterPage />,
     },
+    {
+      path: "/forgot-password",
+      element: <ForgotPasswordPage />,
+    },
     { 
       path: "*", 
       element: <div>Not Found ESUS</div> 
@@ -62,6 +68,10 @@ export const router = createBrowserRouter(
     },
     { path: "/myjobs", 
       element: <AppliedHis/>
+    },
+    {
+      path: "/settings/account",
+      element: <AccountSettingsPage />,
     },
   ],
   {

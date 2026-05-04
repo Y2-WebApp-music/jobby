@@ -1,4 +1,9 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { myJobAppliedSeed } from "@/types/myjobapplied";
+import { myJobArchivedSeed } from "@/types/myjobarchived";
+import { myJobSavedSeed } from "@/types/myjobsave";
+
+export type JobStatus = "inreview" | "interview" | "reject" | "accept";
 
 export type Job = {
   id: number;
@@ -18,10 +23,13 @@ export type Job = {
   saved?: boolean;
   applied?: boolean;
   archived?: boolean;
-  status?: "inreview" | "interview" | "reject" | "accept";
+  status?: JobStatus;
+  appliedDate?: string;
 };
 
-export const initialJobs: Job[] = [
+const JOBS_STORAGE_KEY = "jobby.jobs.v3";
+
+const searchJobSeed: Job[] = [
   {
     id: 0,
     title: "Frontend Engineer (React)",
@@ -240,6 +248,13 @@ export const initialJobs: Job[] = [
   },
 ];
 
+export const initialJobs: Job[] = [
+  ...searchJobSeed,
+  ...myJobSavedSeed,
+  ...myJobAppliedSeed,
+  ...myJobArchivedSeed,
+];
+
 export const skillOptions = [
   "Front-End",
   "Back-End",
@@ -260,11 +275,27 @@ export const pageSize = 6;
 export type SearchType = "any" | "skill" | "job";
 export type FilterMode = "relevance" | "date" | "unviewed";
 
+const getInitialJobs = () => initialJobs.map((job) => ({ ...job }));
+
+const loadJobs = () => {
+  if (typeof window === "undefined") return getInitialJobs();
+
+  try {
+    const stored = window.localStorage.getItem(JOBS_STORAGE_KEY);
+    if (!stored) return getInitialJobs();
+
+    const parsed = JSON.parse(stored) as Job[];
+    if (!Array.isArray(parsed) || parsed.length === 0) return getInitialJobs();
+
+    return parsed;
+  } catch {
+    return getInitialJobs();
+  }
+};
+
 export const useSearchJobState = () => {
-  const [jobs, setJobs] = useState(initialJobs);
-  const [selectedJobId, setSelectedJobId] = useState<number | null>(
-    initialJobs[0]?.id ?? null,
-  );
+  const [jobs, setJobs] = useState<Job[]>(() => loadJobs());
+  const [selectedJobId, setSelectedJobId] = useState<number | null>(null);
   const [viewed, setViewed] = useState<Set<number>>(new Set());
   const [selectedSkills, setSelectedSkills] = useState<Set<string>>(new Set());
   const [searchType, setSearchType] = useState<SearchType>("any");
@@ -288,6 +319,11 @@ export const useSearchJobState = () => {
   const [applyOpen, setApplyOpen] = useState(false);
   const [applyDialogKey, setApplyDialogKey] = useState(0);
   const [currentPage, setCurrentPage] = useState(1);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem(JOBS_STORAGE_KEY, JSON.stringify(jobs));
+  }, [jobs]);
 
   return {
     jobs,

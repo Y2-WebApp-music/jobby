@@ -102,8 +102,6 @@ export default function SearchJobPage() {
     setWorkOptionOpen,
     filterMode,
     setFilterMode,
-    setApplyOpen,
-    setApplyDialogKey,
     currentPage,
     setCurrentPage,
   } = useSearchJobState();
@@ -441,6 +439,39 @@ export default function SearchJobPage() {
     setSearchQuery(suggestion.term);
     setIsSearchFocused(false);
   };
+
+  const handleToggleSave = (jobId: number) => {
+    setJobs((prev) =>
+      prev.map((job) =>
+        job.id === jobId ? { ...job, saved: !job.saved } : job,
+      ),
+    );
+  };
+
+  const handleApplyJob = (jobId: number) => {
+    setJobs((prev) =>
+      prev.map((job) => {
+        if (job.id !== jobId || job.applied) return job;
+
+        return {
+          ...job,
+          saved: false,
+          applied: true,
+          archived: false,
+          status: "inreview",
+          appliedDate: new Date().toLocaleString("en-GB", {
+            day: "2-digit",
+            month: "short",
+            year: "numeric",
+            hour: "2-digit",
+            minute: "2-digit",
+            hour12: false,
+          }).replace(",", ""),
+        };
+      }),
+    );
+  };
+
   const formatPostedAt = (postedAt: string) => {
     const postedTime = new Date(postedAt).getTime();
     const diffDays = Math.max(
@@ -1061,18 +1092,19 @@ export default function SearchJobPage() {
                   <div className="mt-4 flex items-center gap-3">
                     <Button
                       onClick={() => {
-                        setApplyDialogKey((prev) => prev + 1);
-                        setApplyOpen(true);
+                        handleApplyJob(selectedJob.id);
                       }}
+                      disabled={selectedJob.applied}
                       className="h-10 rounded-full bg-[linear-gradient(90deg,var(--color-main),var(--color-second))] px-5 text-sm font-medium text-white shadow-none hover:opacity-90"
                     >
-                      Apply This Job
+                      {selectedJob.applied ? "Applied" : "Apply This Job"}
                     </Button>
                     <Button
                       variant="outline"
+                      onClick={() => handleToggleSave(selectedJob.id)}
                       className="h-10 rounded-full border border-[#ff9ad3] px-5 text-sm text-[#ff5db1] hover:bg-[#fff4fa]"
                     >
-                      Save
+                      {selectedJob.saved ? "Saved" : "Save"}
                     </Button>
                   </div>
 
