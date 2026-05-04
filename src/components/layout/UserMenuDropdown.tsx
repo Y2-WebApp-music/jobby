@@ -78,7 +78,10 @@ export default function UserMenuDropdown({
             Save Job
           </DropdownMenuItem>
 
-          <DropdownMenuItem className={menuItemClassName}>
+          <DropdownMenuItem
+            className={menuItemClassName}
+            onSelect={() => navigate("/settings/account")}
+          >
             <BsFillGearFill className="size-4" />
             Setting
           </DropdownMenuItem>
