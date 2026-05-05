@@ -17,6 +17,7 @@ import { useReactToPrint } from "react-to-print";
 export default function CreateResumePage() {
   const navigate = useNavigate();
   const [resume, setResume] = useState<ResumeCreateProps>(initialResume);
+  // const [resume, setResume] = useState<ResumeCreateProps>();
   const printRef = useRef<HTMLDivElement>(null);
 
   const updateData = <K extends keyof ResumeCreateProps["data"]>(
@@ -171,4 +172,3 @@ export default function CreateResumePage() {
     </PageLayout>
   );
 }
-

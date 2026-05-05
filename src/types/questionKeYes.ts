@@ -42,7 +42,8 @@ const seeds: ExamQuestionSeed[] = [
     correctAnswer: 0,
   },
   {
-    prompt: "Your manager asks for an impossible deadline. What is the healthy action?",
+    prompt:
+      "Your manager asks for an impossible deadline. What is the healthy action?",
     choices: [
       "Say yes and panic later",
       "Ignore the request",

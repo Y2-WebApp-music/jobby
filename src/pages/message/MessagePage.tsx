@@ -38,7 +38,8 @@ import {
 
 const MAX_ATTACHMENTS = 10;
 
-const escapeRegExp = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+const escapeRegExp = (value: string) =>
+  value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
 const renderHighlightedText = (text: string, query: string) => {
   const normalizedQuery = query.trim();
@@ -47,19 +48,24 @@ const renderHighlightedText = (text: string, query: string) => {
     return text;
   }
 
-  return text.split(new RegExp(`(${escapeRegExp(normalizedQuery)})`, "gi")).map((part, index) => {
-    const isMatch = part.toLowerCase() === normalizedQuery.toLowerCase();
+  return text
+    .split(new RegExp(`(${escapeRegExp(normalizedQuery)})`, "gi"))
+    .map((part, index) => {
+      const isMatch = part.toLowerCase() === normalizedQuery.toLowerCase();
 
-    if (!isMatch) {
-      return <span key={`${part}-${index}`}>{part}</span>;
-    }
+      if (!isMatch) {
+        return <span key={`${part}-${index}`}>{part}</span>;
+      }
 
-    return (
-      <mark key={`${part}-${index}`} className="rounded bg-[#ffe7c2] px-0.5 text-inherit">
-        {part}
-      </mark>
-    );
-  });
+      return (
+        <mark
+          key={`${part}-${index}`}
+          className="rounded bg-[#ffe7c2] px-0.5 text-inherit"
+        >
+          {part}
+        </mark>
+      );
+    });
 };
 
 const formatConversationTime = (timestamp: number) => {
@@ -100,7 +106,9 @@ const summarizeAttachments = (attachments?: MessageAttachment[]) => {
     return "";
   }
 
-  const imageCount = attachments.filter((attachment) => attachment.kind === "image").length;
+  const imageCount = attachments.filter(
+    (attachment) => attachment.kind === "image",
+  ).length;
   const fileCount = attachments.length - imageCount;
   const parts: string[] = [];
 
@@ -115,7 +123,10 @@ const summarizeAttachments = (attachments?: MessageAttachment[]) => {
   return parts.join(" and ");
 };
 
-const buildConversationPreview = (text: string, attachments?: MessageAttachment[]) => {
+const buildConversationPreview = (
+  text: string,
+  attachments?: MessageAttachment[],
+) => {
   const normalizedText = text.replace(/\s+/g, " ").trim();
 
   if (normalizedText) {
@@ -202,7 +213,9 @@ const PendingAttachmentPreview = ({
               </div>
             )}
             <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-medium text-[#1f1f1f]">{attachment.name}</p>
+              <p className="truncate text-sm font-medium text-[#1f1f1f]">
+                {attachment.name}
+              </p>
               <p className="text-xs text-[#8a8a8a]">{attachment.sizeLabel}</p>
             </div>
             <button
@@ -222,14 +235,23 @@ const PendingAttachmentPreview = ({
 
 export default function Message() {
   const [searchQuery, setSearchQuery] = useState("");
-  const [conversationList, setConversationList] = useState(initialConversations);
-  const [conversationMessages, setConversationMessages] = useState(initialConversationMessages);
-  const [selectedConversationId, setSelectedConversationId] = useState(initialConversations[0]?.id ?? 0);
+  const [conversationList, setConversationList] =
+    useState(initialConversations);
+  const [conversationMessages, setConversationMessages] = useState(
+    initialConversationMessages,
+  );
+  const [selectedConversationId, setSelectedConversationId] = useState(
+    initialConversations[0]?.id ?? 0,
+  );
   const [composerText, setComposerText] = useState("");
-  const [pendingAttachments, setPendingAttachments] = useState<MessageAttachment[]>([]);
+  const [pendingAttachments, setPendingAttachments] = useState<
+    MessageAttachment[]
+  >([]);
   const [replyingTo, setReplyingTo] = useState<ChatMessage | null>(null);
   const [likedMessageIds, setLikedMessageIds] = useState<number[]>([]);
-  const [messageIdToDelete, setMessageIdToDelete] = useState<number | null>(null);
+  const [messageIdToDelete, setMessageIdToDelete] = useState<number | null>(
+    null,
+  );
   const [lightboxState, setLightboxState] = useState<{
     attachments: MessageAttachment[];
     currentIndex: number;
@@ -253,22 +275,30 @@ export default function Message() {
       return (
         conversation.name.toLowerCase().includes(normalizedQuery) ||
         conversation.preview.toLowerCase().includes(normalizedQuery) ||
-        messages.some((message) => message.text.toLowerCase().includes(normalizedQuery))
+        messages.some((message) =>
+          message.text.toLowerCase().includes(normalizedQuery),
+        )
       );
     });
   }, [conversationList, conversationMessages, searchQuery]);
 
   const selectedConversation =
-    conversationList.find((conversation) => conversation.id === selectedConversationId) ||
+    conversationList.find(
+      (conversation) => conversation.id === selectedConversationId,
+    ) ||
     filteredConversations[0] ||
     conversationList[0];
 
-  const messages = selectedConversation ? conversationMessages[selectedConversation.id] || [] : [];
+  const messages = selectedConversation
+    ? conversationMessages[selectedConversation.id] || []
+    : [];
 
   useEffect(() => {
     if (
       filteredConversations.length > 0 &&
-      !filteredConversations.some((conversation) => conversation.id === selectedConversationId)
+      !filteredConversations.some(
+        (conversation) => conversation.id === selectedConversationId,
+      )
     ) {
       setSelectedConversationId(filteredConversations[0].id);
     }
@@ -300,7 +330,8 @@ export default function Message() {
           previous
             ? {
                 ...previous,
-                currentIndex: (previous.currentIndex + 1) % previous.attachments.length,
+                currentIndex:
+                  (previous.currentIndex + 1) % previous.attachments.length,
               }
             : previous,
         );
@@ -345,7 +376,9 @@ export default function Message() {
 
   const releaseObjectUrl = (url: string) => {
     URL.revokeObjectURL(url);
-    createdObjectUrlsRef.current = createdObjectUrlsRef.current.filter((currentUrl) => currentUrl !== url);
+    createdObjectUrlsRef.current = createdObjectUrlsRef.current.filter(
+      (currentUrl) => currentUrl !== url,
+    );
   };
 
   const releaseAttachmentUrls = (attachments?: MessageAttachment[]) => {
@@ -361,31 +394,41 @@ export default function Message() {
       return;
     }
 
-    const availableSlots = Math.max(0, MAX_ATTACHMENTS - pendingAttachments.length);
+    const availableSlots = Math.max(
+      0,
+      MAX_ATTACHMENTS - pendingAttachments.length,
+    );
 
     if (availableSlots === 0) {
       return;
     }
 
-    const nextAttachments = files.slice(0, availableSlots).map((file, index) => {
-      const objectUrl = URL.createObjectURL(file);
-      trackObjectUrl(objectUrl);
+    const nextAttachments = files
+      .slice(0, availableSlots)
+      .map((file, index) => {
+        const objectUrl = URL.createObjectURL(file);
+        trackObjectUrl(objectUrl);
 
-      return {
-        id: `${Date.now()}-${index}-${file.name}`,
-        kind: preferredKind === "image" || file.type.startsWith("image/") ? "image" : "file",
-        name: file.name,
-        sizeLabel: formatAttachmentSize(file.size),
-        url: objectUrl,
-        mimeType: file.type || "application/octet-stream",
-      } satisfies MessageAttachment;
-    });
+        return {
+          id: `${Date.now()}-${index}-${file.name}`,
+          kind:
+            preferredKind === "image" || file.type.startsWith("image/")
+              ? "image"
+              : "file",
+          name: file.name,
+          sizeLabel: formatAttachmentSize(file.size),
+          url: objectUrl,
+          mimeType: file.type || "application/octet-stream",
+        } satisfies MessageAttachment;
+      });
 
     setPendingAttachments((previous) => [...previous, ...nextAttachments]);
   };
 
   const handleSelectImages = (event: ChangeEvent<HTMLInputElement>) => {
-    const imageFiles = Array.from(event.target.files || []).filter((file) => file.type.startsWith("image/"));
+    const imageFiles = Array.from(event.target.files || []).filter((file) =>
+      file.type.startsWith("image/"),
+    );
     appendFiles(imageFiles, "image");
     event.target.value = "";
   };
@@ -398,7 +441,9 @@ export default function Message() {
 
   const handleRemovePendingAttachment = (attachmentId: string) => {
     setPendingAttachments((previous) => {
-      const targetAttachment = previous.find((attachment) => attachment.id === attachmentId);
+      const targetAttachment = previous.find(
+        (attachment) => attachment.id === attachmentId,
+      );
 
       if (targetAttachment?.url.startsWith("blob:")) {
         releaseObjectUrl(targetAttachment.url);
@@ -443,7 +488,8 @@ export default function Message() {
       replyTo: replyingTo
         ? {
             id: replyingTo.id,
-            senderName: replyingTo.sender === "me" ? "You" : selectedConversation.name,
+            senderName:
+              replyingTo.sender === "me" ? "You" : selectedConversation.name,
             text: replyingTo.text,
             attachments: replyingTo.attachments,
           }
@@ -452,11 +498,16 @@ export default function Message() {
 
     setConversationMessages((previous) => ({
       ...previous,
-      [selectedConversation.id]: [...(previous[selectedConversation.id] || []), nextMessage],
+      [selectedConversation.id]: [
+        ...(previous[selectedConversation.id] || []),
+        nextMessage,
+      ],
     }));
 
     setConversationList((previous) => {
-      const nextConversation = previous.find((conversation) => conversation.id === selectedConversation.id);
+      const nextConversation = previous.find(
+        (conversation) => conversation.id === selectedConversation.id,
+      );
 
       if (!nextConversation) {
         return previous;
@@ -470,7 +521,9 @@ export default function Message() {
 
       return [
         updatedConversation,
-        ...previous.filter((conversation) => conversation.id !== selectedConversation.id),
+        ...previous.filter(
+          (conversation) => conversation.id !== selectedConversation.id,
+        ),
       ];
     });
 
@@ -492,22 +545,31 @@ export default function Message() {
       return;
     }
 
-    const messageToDelete = messages.find((message) => message.id === messageIdToDelete);
+    const messageToDelete = messages.find(
+      (message) => message.id === messageIdToDelete,
+    );
 
     releaseAttachmentUrls(messageToDelete?.attachments);
     setLightboxState(null);
     setConversationMessages((previous) => ({
       ...previous,
-      [selectedConversation.id]: (previous[selectedConversation.id] || []).filter(
-        (message) => message.id !== messageIdToDelete,
-      ),
+      [selectedConversation.id]: (
+        previous[selectedConversation.id] || []
+      ).filter((message) => message.id !== messageIdToDelete),
     }));
-    setLikedMessageIds((previous) => previous.filter((messageId) => messageId !== messageIdToDelete));
-    setReplyingTo((previous) => (previous?.id === messageIdToDelete ? null : previous));
+    setLikedMessageIds((previous) =>
+      previous.filter((messageId) => messageId !== messageIdToDelete),
+    );
+    setReplyingTo((previous) =>
+      previous?.id === messageIdToDelete ? null : previous,
+    );
     setMessageIdToDelete(null);
   };
 
-  const openLightbox = (attachments: MessageAttachment[], currentIndex: number) => {
+  const openLightbox = (
+    attachments: MessageAttachment[],
+    currentIndex: number,
+  ) => {
     if (attachments.length === 0) {
       return;
     }
@@ -521,7 +583,9 @@ export default function Message() {
         <div className="flex h-full w-full flex-col">
           <div className="mb-3 flex flex-col gap-3 px-1 sm:flex-row sm:items-center">
             <div className="flex items-center gap-4">
-              <h1 className="text-[22px] font-semibold tracking-[-0.02em] text-[#151515]">Message</h1>
+              <h1 className="text-[22px] font-semibold tracking-[-0.02em] text-[#151515]">
+                Message
+              </h1>
             </div>
             <div className="relative w-full sm:max-w-[208px]">
               <Search className="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-[#9d9d9d]" />
@@ -539,16 +603,21 @@ export default function Message() {
               <aside className="flex h-[34vh] min-h-0 w-full flex-col border-b border-[#efefef] lg:h-auto lg:w-[300px] lg:border-b-0 lg:border-r">
                 <div className="min-h-0 flex-1 overflow-y-auto">
                   {filteredConversations.length === 0 ? (
-                    <div className="px-4 py-6 text-sm text-[#8a8a8a]">No messages found.</div>
+                    <div className="px-4 py-6 text-sm text-[#8a8a8a]">
+                      No messages found.
+                    </div>
                   ) : (
                     filteredConversations.map((conversation) => {
-                      const isSelected = conversation.id === selectedConversation?.id;
+                      const isSelected =
+                        conversation.id === selectedConversation?.id;
 
                       return (
                         <button
                           key={conversation.id}
                           type="button"
-                          onClick={() => setSelectedConversationId(conversation.id)}
+                          onClick={() =>
+                            setSelectedConversationId(conversation.id)
+                          }
                           className={cn(
                             "relative flex w-full items-start gap-3 border-b border-[#f2f2f2] px-4 py-6 text-left transition",
                             isSelected ? "bg-[#fafafa]" : "hover:bg-[#fbfbfb]",
@@ -561,14 +630,20 @@ export default function Message() {
                           <div className="min-w-0 flex-1">
                             <div className="flex items-start justify-between gap-2">
                               <p className="truncate text-[15px] font-semibold text-[#161616]">
-                                {renderHighlightedText(conversation.name, searchQuery)}
+                                {renderHighlightedText(
+                                  conversation.name,
+                                  searchQuery,
+                                )}
                               </p>
                               <span className="shrink-0 pt-0.5 text-[12px] text-[#8c8c8c]">
                                 {formatConversationTime(conversation.timestamp)}
                               </span>
                             </div>
                             <p className="truncate text-[14px] text-[#8a8a8a]">
-                              {renderHighlightedText(conversation.preview, searchQuery)}
+                              {renderHighlightedText(
+                                conversation.preview,
+                                searchQuery,
+                              )}
                             </p>
                           </div>
                         </button>
@@ -600,26 +675,38 @@ export default function Message() {
                 <div className="min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-hidden px-2 py-4 sm:px-4">
                   {messages.length === 0 ? (
                     <div className="flex h-full items-center justify-center px-6 text-center text-sm text-[#8a8a8a]">
-                      Start the conversation by sending a message or attaching a file.
+                      Start the conversation by sending a message or attaching a
+                      file.
                     </div>
                   ) : (
                     messages.map((message, index) => {
                       const previousMessage = messages[index - 1];
-                      const showDayLabel = !previousMessage || previousMessage.dayLabel !== message.dayLabel;
-                      const senderName = message.sender === "me" ? "You" : selectedConversation?.name || "User";
-                      const imageAttachments = getImageAttachments(message.attachments);
-                      const nonImageAttachments = (message.attachments || []).filter(
-                        (attachment) => attachment.kind === "file",
+                      const showDayLabel =
+                        !previousMessage ||
+                        previousMessage.dayLabel !== message.dayLabel;
+                      const senderName =
+                        message.sender === "me"
+                          ? "You"
+                          : selectedConversation?.name || "User";
+                      const imageAttachments = getImageAttachments(
+                        message.attachments,
                       );
+                      const nonImageAttachments = (
+                        message.attachments || []
+                      ).filter((attachment) => attachment.kind === "file");
                       const isLiked = likedMessageIds.includes(message.id);
-                      const replySummary = message.replyTo?.text || summarizeAttachments(message.replyTo?.attachments);
+                      const replySummary =
+                        message.replyTo?.text ||
+                        summarizeAttachments(message.replyTo?.attachments);
 
                       return (
                         <div key={message.id} className="mb-5 last:mb-0">
                           {showDayLabel ? (
                             <div className="mb-3 flex items-center gap-3">
                               <div className="h-px flex-1 bg-[#ececec]" />
-                              <span className="text-xs text-[#8a8a8a]">{message.dayLabel}</span>
+                              <span className="text-xs text-[#8a8a8a]">
+                                {message.dayLabel}
+                              </span>
                               <div className="h-px flex-1 bg-[#ececec]" />
                             </div>
                           ) : null}
@@ -640,7 +727,9 @@ export default function Message() {
                                 {message.replyTo ? (
                                   <div className="mb-3 max-w-full overflow-hidden rounded-2xl border-l-2 border-[#ff9800] bg-[#faf7f2] px-3 py-2">
                                     <div className="mb-0.5 flex min-w-0 items-center gap-1 text-xs text-[#d97900]">
-                                      <span className="shrink-0 uppercase tracking-[0.12em]">Replying to</span>
+                                      <span className="shrink-0 uppercase tracking-[0.12em]">
+                                        Replying to
+                                      </span>
                                       <span className="min-w-0 truncate font-semibold normal-case">
                                         {message.replyTo.senderName}
                                       </span>
@@ -653,13 +742,18 @@ export default function Message() {
 
                                 {message.text ? (
                                   <p className="whitespace-pre-wrap break-words text-lg leading-8 text-[#2b2b2b]">
-                                    {renderHighlightedText(message.text, searchQuery)}
+                                    {renderHighlightedText(
+                                      message.text,
+                                      searchQuery,
+                                    )}
                                   </p>
                                 ) : null}
 
                                 <MessageImageGrid
                                   attachments={imageAttachments}
-                                  onOpen={(clickedIndex) => openLightbox(imageAttachments, clickedIndex)}
+                                  onOpen={(clickedIndex) =>
+                                    openLightbox(imageAttachments, clickedIndex)
+                                  }
                                 />
 
                                 {nonImageAttachments.length > 0 ? (
@@ -672,8 +766,12 @@ export default function Message() {
                                         className="inline-flex items-center gap-2 rounded-full border border-[#e8e8e8] bg-[#fbfbfb] px-3 py-2 text-sm text-[#505050] transition hover:bg-[#f4f4f4]"
                                       >
                                         <FileText className="size-4" />
-                                        <span className="max-w-44 truncate">{attachment.name}</span>
-                                        <span className="text-xs text-[#8a8a8a]">{attachment.sizeLabel}</span>
+                                        <span className="max-w-44 truncate">
+                                          {attachment.name}
+                                        </span>
+                                        <span className="text-xs text-[#8a8a8a]">
+                                          {attachment.sizeLabel}
+                                        </span>
                                       </a>
                                     ))}
                                   </div>
@@ -693,15 +791,24 @@ export default function Message() {
                                     onClick={() => handleToggleLike(message.id)}
                                     className={cn(
                                       "rounded-full p-2 transition hover:bg-[#f1f1f1]",
-                                      isLiked ? "text-[#ef4444]" : "text-[#8a8a8a] hover:text-[#1f1f1f]",
+                                      isLiked
+                                        ? "text-[#ef4444]"
+                                        : "text-[#8a8a8a] hover:text-[#1f1f1f]",
                                     )}
                                     aria-label="Like message"
                                   >
-                                    <Heart className={cn("size-4", isLiked ? "fill-current" : "")} />
+                                    <Heart
+                                      className={cn(
+                                        "size-4",
+                                        isLiked ? "fill-current" : "",
+                                      )}
+                                    />
                                   </button>
                                   <button
                                     type="button"
-                                    onClick={() => setMessageIdToDelete(message.id)}
+                                    onClick={() =>
+                                      setMessageIdToDelete(message.id)
+                                    }
                                     className="rounded-full p-2 text-[#8a8a8a] transition hover:bg-[#f1f1f1] hover:text-[#1f1f1f]"
                                     aria-label="Delete message"
                                   >
@@ -744,13 +851,19 @@ export default function Message() {
                     <div className="mb-2.5 flex max-w-full items-start gap-3 overflow-hidden rounded-2xl border border-[#ffe1b0] bg-[#fff8ef] px-3 py-2.5">
                       <div className="min-w-0 flex-1">
                         <div className="mb-0.5 flex min-w-0 items-center gap-1 text-xs text-[#d97900]">
-                          <span className="shrink-0 uppercase tracking-[0.12em]">Replying to</span>
+                          <span className="shrink-0 uppercase tracking-[0.12em]">
+                            Replying to
+                          </span>
                           <span className="min-w-0 truncate font-semibold normal-case">
-                            {replyingTo.sender === "me" ? "You" : selectedConversation?.name}
+                            {replyingTo.sender === "me"
+                              ? "You"
+                              : selectedConversation?.name}
                           </span>
                         </div>
                         <p className="truncate text-sm text-[#6b6b6b]">
-                          {replyingTo.text || summarizeAttachments(replyingTo.attachments) || "Message"}
+                          {replyingTo.text ||
+                            summarizeAttachments(replyingTo.attachments) ||
+                            "Message"}
                         </p>
                       </div>
                       <button
@@ -786,9 +899,15 @@ export default function Message() {
                         ref={composerTextareaRef}
                         rows={1}
                         value={composerText}
-                        onChange={(event) => setComposerText(event.target.value)}
+                        onChange={(event) =>
+                          setComposerText(event.target.value)
+                        }
                         onKeyDown={(event) => {
-                          if (event.key !== "Enter" || event.shiftKey || event.nativeEvent.isComposing) {
+                          if (
+                            event.key !== "Enter" ||
+                            event.shiftKey ||
+                            event.nativeEvent.isComposing
+                          ) {
                             return;
                           }
 
@@ -802,7 +921,11 @@ export default function Message() {
                     <Button
                       type="button"
                       onClick={handleSendMessage}
-                      variant={composerText.trim() || pendingAttachments.length > 0 ? "default" : "ghost"}
+                      variant={
+                        composerText.trim() || pendingAttachments.length > 0
+                          ? "default"
+                          : "ghost"
+                      }
                       className={cn(
                         "h-9 rounded-full px-3 text-[12px]",
                         composerText.trim() || pendingAttachments.length > 0
@@ -838,7 +961,10 @@ export default function Message() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction variant="destructive" onClick={handleDeleteMessage}>
+            <AlertDialogAction
+              variant="destructive"
+              onClick={handleDeleteMessage}
+            >
               Delete
             </AlertDialogAction>
           </AlertDialogFooter>
@@ -872,7 +998,9 @@ export default function Message() {
                     ? {
                         ...previous,
                         currentIndex:
-                          (previous.currentIndex - 1 + previous.attachments.length) %
+                          (previous.currentIndex -
+                            1 +
+                            previous.attachments.length) %
                           previous.attachments.length,
                       }
                     : previous,
@@ -913,10 +1041,16 @@ export default function Message() {
                     }
                     className={cn(
                       "overflow-hidden rounded-2xl border",
-                      index === lightboxState.currentIndex ? "border-white" : "border-white/30",
+                      index === lightboxState.currentIndex
+                        ? "border-white"
+                        : "border-white/30",
                     )}
                   >
-                    <img src={attachment.url} alt={attachment.name} className="h-14 w-14 object-cover" />
+                    <img
+                      src={attachment.url}
+                      alt={attachment.name}
+                      className="h-14 w-14 object-cover"
+                    />
                   </button>
                 ))}
               </div>
@@ -932,7 +1066,9 @@ export default function Message() {
                   previous
                     ? {
                         ...previous,
-                        currentIndex: (previous.currentIndex + 1) % previous.attachments.length,
+                        currentIndex:
+                          (previous.currentIndex + 1) %
+                          previous.attachments.length,
                       }
                     : previous,
                 );

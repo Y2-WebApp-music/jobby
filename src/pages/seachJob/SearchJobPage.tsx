@@ -1,75 +1,61 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-const now = Date.now();
+import PageLayout from "@/components/layout/PageLayout";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import {
   Combobox,
-  ComboboxChip,
-  ComboboxChips,
-  ComboboxChipsInput,
   ComboboxContent,
   ComboboxEmpty,
+  ComboboxInput,
   ComboboxItem,
   ComboboxList,
-  ComboboxTrigger,
-  useComboboxAnchor,
 } from "@/components/ui/combobox";
+import SkillinfoDialog from "@/features/profile/dialog/SkillinfoDialog";
+import { ApplyDialog } from "@/features/searchJob/dialogs/ApplyDialog";
+import type { Job } from "../../types/job";
 import {
   categoryOptions,
   pageSize,
+  placeOptions,
+  searchTypeOptions,
   skillOptions,
   useSearchJobState,
   workOptionOptions,
   workTypeOptions,
-} from "@/types/job";
-import type { Job, SearchType } from "@/types/job";
-import { ANY_PLACE, placeOfJobOptions } from "@/types/placeofjob";
-import PageLayout from "@/components/layout/PageLayout";
-import { cn } from "@/lib/utils";
-import SkillinfoDialog from "@/features/profile/dialog/SkillinfoDialog";
+} from "../../types/job";
+import {
+  MultiSelect,
+  type MultiSelectOption,
+} from "@/components/ui/multi-select";
+import type {
+  FilterOptionItem,
+  SortTypeCode,
+  SearchSuggestItem,
+  PlaceSearchItem,
+  SearchJobPayload,
+  SearchTypeCode,
+} from "@/types/search-job";
+import {
+  initialApplyDialogJob,
+  initialApplyPayload,
+  type ApplyPayload,
+} from "@/types/searchJob";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { CgClose } from "react-icons/cg";
-import { IoIosMore, IoIosArrowForward, IoIosArrowBack } from "react-icons/io";
 import { HiOutlineSelector } from "react-icons/hi";
+import { IoIosArrowBack, IoIosArrowForward, IoIosMore } from "react-icons/io";
 
-const normalizeTerm = (value: string) => value.trim().toLowerCase();
-const filterFieldClassName =
-  "flex h-10 w-full min-w-0 items-center rounded-full border border-[#e5e5e5] bg-white px-4 text-sm text-[#A1A1A1] shadow-[0_2px_10px_rgba(0,0,0,0.06)]";
-const filterChipClassName =
-  "inline-flex h-6 items-center rounded-full bg-[#efefef] px-2 text-xs text-slate-900";
-const gradientOutlineChipClassName =
-  "inline-flex items-center rounded-full border border-transparent px-3 text-xs text-primary-pink [background:linear-gradient(var(--color-background),var(--color-background))_padding-box,linear-gradient(90deg,var(--color-main),var(--color-second))_border-box]";
-
-type SearchSuggestion = {
-  term: string;
-  type: Exclude<SearchType, "any">;
-  normalizedTerm: string;
-  score: number;
+const sortTypeToMode = (sortType: SortTypeCode) => {
+  if (sortType === 1) return "date";
+  if (sortType === 2) return "unviewed";
+  return "relevance";
 };
 
-const levenshteinDistance = (a: string, b: string) => {
-  if (a.length === 0) return b.length;
-  if (b.length === 0) return a.length;
-
-  const dp = Array.from({ length: a.length + 1 }, () =>
-    Array<number>(b.length + 1).fill(0),
-  );
-
-  for (let i = 0; i <= a.length; i += 1) dp[i][0] = i;
-  for (let j = 0; j <= b.length; j += 1) dp[0][j] = j;
-
-  for (let i = 1; i <= a.length; i += 1) {
-    for (let j = 1; j <= b.length; j += 1) {
-      const cost = a[i - 1] === b[j - 1] ? 0 : 1;
-      dp[i][j] = Math.min(
-        dp[i - 1][j] + 1,
-        dp[i][j - 1] + 1,
-        dp[i - 1][j - 1] + cost,
-      );
-    }
-  }
-
-  return dp[a.length][b.length];
+const modeToSortType = (
+  mode: "relevance" | "date" | "unviewed",
+): SortTypeCode => {
+  if (mode === "date") return 1;
+  if (mode === "unviewed") return 2;
+  return 0;
 };
 
 export default function SearchJobPage() {
@@ -80,145 +66,121 @@ export default function SearchJobPage() {
     setSelectedJobId,
     viewed,
     setViewed,
-    selectedSkills,
-    setSelectedSkills,
-    searchType,
-    setSearchType,
+    searchPayload,
+    setSearchPayload,
     skillOpen,
     setSkillOpen,
-    searchQuery,
-    setSearchQuery,
-    selectedCategories,
-    setSelectedCategories,
-    placeFilter,
-    setPlaceFilter,
-    selectedWorkTypes,
-    setSelectedWorkTypes,
-    selectedWorkOptions,
-    setSelectedWorkOptions,
-    workTypeOpen,
-    setWorkTypeOpen,
-    workOptionOpen,
-    setWorkOptionOpen,
-    filterMode,
-    setFilterMode,
-    currentPage,
-    setCurrentPage,
+    applyOpen,
+    setApplyOpen,
+    applyDialogKey,
+    setApplyDialogKey,
+    setMessageCount,
   } = useSearchJobState();
 
-  const query = searchQuery.trim().toLowerCase();
   const skillInfoRef = useRef<HTMLDivElement | null>(null);
   const jobListScrollRef = useRef<HTMLDivElement | null>(null);
-  const categoryAnchorRef = useComboboxAnchor();
-  const categoryChipMeasureRefs = useRef<Record<string, HTMLSpanElement | null>>(
-    {},
-  );
-  const categoryOverflowMeasureRefs = useRef<
-    Record<number, HTMLSpanElement | null>
-  >({});
-  const [isSearchFocused, setIsSearchFocused] = useState(false);
-  const [activeSuggestionIndex, setActiveSuggestionIndex] = useState(0);
   const [skillInfoOpen, setSkillInfoOpen] = useState(false);
   const [selectedSkillName, setSelectedSkillName] = useState<string | null>(
     null,
   );
-  const [visibleCategoryCount, setVisibleCategoryCount] = useState(0);
+  const [applyData, setApplyData] = useState<ApplyPayload>(initialApplyPayload);
 
-  const getSearchSuggestionClassName = (
-    type: Exclude<SearchType, "any">,
-  ) =>
-    type === "skill"
-      ? "border-[var(--color-second)] text-[var(--color-second)]"
-      : "border-[var(--color-main)] text-[var(--color-main)]";
+  const query = searchPayload.search_text.trim().toLowerCase();
+  const currentPage = searchPayload.page + 1;
+  const filterMode = sortTypeToMode(searchPayload.sort_type);
 
-  const searchableTerms = useMemo(() => {
-    const terms = new Map<string, Omit<SearchSuggestion, "score">>();
+  const selectedSkillIds = useMemo(
+    () => new Set(searchPayload.skill),
+    [searchPayload.skill],
+  );
+  const selectedSkillNames = useMemo(
+    () =>
+      searchPayload.skill
+        .map(
+          (id: string) =>
+            skillOptions.find((item: SearchSuggestItem) => item.id === id)
+              ?.name,
+        )
+        .filter((name: string | undefined): name is string => Boolean(name)),
+    [searchPayload.skill],
+  );
+  const selectedCategorySet = useMemo(
+    () => new Set(searchPayload.category),
+    [searchPayload.category],
+  );
+  const selectedTypeSet = useMemo(
+    () => new Set(searchPayload.type),
+    [searchPayload.type],
+  );
+  const selectedOptionSet = useMemo(
+    () => new Set(searchPayload.option),
+    [searchPayload.option],
+  );
 
-    if (searchType !== "skill") {
-      jobs.forEach((job) => {
-        const normalizedTerm = normalizeTerm(job.title);
-        terms.set(`job:${normalizedTerm}`, {
-          term: job.title,
-          type: "job",
-          normalizedTerm,
-        });
-      });
-    }
+  const categoryNameToId = useMemo(
+    () =>
+      new Map(
+        categoryOptions.map((option: FilterOptionItem) => [
+          option.text_eng,
+          option.id,
+        ]),
+      ),
+    [],
+  );
+  const workTypeNameToId = useMemo(
+    () =>
+      new Map(
+        workTypeOptions.map((option: FilterOptionItem) => [
+          option.text_eng,
+          option.id,
+        ]),
+      ),
+    [],
+  );
+  const workOptionNameToId = useMemo(
+    () =>
+      new Map(
+        workOptionOptions.map((option: FilterOptionItem) => [
+          option.text_eng,
+          option.id,
+        ]),
+      ),
+    [],
+  );
 
-    if (searchType !== "job") {
-      jobs.forEach((job) => {
-        job.skills.forEach((skill) => {
-          const normalizedTerm = normalizeTerm(skill);
-          terms.set(`skill:${normalizedTerm}`, {
-            term: skill,
-            type: "skill",
-            normalizedTerm,
-          });
-        });
-      });
-      skillOptions.forEach((skill) => {
-        const normalizedTerm = normalizeTerm(skill);
-        terms.set(`skill:${normalizedTerm}`, {
-          term: skill,
-          type: "skill",
-          normalizedTerm,
-        });
-      });
-    }
-
-    return Array.from(terms.values());
-  }, [jobs, searchType]);
-
-  const searchSuggestions = useMemo(() => {
-    const normalizedQuery = normalizeTerm(searchQuery);
-    if (!normalizedQuery) return [];
-
-    const scored = searchableTerms
-      .map((item) => {
-        const normalizedTerm = item.normalizedTerm;
-        if (!normalizedTerm || normalizedTerm === normalizedQuery) return null;
-
-        let score = -1;
-
-        if (normalizedTerm.startsWith(normalizedQuery)) {
-          score = 100 - (normalizedTerm.length - normalizedQuery.length) * 0.2;
-        } else if (normalizedTerm.includes(normalizedQuery)) {
-          score = 80 - normalizedTerm.indexOf(normalizedQuery) * 0.5;
-        } else if (normalizedQuery.length >= 3) {
-          const distance = levenshteinDistance(normalizedQuery, normalizedTerm);
-          const maxLen = Math.max(
-            normalizedQuery.length,
-            normalizedTerm.length,
-          );
-          const similarity = 1 - distance / maxLen;
-
-          if (distance <= 2 || similarity >= 0.65) {
-            score = 60 + similarity * 10 - distance;
-          }
-        }
-
-        if (score < 0) return null;
-        return { ...item, score };
-      })
-      .filter((item): item is SearchSuggestion => item !== null)
-      .sort((a, b) => b.score - a.score);
-
-    return scored.slice(0, 6);
-  }, [searchQuery, searchableTerms]);
-
-  const showSearchSuggestions = isSearchFocused && searchSuggestions.length > 0;
+  const selectedPlaceLabel = useMemo(() => {
+    const { province_id, district_id } = searchPayload.place;
+    if (!province_id || !district_id) return "Any Place";
+    const selected = placeOptions.find(
+      (option: PlaceSearchItem) =>
+        option.province_code === province_id &&
+        option.district_code === district_id,
+    );
+    if (!selected) return "Any Place";
+    return `${selected.province_name}, ${selected.district_name}`;
+  }, [searchPayload.place]);
 
   const filteredJobs = jobs
-    .filter((job) => {
+    .filter((job: Job) => {
+      const categoryId = categoryNameToId.get(job.category) ?? -1;
+      const workTypeId = workTypeNameToId.get(job.workType) ?? -1;
+      const workOptionId = workOptionNameToId.get(job.workOption) ?? -1;
+
       const matchesCategory =
-        selectedCategories.size === 0 || selectedCategories.has(job.category);
+        searchPayload.category.length === 0 ||
+        selectedCategorySet.has(categoryId);
       const matchesPlace =
-        placeFilter === ANY_PLACE || job.place === placeFilter;
+        searchPayload.place.province_id === 0 ||
+        job.place.toUpperCase() ===
+          (placeOptions.find(
+            (option: PlaceSearchItem) =>
+              option.province_code === searchPayload.place.province_id,
+          )?.province_name ?? "");
       const matchesWorkType =
-        selectedWorkTypes.size === 0 || selectedWorkTypes.has(job.workType);
+        searchPayload.type.length === 0 || selectedTypeSet.has(workTypeId);
       const matchesWorkOption =
-        selectedWorkOptions.size === 0 ||
-        selectedWorkOptions.has(job.workOption);
+        searchPayload.option.length === 0 ||
+        selectedOptionSet.has(workOptionId);
 
       if (!query) {
         return (
@@ -229,15 +191,18 @@ export default function SearchJobPage() {
         );
       }
 
-      const queryInJob = job.title.toLowerCase().includes(query);
-      const queryInSkill = job.skills.some((skill) =>
+      const queryInJob = [job.title, job.company, job.location]
+        .join(" ")
+        .toLowerCase()
+        .includes(query);
+      const queryInSkill = job.skills.some((skill: string) =>
         skill.toLowerCase().includes(query),
       );
 
       const matchesQuery =
-        searchType === "skill"
+        searchPayload.search_type === 1
           ? queryInSkill
-          : searchType === "job"
+          : searchPayload.search_type === 2
             ? queryInJob
             : queryInJob || queryInSkill;
 
@@ -249,10 +214,11 @@ export default function SearchJobPage() {
         matchesQuery
       );
     })
-    .sort((a, b) => {
+    .sort((a: Job, b: Job) => {
       if (filterMode === "date") {
         return new Date(b.postedAt).getTime() - new Date(a.postedAt).getTime();
       }
+
       if (filterMode === "unviewed") {
         const aViewed = viewed.has(a.id) ? 1 : 0;
         const bViewed = viewed.has(b.id) ? 1 : 0;
@@ -261,22 +227,25 @@ export default function SearchJobPage() {
 
       const score = (job: Job) => {
         let points = 0;
-        const queryInJob = job.title.toLowerCase().includes(query);
-        const queryInSkill = job.skills.some((skill) =>
+        const queryInJob = [job.title, job.company, job.location]
+          .join(" ")
+          .toLowerCase()
+          .includes(query);
+        const queryInSkill = job.skills.some((skill: string) =>
           skill.toLowerCase().includes(query),
         );
 
         if (query) {
-          if (searchType === "skill" && queryInSkill) points += 2;
-          if (searchType === "job" && queryInJob) points += 2;
-          if (searchType === "any") {
+          if (searchPayload.search_type === 1 && queryInSkill) points += 2;
+          if (searchPayload.search_type === 2 && queryInJob) points += 2;
+          if (searchPayload.search_type === 0) {
             if (queryInJob) points += 2;
             if (queryInSkill) points += 1;
           }
         }
 
-        const skillMatchCount = job.skills.filter((skill) =>
-          selectedSkills.has(skill),
+        const skillMatchCount = job.skills.filter((skill: string) =>
+          selectedSkillNames.includes(skill),
         ).length;
         points += skillMatchCount;
         return points;
@@ -284,95 +253,86 @@ export default function SearchJobPage() {
 
       return score(b) - score(a);
     })
-    .filter((job) => (filterMode === "unviewed" ? !viewed.has(job.id) : true));
+    .filter((job: Job) =>
+      filterMode === "unviewed" ? !viewed.has(job.id) : true,
+    );
 
   const totalPages = Math.max(1, Math.ceil(filteredJobs.length / pageSize));
   const safePage = Math.min(currentPage, totalPages);
   const startIndex = (safePage - 1) * pageSize;
   const pagedJobs = filteredJobs.slice(startIndex, startIndex + pageSize);
   const selectedJob =
-    filteredJobs.find((job) => job.id === selectedJobId) ??
+    filteredJobs.find((job: Job) => job.id === selectedJobId) ??
     filteredJobs[0] ??
     null;
-
-  const selectedSkillsList = Array.from(selectedSkills);
-  const selectedCategoriesList = Array.from(selectedCategories);
-  const selectedWorkTypesList = Array.from(selectedWorkTypes);
-  const selectedWorkOptionsList = Array.from(selectedWorkOptions);
-  const visibleCategories = selectedCategoriesList.slice(0, visibleCategoryCount);
-  const hiddenCategoryCount = Math.max(
-    0,
-    selectedCategoriesList.length - visibleCategoryCount,
+  const applyDetail = useMemo(
+    () => ({
+      ...initialApplyDialogJob,
+      id: selectedJob ? String(selectedJob.id) : "",
+      company_name: selectedJob?.company ?? "",
+      job_title: selectedJob?.title ?? "",
+    }),
+    [selectedJob],
   );
 
-  useLayoutEffect(() => {
-    const container = categoryAnchorRef.current;
-
-    if (!container) return;
-
-    const calculateVisibleCategories = () => {
-      if (selectedCategoriesList.length === 0) {
-        setVisibleCategoryCount(0);
-        return;
-      }
-
-      const availableWidth = container.clientWidth - 72 - 32;
-
-      if (availableWidth <= 0) {
-        setVisibleCategoryCount(0);
-        return;
-      }
-
-      const chipGap = 6;
-      let nextVisibleCount = 0;
-
-      for (let count = selectedCategoriesList.length; count >= 0; count -= 1) {
-        const hiddenCount = selectedCategoriesList.length - count;
-        let usedWidth = 0;
-
-        for (let index = 0; index < count; index += 1) {
-          const item = selectedCategoriesList[index];
-          const chipWidth =
-            categoryChipMeasureRefs.current[item]?.offsetWidth ?? 0;
-          usedWidth += chipWidth;
-          if (index < count - 1) usedWidth += chipGap;
-        }
-
-        if (hiddenCount > 0) {
-          if (count > 0) usedWidth += chipGap;
-          usedWidth +=
-            categoryOverflowMeasureRefs.current[hiddenCount]?.offsetWidth ?? 0;
-        }
-
-        if (usedWidth <= availableWidth) {
-          nextVisibleCount = count;
-          break;
-        }
-      }
-
-      setVisibleCategoryCount((prev) =>
-        prev === nextVisibleCount ? prev : nextVisibleCount,
-      );
-    };
-
-    calculateVisibleCategories();
-
-    const observer = new ResizeObserver(calculateVisibleCategories);
-    observer.observe(container);
-
-    return () => observer.disconnect();
-  }, [categoryAnchorRef, selectedCategoriesList]);
+  const headerSkills = selectedSkillNames.slice(0, 4);
+  const headerSkillsOverflow = Math.max(0, selectedSkillNames.length - 4);
 
   useEffect(() => {
     jobListScrollRef.current?.scrollTo({ top: 0 });
-  }, [currentPage]);
+  }, [safePage]);
 
-  const headerSkills = selectedSkillsList.slice(0, 4);
-  const headerSkillsOverflow = Math.max(0, selectedSkillsList.length - 4);
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setSearchPayload((prev: SearchJobPayload) => ({
+        ...prev,
+        page: Math.max(0, totalPages - 1),
+      }));
+    }
+  }, [currentPage, setSearchPayload, totalPages]);
+
+  useEffect(() => {
+    if (filteredJobs.length === 0) {
+      setSelectedJobId(null);
+      return;
+    }
+
+    const exists = filteredJobs.some((job: Job) => job.id === selectedJobId);
+    if (!exists) {
+      setSelectedJobId(filteredJobs[0].id);
+    }
+  }, [filteredJobs, selectedJobId, setSelectedJobId]);
+
+  useEffect(() => {
+    setMessageCount(100);
+  }, [setMessageCount]);
+
+  const updatePayload = (partial: Partial<typeof searchPayload>) => {
+    setSearchPayload((prev: SearchJobPayload) => ({
+      ...prev,
+      ...partial,
+    }));
+  };
+
+  useEffect(() => {
+    const handler = () => updatePayload({ search_text: "", page: 0 });
+    window.addEventListener("combobox-clear", handler);
+    return () => window.removeEventListener("combobox-clear", handler);
+  }, [updatePayload]);
+
+  const toggleSkill = (skillId: string) => {
+    setSearchPayload((prev: SearchJobPayload) => {
+      const exists = prev.skill.includes(skillId);
+      const nextSkills = exists
+        ? prev.skill.filter((item) => item !== skillId)
+        : [...prev.skill, skillId];
+      return { ...prev, skill: nextSkills, page: 0 };
+    });
+  };
 
   const handleSelect = (id: number) => {
     setSelectedJobId(id);
-    setViewed((prev) => {
+    setViewed((prev: Set<number>) => {
       if (prev.has(id)) return prev;
       const next = new Set(prev);
       next.add(id);
@@ -381,46 +341,18 @@ export default function SearchJobPage() {
   };
 
   const handleDelete = (id: number) => {
-    setJobs((prev) => {
+    setJobs((prev: Job[]) => {
       const nextJobs = prev.filter((job) => job.id !== id);
       if (selectedJobId === id) {
         setSelectedJobId(nextJobs[0]?.id ?? null);
       }
-      const nextTotalPages = Math.max(1, Math.ceil(nextJobs.length / pageSize));
-      setCurrentPage((prevPage) => Math.min(prevPage, nextTotalPages));
       return nextJobs;
     });
-    setViewed((prev) => {
+
+    setViewed((prev: Set<number>) => {
       if (!prev.has(id)) return prev;
       const next = new Set(prev);
       next.delete(id);
-      return next;
-    });
-  };
-
-  const toggleWorkType = (value: string) => {
-    setSelectedWorkTypes((prev) => {
-      const next = new Set(prev);
-      if (next.has(value)) next.delete(value);
-      else next.add(value);
-      return next;
-    });
-  };
-
-  const toggleWorkOption = (value: string) => {
-    setSelectedWorkOptions((prev) => {
-      const next = new Set(prev);
-      if (next.has(value)) next.delete(value);
-      else next.add(value);
-      return next;
-    });
-  };
-
-  const toggleSkill = (skill: string) => {
-    setSelectedSkills((prev) => {
-      const next = new Set(prev);
-      if (next.has(skill)) next.delete(skill);
-      else next.add(skill);
       return next;
     });
   };
@@ -430,184 +362,135 @@ export default function SearchJobPage() {
     skillInfoRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
-  const handleOpenSkillInfo = (skill: string) => {
-    setSelectedSkillName(skill);
+  const handleOpenSkillInfo = (skillName: string) => {
+    setSelectedSkillName(skillName);
     setSkillInfoOpen(true);
   };
 
-  const applySuggestion = (suggestion: SearchSuggestion) => {
-    setSearchQuery(suggestion.term);
-    setIsSearchFocused(false);
-  };
+  const handlePlaceSelect = (label: string) => {
+    if (label === "Any Place") {
+      updatePayload({
+        place: { province_id: 0, district_id: 0 },
+        page: 0,
+      });
+      return;
+    }
 
-  const handleToggleSave = (jobId: number) => {
-    setJobs((prev) =>
-      prev.map((job) =>
-        job.id === jobId ? { ...job, saved: !job.saved } : job,
-      ),
+    const selected = placeOptions.find(
+      (option: PlaceSearchItem) =>
+        `${option.province_name}, ${option.district_name}` === label,
     );
-  };
+    if (!selected) return;
 
-  const handleApplyJob = (jobId: number) => {
-    setJobs((prev) =>
-      prev.map((job) => {
-        if (job.id !== jobId || job.applied) return job;
-
-        return {
-          ...job,
-          saved: false,
-          applied: true,
-          archived: false,
-          status: "inreview",
-          appliedDate: new Date().toLocaleString("en-GB", {
-            day: "2-digit",
-            month: "short",
-            year: "numeric",
-            hour: "2-digit",
-            minute: "2-digit",
-            hour12: false,
-          }).replace(",", ""),
-        };
-      }),
-    );
-  };
-
-  const formatPostedAt = (postedAt: string) => {
-    const postedTime = new Date(postedAt).getTime();
-    const diffDays = Math.max(
-      0,
-      Math.floor((now - postedTime) / (1000 * 60 * 60 * 24)),
-    );
-
-    if (diffDays === 0) return "Posted today";
-    if (diffDays === 1) return "Posted 1 day ago";
-    if (diffDays < 7) return `Posted ${diffDays} days ago`;
-    const weeks = Math.floor(diffDays / 7);
-    if (weeks === 1) return "Posted 1 week ago";
-    if (weeks < 5) return `Posted ${weeks} weeks ago`;
-    const months = Math.floor(diffDays / 30);
-    if (months === 1) return "Posted 1 month ago";
-    return `Posted ${months} months ago`;
+    updatePayload({
+      place: {
+        province_id: selected.province_code,
+        district_id: selected.district_code,
+      },
+      page: 0,
+    });
   };
 
   return (
     <PageLayout>
       <div className="h-[calc(100vh-56px)] min-h-0 overflow-hidden bg-white">
-        <div className="flex h-full w-full flex-col px-6 pt-4 pb-3">
+        <div className="flex h-full w-full flex-col px-6 pb-3 pt-4">
           <div className="mb-3 flex items-center gap-4">
-            <h1 className="shrink-0 text-[32px] font-semibold tracking-tight text-slate-950">
+            <h1 className="shrink-0 text-[32px] font-medium tracking-tight text-slate-950">
               Search Job
             </h1>
 
             <div className="flex min-w-0 flex-1 flex-wrap items-center gap-3">
-              <div className="relative flex min-w-[420px] flex-1 items-center gap-3 rounded-[18px] border border-[#d9d9d9] px-4 py-2">
-                <Input
-                  placeholder="Software Engineer"
-                  value={searchQuery}
-                  onChange={(e) => {
-                    setSearchQuery(e.target.value);
-                    setActiveSuggestionIndex(0);
-                  }}
-                  onFocus={() => {
-                    setIsSearchFocused(true);
-                    setActiveSuggestionIndex(0);
-                  }}
-                  onBlur={() => setIsSearchFocused(false)}
-                  onKeyDown={(e) => {
-                    if (!showSearchSuggestions) return;
-
-                    if (e.key === "ArrowDown") {
-                      e.preventDefault();
-                      setActiveSuggestionIndex((prev) =>
-                        prev >= searchSuggestions.length - 1 ? 0 : prev + 1,
-                      );
+              <div className="flex min-w-[420px] flex-1 items-center gap-1 rounded-xl border border-[#d9d9d9] bg-white px-2 py-2 shadow-[0_2px_14px_rgba(0,0,0,0.09)]">
+                <Combobox
+                  items={skillOptions.map((o: SearchSuggestItem) => o.name)}
+                >
+                  <ComboboxInput
+                    placeholder="Software Engineer"
+                    value={searchPayload.search_text}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                      updatePayload({ search_text: e.target.value, page: 0 })
                     }
-
-                    if (e.key === "ArrowUp") {
-                      e.preventDefault();
-                      setActiveSuggestionIndex((prev) =>
-                        prev <= 0 ? searchSuggestions.length - 1 : prev - 1,
-                      );
-                    }
-
-                    if (e.key === "Enter") {
-                      e.preventDefault();
-                      const selectedSuggestion =
-                        searchSuggestions[activeSuggestionIndex];
-                      if (selectedSuggestion) {
-                        applySuggestion(selectedSuggestion);
-                      }
-                    }
-
-                    if (e.key === "Escape") {
-                      setIsSearchFocused(false);
-                    }
-                  }}
-                  className="h-5 min-w-0 flex-1 rounded-full border-0 bg-white px-0 text-sm shadow-none focus-visible:ring-0"
-                />
+                    className="h-10 min-w-0 flex-1 bg-transparent px-1 border-0 text-xl focus-visible:ring-0 outline-none **:data-[slot=input-group-control]:border-0 **:data-[slot=input-group-control]:bg-transparent **:data-[slot=input-group-control]:shadow-none **:data-[slot=input-group-button]:bg-none! **:data-[slot=input-group-button]:bg-transparent! **:data-[slot=input-group-button]:hover:bg-transparent!"
+                    showTrigger={false}
+                    showClear
+                  />
+                  <ComboboxContent className="mt-2 p-1 rounded-xl">
+                    <ComboboxEmpty>No suggestions.</ComboboxEmpty>
+                    <ComboboxList>
+                      {(item: string) => {
+                        const opt = skillOptions.find(
+                          (s: SearchSuggestItem) => s.name === item,
+                        );
+                        const label =
+                          opt?.type === "job"
+                            ? "Job"
+                            : opt?.type === "skill"
+                              ? "Skill"
+                              : "";
+                        return (
+                          <ComboboxItem
+                            key={item}
+                            value={item}
+                            onClick={() =>
+                              updatePayload({ search_text: item, page: 0 })
+                            }
+                          >
+                            <span>{item}</span>
+                            <span
+                              className={`ml-auto mr-0 inline-flex border items-center font-medium rounded-full px-2 py-0.5 text-xs bg-transparent data-highlighted:bg-transparent ${
+                                opt?.type === "job"
+                                  ? "border-main text-main hover:text-main"
+                                  : "border-second text-second hover:text-second"
+                              }`}
+                              role="status"
+                            >
+                              {label}
+                            </span>
+                          </ComboboxItem>
+                        );
+                      }}
+                    </ComboboxList>
+                  </ComboboxContent>
+                </Combobox>
                 <div className="relative shrink-0">
                   <select
-                    value={searchType}
+                    value={searchPayload.search_type}
                     onChange={(e) =>
-                      setSearchType(e.target.value as "any" | "skill" | "job")
+                      updatePayload({
+                        search_type: Number(e.target.value) as 0 | 1 | 2,
+                        page: 0,
+                      })
                     }
-                    className={`h-8 appearance-none rounded-full border px-3 pr-7 text-xs shadow-sm outline-none ${
-                      searchType === "skill"
-                        ? "border-[var(--color-second)] text-[var(--color-second)]"
-                        : searchType === "job"
-                          ? "border-[var(--color-main)] text-[var(--color-main)]"
+                    className={`h-8 appearance-none rounded-xl border bg-white px-3 pr-7 text-xs outline-none ${
+                      searchPayload.search_type === 1
+                        ? "border-second text-second"
+                        : searchPayload.search_type === 2
+                          ? "border-main text-main"
                           : "border-[#d7d7d7] text-[#A1A1A1]"
                     }`}
                   >
-                    <option value="any">Any</option>
-                    <option value="skill">Skill</option>
-                    <option value="job">Job</option>
+                    {searchTypeOptions.map(
+                      (option: { label: string; value: SearchTypeCode }) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ),
+                    )}
                   </select>
                   <HiOutlineSelector
                     className={`pointer-events-none absolute right-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 ${
-                      searchType === "skill"
-                        ? "text-[var(--color-second)]"
-                        : searchType === "job"
-                          ? "text-[var(--color-main)]"
+                      searchPayload.search_type === 1
+                        ? "text-second"
+                        : searchPayload.search_type === 2
+                          ? "text-main"
                           : "text-[#A1A1A1]"
                     }`}
                   />
                 </div>
-
-                {showSearchSuggestions ? (
-                  <div className="absolute left-0 right-0 top-full z-30 mt-2 overflow-hidden rounded-2xl border border-[#e2e2e2] bg-white py-1 shadow-lg">
-                    {searchSuggestions.map((suggestion, index) => {
-                      const isActive = index === activeSuggestionIndex;
-                      return (
-                        <button
-                          key={`${suggestion.type}-${suggestion.term}-${index}`}
-                          type="button"
-                          onMouseDown={(e) => e.preventDefault()}
-                          onClick={() => applySuggestion(suggestion)}
-                          className={`flex w-full items-center justify-between gap-3 px-4 py-3 text-left ${
-                            isActive
-                              ? "bg-[#f6f6f6] text-slate-950"
-                              : "text-[#666666] hover:bg-[#f6f6f6]"
-                          }`}
-                        >
-                          <span className="truncate text-[15px] font-medium text-[#2b2b2b]">
-                            {suggestion.term}
-                          </span>
-                          <span
-                            className={cn(
-                              "inline-flex h-7 shrink-0 items-center rounded-full border bg-white px-5 text-sm font-medium",
-                              getSearchSuggestionClassName(suggestion.type),
-                            )}
-                          >
-                            {suggestion.type === "skill" ? "Skill" : "Job"}
-                          </span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                ) : null}
               </div>
-              <div className="h-12.5 relative flex min-w-0 flex-1 items-center gap-3 rounded-[18px] border border-[#d9d9d9] bg-white px-4 py-2 shadow-[0_2px_14px_rgba(0,0,0,0.09)]">
+
+              <div className="relative flex min-w-0 flex-1 items-center gap-3 rounded-[18px] border border-[#d9d9d9] bg-white px-4 py-2 shadow-[0_2px_14px_rgba(0,0,0,0.09)]">
                 <button
                   type="button"
                   onClick={handleScrollToSkillInfo}
@@ -616,16 +499,24 @@ export default function SearchJobPage() {
                   Skill Use:
                 </button>
                 <div className="flex min-w-0 flex-1 items-center gap-2 overflow-hidden">
-                  {headerSkills.map((skill) => (
-                    <button
-                      key={skill}
-                      type="button"
-                      onClick={() => toggleSkill(skill)}
-                      className={`${gradientOutlineChipClassName} h-7 whitespace-nowrap`}
-                    >
-                      {skill}
-                    </button>
-                  ))}
+                  {headerSkills.map((skillName: string) => {
+                    const skillItem = skillOptions.find(
+                      (item: SearchSuggestItem) => item.name === skillName,
+                    );
+                    return (
+                      <button
+                        key={skillName}
+                        type="button"
+                        onClick={() => {
+                          if (!skillItem) return;
+                          toggleSkill(skillItem.id);
+                        }}
+                        className="inline-flex h-7 items-center whitespace-nowrap rounded-full border border-transparent bg-[linear-gradient(90deg,var(--color-main),var(--color-second))] px-3 text-xs text-white"
+                      >
+                        {skillName}
+                      </button>
+                    );
+                  })}
                   {headerSkillsOverflow > 0 ? (
                     <span className="inline-flex h-7 items-center rounded-full border border-[#e2e2e2] bg-[#f5f5f5] px-3 text-xs text-[#8a8a8a]">
                       +{headerSkillsOverflow}
@@ -634,7 +525,7 @@ export default function SearchJobPage() {
                 </div>
                 <button
                   type="button"
-                  onClick={() => setSkillOpen((v) => !v)}
+                  onClick={() => setSkillOpen((v: boolean) => !v)}
                   className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[#b3b3b3] hover:bg-slate-100"
                   aria-label="toggle skill list"
                 >
@@ -644,7 +535,7 @@ export default function SearchJobPage() {
                   type="button"
                   className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[#999999] hover:bg-slate-100"
                   aria-label="clear skill use"
-                  onClick={() => setSelectedSkills(new Set())}
+                  onClick={() => updatePayload({ skill: [], page: 0 })}
                 >
                   <CgClose />
                 </button>
@@ -652,20 +543,20 @@ export default function SearchJobPage() {
                 {skillOpen ? (
                   <div className="absolute left-0 top-full z-20 mt-2 w-full rounded-2xl border border-[#e2e2e2] bg-white p-3 shadow-lg">
                     <div className="flex flex-wrap gap-2">
-                      {skillOptions.map((skill) => {
-                        const active = selectedSkills.has(skill);
+                      {skillOptions.map((skill: SearchSuggestItem) => {
+                        const active = selectedSkillIds.has(skill.id);
                         return (
                           <button
-                            key={skill}
+                            key={skill.id}
                             type="button"
-                            onClick={() => toggleSkill(skill)}
+                            onClick={() => toggleSkill(skill.id)}
                             className={`h-8 rounded-full border px-3 text-xs ${
                               active
-                                ? "border-transparent text-primary-pink [background:linear-gradient(var(--color-background),var(--color-background))_padding-box,linear-gradient(90deg,var(--color-main),var(--color-second))_border-box]"
+                                ? "border-transparent bg-[linear-gradient(90deg,var(--color-main),var(--color-second))] text-white"
                                 : "border-[#e2e2e2] bg-white text-[#666666]"
                             }`}
                           >
-                            {skill}
+                            {skill.name}
                           </button>
                         );
                       })}
@@ -677,283 +568,142 @@ export default function SearchJobPage() {
           </div>
 
           <div className="grid grid-cols-4 gap-3">
-            <div className="relative min-w-0">
-              <Combobox
-                multiple
-                items={categoryOptions}
-                value={selectedCategoriesList}
-                onValueChange={(value) =>
-                  setSelectedCategories(new Set((value ?? []) as string[]))
+            <div className="relative">
+              <MultiSelect
+                options={categoryOptions.map(
+                  (o: FilterOptionItem): MultiSelectOption => ({
+                    label: o.text_eng,
+                    value: String(o.id),
+                  }),
+                )}
+                value={searchPayload.category.map((id: number) => String(id))}
+                onValueChange={(vals: string[]) =>
+                  updatePayload({ category: vals.map((v) => Number(v)) })
                 }
+                placeholder="Any Category"
+                className="h-10 w-full border border-[#e5e5e5] bg-white px-4 pr-4 text-sm text-[#A1A1A1] shadow-[0_2px_10px_rgba(0,0,0,0.06)] outline-none **:data-[slot=input-group-control]:border-0 **:data-[slot=input-group-control]:bg-transparent **:data-[slot=input-group-control]:shadow-none **:data-[slot=input-group-button]:bg-none! **:data-[slot=input-group-button]:bg-transparent! **:data-[slot=input-group-button]:hover:bg-transparent!"
+                badgeClassName="bg-[#C1C1C1]/20 text-neutral-800"
+                maxWidth="max-w-full"
+                maxDisplay={2}
+              />
+            </div>
+
+            <div className="relative">
+              <Combobox
+                items={[
+                  "Any Place",
+                  ...placeOptions.map(
+                    (option: PlaceSearchItem) =>
+                      `${option.province_name}, ${option.district_name}`,
+                  ),
+                ]}
               >
-                <ComboboxChips
-                  ref={categoryAnchorRef}
-                  className="min-h-10 w-full flex-nowrap overflow-hidden rounded-full border border-[#e5e5e5] bg-white px-4 py-1 text-sm shadow-[0_2px_10px_rgba(0,0,0,0.06)] focus-within:border-[#e5e5e5] focus-within:ring-0"
-                >
-                  {visibleCategories.map((item) => (
-                    <ComboboxChip
-                      key={item}
-                      showRemove={false}
-                      className="h-6 shrink-0 rounded-full bg-[#efefef] px-2 text-xs text-slate-900"
-                    >
-                      {item}
-                    </ComboboxChip>
-                  ))}
-                  {hiddenCategoryCount > 0 ? (
-                    <span className="inline-flex h-6 shrink-0 items-center rounded-full bg-[#efefef] px-2 text-xs text-slate-900">
-                      +{hiddenCategoryCount}
-                    </span>
-                  ) : null}
-                  <ComboboxChipsInput
-                    aria-label="Search categories"
-                    placeholder={
-                      selectedCategoriesList.length === 0 ? "Any Category" : ""
-                    }
-                    className="w-0 min-w-[72px] flex-1 bg-transparent text-sm text-slate-900 placeholder:text-[#A1A1A1]"
-                  />
-                </ComboboxChips>
-
-                <ComboboxTrigger className="absolute top-1/2 right-4 z-10 -translate-y-1/2 text-[#A1A1A1]" />
-
-                <ComboboxContent
-                  anchor={categoryAnchorRef}
-                  className="rounded-2xl border border-[#e2e2e2] bg-white p-1 shadow-lg"
-                >
-                  <ComboboxEmpty>No categories found.</ComboboxEmpty>
+                <ComboboxInput
+                  placeholder={selectedPlaceLabel}
+                  className="h-10 w-full rounded-xl border border-[#e5e5e5] bg-white px-4 pr-4 text-sm text-[#A1A1A1] shadow-[0_2px_10px_rgba(0,0,0,0.06)] outline-none **:data-[slot=input-group-control]:border-0 **:data-[slot=input-group-control]:bg-transparent **:data-[slot=input-group-control]:shadow-none **:data-[slot=input-group-button]:bg-none! **:data-[slot=input-group-button]:bg-transparent! **:data-[slot=input-group-button]:hover:bg-transparent!"
+                />
+                <ComboboxContent>
+                  <ComboboxEmpty>No place found.</ComboboxEmpty>
                   <ComboboxList>
-                    {(item) => (
-                      <ComboboxItem key={item} value={item}>
+                    {(item: string) => (
+                      <ComboboxItem
+                        key={item}
+                        value={item}
+                        onClick={() => handlePlaceSelect(item)}
+                      >
                         {item}
                       </ComboboxItem>
                     )}
                   </ComboboxList>
                 </ComboboxContent>
-
-                <div className="pointer-events-none absolute -z-10 overflow-hidden opacity-0">
-                  {selectedCategoriesList.map((item) => (
-                    <span
-                      key={`measure-${item}`}
-                      ref={(node) => {
-                        categoryChipMeasureRefs.current[item] = node;
-                      }}
-                      className="inline-flex h-6 shrink-0 items-center rounded-full bg-[#efefef] px-2 text-xs text-slate-900"
-                    >
-                      {item}
-                    </span>
-                  ))}
-                  {Array.from(
-                    { length: selectedCategoriesList.length },
-                    (_, index) => index + 1,
-                  ).map((count) => (
-                    <span
-                      key={`measure-overflow-${count}`}
-                      ref={(node) => {
-                        categoryOverflowMeasureRefs.current[count] = node;
-                      }}
-                      className="inline-flex h-6 shrink-0 items-center rounded-full bg-[#efefef] px-2 text-xs text-slate-900"
-                    >
-                      +{count}
-                    </span>
-                  ))}
-                </div>
               </Combobox>
             </div>
 
-            <div className="relative min-w-0">
-              <div className={`${filterFieldClassName} relative pr-18`}>
-                <select
-                  value={placeFilter}
-                  onChange={(e) => setPlaceFilter(e.target.value)}
-                  className="absolute inset-0 z-10 h-full w-full cursor-pointer appearance-none rounded-full opacity-0 outline-none"
-                >
-                  <option value={ANY_PLACE}>{ANY_PLACE}</option>
-                  {placeOfJobOptions.map((place) => (
-                    <option key={place} value={place}>
-                      {place}
-                    </option>
-                  ))}
-                </select>
-
-                <div className="flex min-w-0 flex-1 items-center gap-2 overflow-hidden">
-                  {placeFilter !== ANY_PLACE ? (
-                    <span className="inline-flex h-8 max-w-full items-center truncate rounded-full bg-[rgba(193,193,193,0.3)] px-3 text-[13px] text-[#000000]">
-                      {placeFilter}
-                    </span>
-                  ) : (
-                    <span className="truncate text-[#A1A1A1]">{ANY_PLACE}</span>
-                  )}
-                </div>
-
-                {placeFilter !== ANY_PLACE ? (
-                  <button
-                    type="button"
-                    onClick={() => setPlaceFilter(ANY_PLACE)}
-                    className="absolute right-4 top-1/2 z-20 inline-flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full text-[#A1A1A1] hover:bg-slate-100"
-                    aria-label="clear place filter"
-                  >
-                    <CgClose className="h-4 w-4" />
-                  </button>
-                ) : null}
-
-                <HiOutlineSelector className="pointer-events-none absolute right-10 top-1/2 z-20 h-4 w-4 -translate-y-1/2 text-[#A1A1A1]" />
-              </div>
+            <div className="relative">
+              <MultiSelect
+                options={workTypeOptions.map(
+                  (o: FilterOptionItem): MultiSelectOption => ({
+                    label: o.text_eng,
+                    value: String(o.id),
+                  }),
+                )}
+                value={searchPayload.type.map((id: number) => String(id))}
+                onValueChange={(vals: string[]) =>
+                  updatePayload({ type: vals.map((v) => Number(v)) })
+                }
+                placeholder="Any Work Type"
+                className="h-10 w-full border border-[#e5e5e5] bg-white px-4 pr-4 text-sm text-[#A1A1A1] shadow-[0_2px_10px_rgba(0,0,0,0.06)] outline-none **:data-[slot=input-group-control]:border-0 **:data-[slot=input-group-control]:bg-transparent **:data-[slot=input-group-control]:shadow-none **:data-[slot=input-group-button]:bg-none! **:data-[slot=input-group-button]:bg-transparent! **:data-[slot=input-group-button]:hover:bg-transparent!"
+                badgeClassName="bg-[#C1C1C1]/20 text-neutral-800"
+                maxWidth="max-w-full"
+                maxDisplay={2}
+              />
             </div>
 
-            <div className="relative min-w-0">
-              <button
-                type="button"
-                onClick={() => setWorkTypeOpen((prev) => !prev)}
-                className={filterFieldClassName}
-              >
-                <div className="flex min-w-0 flex-1 items-center gap-1.5 overflow-hidden">
-                  {selectedWorkTypesList.length === 0 ? (
-                    <span className="truncate text-[#A1A1A1]">Any Work Type</span>
-                  ) : (
-                    <>
-                      {selectedWorkTypesList.slice(0, 2).map((item) => (
-                        <span
-                          key={item}
-                          className={filterChipClassName}
-                        >
-                          {item}
-                        </span>
-                      ))}
-                      {selectedWorkTypesList.length > 2 ? (
-                        <span className={filterChipClassName}>
-                          +{selectedWorkTypesList.length - 2}
-                        </span>
-                      ) : null}
-                    </>
-                  )}
-                </div>
-                <HiOutlineSelector className="ml-auto h-4 w-4 shrink-0 text-[#A1A1A1]" />
-              </button>
-              {workTypeOpen ? (
-                <div className="absolute left-0 top-full z-30 mt-2 w-full rounded-2xl border border-[#e2e2e2] bg-white p-2 shadow-lg">
-                  <div className="flex flex-wrap gap-2">
-                    {workTypeOptions.map((option) => {
-                      const active = selectedWorkTypes.has(option);
-                      return (
-                        <button
-                          key={option}
-                          type="button"
-                          onClick={() => toggleWorkType(option)}
-                          className={`h-7 rounded-full border px-3 text-xs ${
-                            active
-                              ? "border-transparent bg-[linear-gradient(90deg,var(--color-main),var(--color-second))] text-white"
-                              : "border-[#e2e2e2] bg-white text-[#666666]"
-                          }`}
-                        >
-                          {option}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              ) : null}
-            </div>
-
-            <div className="relative min-w-0">
-              <button
-                type="button"
-                onClick={() => setWorkOptionOpen((prev) => !prev)}
-                className={filterFieldClassName}
-              >
-                <div className="flex min-w-0 flex-1 items-center gap-1.5 overflow-hidden">
-                  {selectedWorkOptionsList.length === 0 ? (
-                    <span className="truncate text-[#A1A1A1]">Any Work Option</span>
-                  ) : (
-                    <>
-                      {selectedWorkOptionsList.slice(0, 2).map((item) => (
-                        <span
-                          key={item}
-                          className={filterChipClassName}
-                        >
-                          {item}
-                        </span>
-                      ))}
-                      {selectedWorkOptionsList.length > 2 ? (
-                        <span className={filterChipClassName}>
-                          +{selectedWorkOptionsList.length - 2}
-                        </span>
-                      ) : null}
-                    </>
-                  )}
-                </div>
-                <HiOutlineSelector className="ml-auto h-4 w-4 shrink-0 text-[#A1A1A1]" />
-              </button>
-              {workOptionOpen ? (
-                <div className="absolute left-0 top-full z-30 mt-2 w-full rounded-2xl border border-[#e2e2e2] bg-white p-2 shadow-lg">
-                  <div className="flex flex-wrap gap-2">
-                    {workOptionOptions.map((option) => {
-                      const active = selectedWorkOptions.has(option);
-                      return (
-                        <button
-                          key={option}
-                          type="button"
-                          onClick={() => toggleWorkOption(option)}
-                          className={`h-7 rounded-full border px-3 text-xs ${
-                            active
-                              ? "border-transparent bg-[linear-gradient(90deg,var(--color-main),var(--color-second))] text-white"
-                              : "border-[#e2e2e2] bg-white text-[#666666]"
-                          }`}
-                        >
-                          {option}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              ) : null}
+            <div className="relative">
+              <MultiSelect
+                options={workOptionOptions.map(
+                  (o: FilterOptionItem): MultiSelectOption => ({
+                    label: o.text_eng,
+                    value: String(o.id),
+                  }),
+                )}
+                value={searchPayload.option.map((id: number) => String(id))}
+                onValueChange={(vals: string[]) =>
+                  updatePayload({ option: vals.map((v) => Number(v)) })
+                }
+                placeholder="Any Work Option"
+                className="h-10 w-full border border-[#e5e5e5] bg-white px-4 pr-4 text-sm text-[#A1A1A1] shadow-[0_2px_10px_rgba(0,0,0,0.06)] outline-none **:data-[slot=input-group-control]:border-0 **:data-[slot=input-group-control]:bg-transparent **:data-[slot=input-group-control]:shadow-none **:data-[slot=input-group-button]:bg-none! **:data-[slot=input-group-button]:bg-transparent! **:data-[slot=input-group-button]:hover:bg-transparent!"
+                badgeClassName="bg-[#C1C1C1]/20 text-neutral-800"
+                maxWidth="max-w-full"
+                maxDisplay={2}
+              />
             </div>
           </div>
 
           <div className="mt-3 grid min-h-0 flex-1 grid-cols-[minmax(0,420px)_minmax(0,1fr)] overflow-hidden border-t border-[#e5e5e5]">
-            <div className="flex h-full min-h-0 flex-col border-r border-[#e5e5e5] pr-0 pb-3">
+            <div className="flex h-full min-h-0 flex-col border-r border-[#e5e5e5] pb-3 pr-0">
               <div className="flex items-center gap-3 py-4">
                 <span className="text-sm font-medium text-slate-950">
                   {filteredJobs.length} Results
                 </span>
                 <div className="inline-flex overflow-hidden rounded-full border border-[#d7d7d7] bg-white text-sm">
-                  <button
-                    type="button"
-                    onClick={() => setFilterMode("relevance")}
-                    className={`border-r border-[#d7d7d7] px-4 py-2 ${
-                      filterMode === "relevance"
-                        ? "bg-[linear-gradient(90deg,var(--color-main),var(--color-second))] text-white"
-                        : "bg-white text-slate-600"
-                    }`}
-                  >
-                    Relevance
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setFilterMode("date")}
-                    className={`border-r border-[#d7d7d7] px-4 py-2 ${
-                      filterMode === "date"
-                        ? "bg-[linear-gradient(90deg,var(--color-main),var(--color-second))] text-white"
-                        : "bg-white text-slate-600"
-                    }`}
-                  >
-                    Date
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setFilterMode("unviewed")}
-                    className={`px-4 py-2 ${
-                      filterMode === "unviewed"
-                        ? "bg-[linear-gradient(90deg,var(--color-main),var(--color-second))] text-white"
-                        : "bg-white text-slate-600"
-                    }`}
-                  >
-                    No browsed yet
-                  </button>
+                  {(["relevance", "date", "unviewed"] as const).map(
+                    (
+                      mode: "relevance" | "date" | "unviewed",
+                      index: number,
+                    ) => (
+                      <button
+                        key={mode}
+                        type="button"
+                        onClick={() =>
+                          updatePayload({
+                            sort_type: modeToSortType(mode),
+                            page: 0,
+                          })
+                        }
+                        className={`${index < 2 ? "border-r border-[#d7d7d7]" : ""} px-4 py-2 ${
+                          filterMode === mode
+                            ? "bg-[linear-gradient(90deg,var(--color-main),var(--color-second))] text-white"
+                            : "bg-white text-slate-600"
+                        }`}
+                      >
+                        {mode === "relevance"
+                          ? "Relevance"
+                          : mode === "date"
+                            ? "Date"
+                            : "No browsed yet"}
+                      </button>
+                    ),
+                  )}
                 </div>
               </div>
 
-              <div ref={jobListScrollRef} className="min-h-0 flex-1 overflow-y-auto">
+              <div
+                ref={jobListScrollRef}
+                className="min-h-0 flex-1 overflow-y-auto"
+              >
                 <div className="space-y-0">
-                  {pagedJobs.map((job) => {
+                  {pagedJobs.map((job: Job) => {
                     const isSelected = selectedJob?.id === job.id;
                     return (
                       <Card
@@ -964,7 +714,7 @@ export default function SearchJobPage() {
                         }`}
                       >
                         {isSelected ? (
-                          <div className="absolute left-0 top-0 h-full w-1 bg-[var(--color-main)]" />
+                          <div className="absolute left-0 top-0 h-full w-1 bg-main" />
                         ) : null}
 
                         <button
@@ -972,7 +722,7 @@ export default function SearchJobPage() {
                             e.stopPropagation();
                             handleDelete(job.id);
                           }}
-                          className="absolute right-3 top-3 text-slate-500 transition hover:text-slate-950"
+                          className="absolute right-3 top-3 text-slate-500 hover:text-slate-950"
                           aria-label="delete"
                           type="button"
                         >
@@ -993,7 +743,8 @@ export default function SearchJobPage() {
                                 {job.location}
                               </div>
                               <div className="mt-2 text-xs text-slate-500">
-                                {viewed.has(job.id) ? "Viewed • " : ""}{job.meta}
+                                {viewed.has(job.id) ? "Viewed - " : ""}
+                                {job.meta}
                               </div>
                             </div>
                           </div>
@@ -1002,15 +753,15 @@ export default function SearchJobPage() {
                     );
                   })}
                 </div>
-
               </div>
 
-              <div className="relative -mt-[1px] flex min-h-[52px] items-center border-t border-[#e5e5e5] bg-white py-2 text-sm">
+              <div className="relative -mt-px flex min-h-[52px] items-center border-t border-[#e5e5e5] bg-white py-2 text-sm">
                 <button
                   className="inline-flex items-center gap-1 rounded-full px-2 py-1 text-slate-600 hover:bg-slate-100 disabled:opacity-40"
-                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                  
-                  disabled={currentPage === 1}
+                  onClick={() =>
+                    updatePayload({ page: Math.max(0, safePage - 2) })
+                  }
+                  disabled={safePage === 1}
                   type="button"
                 >
                   <IoIosArrowBack />
@@ -1018,15 +769,14 @@ export default function SearchJobPage() {
                 </button>
 
                 <div className="absolute left-1/2 top-1/2 flex -translate-x-1/2 -translate-y-1/2 items-center gap-2">
-                  {Array.from({ length: totalPages }).map((_, idx) => {
+                  {Array.from({ length: totalPages }).map((_, idx: number) => {
                     const page = idx + 1;
-                    const active = page === currentPage;
                     return (
                       <button
                         key={page}
-                        onClick={() => setCurrentPage(page)}
+                        onClick={() => updatePayload({ page: page - 1 })}
                         className={`h-8 w-8 rounded-lg text-sm ${
-                          active
+                          page === safePage
                             ? "bg-[linear-gradient(90deg,var(--color-main),var(--color-second))] text-white"
                             : "text-slate-600 hover:bg-slate-100"
                         }`}
@@ -1041,8 +791,12 @@ export default function SearchJobPage() {
                 <div className="ml-auto flex justify-end">
                   <button
                     className="inline-flex items-center gap-1 rounded-full px-2 py-1 text-slate-600 hover:bg-slate-100 disabled:opacity-40"
-                    onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                    disabled={currentPage === totalPages}
+                    onClick={() =>
+                      updatePayload({
+                        page: Math.min(totalPages - 1, safePage),
+                      })
+                    }
+                    disabled={safePage === totalPages}
                     type="button"
                   >
                     Next
@@ -1051,6 +805,7 @@ export default function SearchJobPage() {
                 </div>
               </div>
             </div>
+
             <div className="h-full overflow-y-auto border-l border-[#e5e5e5] pl-4">
               {filteredJobs.length === 0 || !selectedJob ? (
                 <div className="pt-6 text-sm text-slate-500">
@@ -1058,29 +813,28 @@ export default function SearchJobPage() {
                 </div>
               ) : (
                 <div className="pt-2">
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-start gap-3">
                     <div className="h-10 w-10 rounded-full bg-[#e0e0e0]" />
-                    <div className="min-w-0 flex-1">
-                      <div className="text-sm font-medium text-slate-500">
+                    <div className="min-w-0">
+                      <div className="text-sm text-slate-500">
                         {selectedJob.company}
                       </div>
+                      <h2 className="text-[22px] font-semibold leading-tight text-slate-950">
+                        {selectedJob.title}
+                      </h2>
+                      <p className="text-sm text-slate-500">
+                        {selectedJob.location} - posted 1 week ago
+                      </p>
                     </div>
-                    <button className="ml-auto text-slate-700 hover:text-slate-950" type="button">
+                    <button
+                      className="ml-auto text-slate-700 hover:text-slate-950"
+                      type="button"
+                    >
                       <IoIosMore size={20} />
                     </button>
                   </div>
 
-                  <div className="mt-3 text-[22px] font-semibold leading-tight text-slate-950">
-                    {selectedJob.title}
-                  </div>
-
-                  <div className="mt-2 flex flex-wrap items-center gap-2 text-sm text-slate-500">
-                    <span>{selectedJob.location}</span>
-                    <span>•</span>
-                    <span>{formatPostedAt(selectedJob.postedAt)}</span>
-                  </div>
-
-                  <div className="mt-3 flex flex-wrap gap-2">
+                  <div className="mt-3 flex gap-2">
                     <span className="inline-flex h-7 items-center rounded-full bg-[#f1f1f1] px-3 text-xs text-slate-700">
                       {selectedJob.workOption}
                     </span>
@@ -1092,19 +846,18 @@ export default function SearchJobPage() {
                   <div className="mt-4 flex items-center gap-3">
                     <Button
                       onClick={() => {
-                        handleApplyJob(selectedJob.id);
+                        setApplyDialogKey((prev: number) => prev + 1);
+                        setApplyOpen(true);
                       }}
-                      disabled={selectedJob.applied}
                       className="h-10 rounded-full bg-[linear-gradient(90deg,var(--color-main),var(--color-second))] px-5 text-sm font-medium text-white shadow-none hover:opacity-90"
                     >
-                      {selectedJob.applied ? "Applied" : "Apply This Job"}
+                      Apply This Job
                     </Button>
                     <Button
                       variant="outline"
-                      onClick={() => handleToggleSave(selectedJob.id)}
                       className="h-10 rounded-full border border-[#ff9ad3] px-5 text-sm text-[#ff5db1] hover:bg-[#fff4fa]"
                     >
-                      {selectedJob.saved ? "Saved" : "Save"}
+                      Save
                     </Button>
                   </div>
 
@@ -1113,15 +866,17 @@ export default function SearchJobPage() {
                       Skill Use
                     </h3>
                     <div className="flex flex-wrap gap-2">
-                      {selectedJob.skills?.map((skill) => (
-                        <button
+                      {selectedJob.skills.map((skill: string) => (
+                        <Button
                           key={skill}
                           type="button"
+                          variant="outline_gradient"
+                          size="sm"
                           onClick={() => handleOpenSkillInfo(skill)}
-                          className={`${gradientOutlineChipClassName} h-8 hover:bg-[#fff8fc]`}
+                          // className="inline-flex h-8 items-center rounded-full border border-[#ff9ad3] bg-white px-3 text-xs text-[#ff5db1]"
                         >
                           {skill}
-                        </button>
+                        </Button>
                       ))}
                     </div>
                   </div>
@@ -1148,11 +903,18 @@ export default function SearchJobPage() {
           </div>
         </div>
       </div>
-
       <SkillinfoDialog
         open={skillInfoOpen}
         onClose={() => setSkillInfoOpen(false)}
         skillName={selectedSkillName}
+      />
+      <ApplyDialog
+        key={applyDialogKey}
+        open={applyOpen}
+        onOpenChange={(open) => setApplyOpen(open)}
+        applyDetail={applyDetail}
+        applyData={applyData}
+        setApplyData={setApplyData}
       />
     </PageLayout>
   );

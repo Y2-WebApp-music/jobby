@@ -1,48 +1,7 @@
 import PageLayout from "@/components/layout/PageLayout";
 import { Button } from "@/components/ui/button";
-import { ApplyDialog } from "@/features/searchJob/dialogs/ApplyDialog";
-import { mockApplyDialogJob, mockResumeList } from "@/mock/searchJob";
-
-import {
-  initialApplyDialogJob,
-  initialApplyPayload,
-  type ApplyDialogJob,
-  type ApplyPayload,
-} from "@/types/searchJob";
-import { useEffect, useState } from "react";
 
 export default function LandingPage() {
-  const [applyOpen, setApplyOpen] = useState(false);
-  const [applyDetail, setApplyDetail] = useState<ApplyDialogJob>(
-    initialApplyDialogJob,
-  );
-  const [applyData, setApplyData] = useState<ApplyPayload>(initialApplyPayload);
-
-  const fetchApplyDetail = async () => {
-    try {
-      const res = mockApplyDialogJob;
-      setApplyDetail(res);
-      setApplyData((prev) => ({ ...prev, email: res.email, phone: res.phone }));
-    } catch (err) {}
-  };
-
-  const handleApply = () => {
-    try {
-      console.log(" Submit .... ");
-    } catch (err) {}
-  };
-
-  const handleOpenApplyDialog = () => {
-    setApplyOpen(true);
-    fetchApplyDetail();
-  };
-
-  useEffect(() => {
-    if (applyOpen === true) {
-      console.log("applyData ", applyData);
-    }
-  }, [applyOpen, applyData]);
-
   return (
     <PageLayout>
       <div className="bg-background h-full w-full py-2 flex flex-col justify-center items-center">
@@ -72,20 +31,6 @@ export default function LandingPage() {
           <Button variant="destructive"> Test button </Button>
           <Button variant="link"> Test button </Button>
           <Button variant="secondary"> Test button </Button>
-        </div>
-
-        <div className="mt-4">
-          <p>Appvly Dialog</p>
-          <Button onClick={handleOpenApplyDialog}>Open Dialog</Button>
-          <ApplyDialog
-            open={applyOpen}
-            onOpenChange={setApplyOpen}
-            applyDetail={applyDetail}
-            applyData={applyData}
-            setApplyData={setApplyData}
-            onApply={handleApply}
-            resumesInJobby={mockResumeList}
-          />
         </div>
       </div>
     </PageLayout>

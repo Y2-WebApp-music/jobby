@@ -67,7 +67,9 @@ export default function ExamResultDialog({
           <p className="text-[18px] text-[#1f1f1f]">
             Skill : {skillName || "Unknown"}
           </p>
-          <h2 className={`mt-1 text-[38px] font-medium ${copy.headingClassName}`}>
+          <h2
+            className={`mt-1 text-[38px] font-medium ${copy.headingClassName}`}
+          >
             {copy.heading}
           </h2>
           <p className="mt-4 text-[17px] text-[#767676]">{copy.description}</p>

@@ -1,9 +1,8 @@
 "use client";
 
-import * as React from "react";
 import { Combobox as ComboboxPrimitive } from "@base-ui/react";
+import * as React from "react";
 
-import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
   InputGroup,
@@ -11,7 +10,8 @@ import {
   InputGroupButton,
   InputGroupInput,
 } from "@/components/ui/input-group";
-import { ChevronDownIcon, XIcon, CheckIcon } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { CheckIcon, ChevronDownIcon, XIcon } from "lucide-react";
 
 const Combobox = ComboboxPrimitive.Root;
 
@@ -37,14 +37,31 @@ function ComboboxTrigger({
 }
 
 function ComboboxClear({ className, ...props }: ComboboxPrimitive.Clear.Props) {
+  const handleClick = (e: any) => {
+    try {
+      window.dispatchEvent(new CustomEvent("combobox-clear"));
+    } catch {
+      /* ignore */
+    }
+    if (props && typeof (props as any).onClick === "function") {
+      (props as any).onClick(e);
+    }
+  };
+
   return (
     <ComboboxPrimitive.Clear
       data-slot="combobox-clear"
-      render={<InputGroupButton variant="ghost" className="size-6 p-0" />}
-      className={cn(className)}
+      render={
+        <button className="size-6 p-0 bg-transparent hover:bg-transparent active:bg-transparent border-0 shadow-none" />
+      }
+      className={cn(
+        "bg-transparent hover:bg-transparent active:bg-transparent shadow-none",
+        className,
+      )}
+      onClick={handleClick}
       {...props}
     >
-      <XIcon className="pointer-events-none" />
+      <XIcon className="pointer-events-none text-muted-foreground" size={16} />
     </ComboboxPrimitive.Clear>
   );
 }
@@ -72,7 +89,7 @@ function ComboboxInput({
             variant="ghost"
             asChild
             data-slot="input-group-button"
-            className="size-6 p-0 group-has-data-[slot=combobox-clear]/input-group:hidden data-pressed:bg-transparent"
+            className="size-6 p-0 bg-transparent! text-muted-foreground! hover:bg-transparent! group-has-data-[slot=combobox-clear]/input-group:hidden data-pressed:bg-transparent!"
             disabled={disabled}
           >
             <ComboboxTrigger />
@@ -283,18 +300,18 @@ function useComboboxAnchor() {
 
 export {
   Combobox,
-  ComboboxInput,
-  ComboboxContent,
-  ComboboxList,
-  ComboboxItem,
-  ComboboxGroup,
-  ComboboxLabel,
-  ComboboxCollection,
-  ComboboxEmpty,
-  ComboboxSeparator,
-  ComboboxChips,
   ComboboxChip,
+  ComboboxChips,
   ComboboxChipsInput,
+  ComboboxCollection,
+  ComboboxContent,
+  ComboboxEmpty,
+  ComboboxGroup,
+  ComboboxInput,
+  ComboboxItem,
+  ComboboxLabel,
+  ComboboxList,
+  ComboboxSeparator,
   ComboboxTrigger,
   ComboboxValue,
   useComboboxAnchor,

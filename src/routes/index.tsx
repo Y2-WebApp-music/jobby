@@ -56,19 +56,13 @@ export const router = createBrowserRouter(
       path: "/forgot-password",
       element: <ForgotPasswordPage />,
     },
-    { 
-      path: "*", 
-      element: <div>Not Found ESUS</div> 
+    {
+      path: "*",
+      element: <div>Not Found ESUS</div>,
     },
-    { path: "/searchjob", 
-      element: <SearchJobPage /> 
-    },
-    { path: "/profile", 
-      element: <Profile /> 
-    },
-    { path: "/myjobs", 
-      element: <AppliedHis/>
-    },
+    { path: "/searchjob", element: <SearchJobPage /> },
+    { path: "/profile", element: <Profile /> },
+    { path: "/myjobs", element: <AppliedHis /> },
     {
       path: "/settings/account",
       element: <AccountSettingsPage />,

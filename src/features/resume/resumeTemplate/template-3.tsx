@@ -262,4 +262,3 @@ const Template3: React.FC<Props> = ({ resume }) => {
 };
 
 export default Template3;
-

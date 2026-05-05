@@ -60,7 +60,11 @@ export default function AccountSettingsPage() {
   const handlePasswordSubmit = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
-    if (!currentPassword.trim() || !newPassword.trim() || !confirmPassword.trim()) {
+    if (
+      !currentPassword.trim() ||
+      !newPassword.trim() ||
+      !confirmPassword.trim()
+    ) {
       setFieldError("Please fill in all password fields.");
       setSuccessMessage("");
       return;
@@ -94,7 +98,9 @@ export default function AccountSettingsPage() {
               <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#d9d9d9] text-sm font-semibold text-[#555555]">
                 {initials}
               </div>
-              <h1 className="text-[22px] font-semibold text-[#151515]">Setting</h1>
+              <h1 className="text-[22px] font-semibold text-[#151515]">
+                Setting
+              </h1>
             </div>
 
             <div className="space-y-3">
@@ -108,15 +114,19 @@ export default function AccountSettingsPage() {
                     type="button"
                     onClick={() => setActiveSection(item.id)}
                     className={`relative flex w-full items-center gap-3 px-1 py-2 text-left text-[15px] font-medium transition ${
-                      active
-                        ? "text-[var(--color-main)]"
-                        : "text-[#151515]"
+                      active ? "text-[var(--color-main)]" : "text-[#151515]"
                     }`}
                   >
                     {active ? (
                       <span className="absolute -left-5 top-1/2 h-7 w-[3px] -translate-y-1/2 rounded-r-full bg-[var(--color-main)]" />
                     ) : null}
-                    <Icon className={active ? "text-[20px] text-[var(--color-main)]" : "text-[20px] text-[#151515]"} />
+                    <Icon
+                      className={
+                        active
+                          ? "text-[20px] text-[var(--color-main)]"
+                          : "text-[20px] text-[#151515]"
+                      }
+                    />
                     <span>{item.label}</span>
                   </button>
                 );
@@ -170,10 +180,15 @@ export default function AccountSettingsPage() {
                     <div className="text-[16px] font-semibold text-[#151515]">
                       Sign in & Security
                     </div>
-                    <p className="mt-1 text-sm text-[#7a7a7a]">{securitySummary}</p>
+                    <p className="mt-1 text-sm text-[#7a7a7a]">
+                      {securitySummary}
+                    </p>
                   </div>
 
-                  <form onSubmit={handlePasswordSubmit} className="space-y-4 px-5 py-5">
+                  <form
+                    onSubmit={handlePasswordSubmit}
+                    className="space-y-4 px-5 py-5"
+                  >
                     <div>
                       <label
                         htmlFor="current-password"

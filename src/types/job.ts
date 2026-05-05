@@ -1,9 +1,11 @@
-import { useEffect, useState } from "react";
-import { myJobAppliedSeed } from "@/types/myjobapplied";
-import { myJobArchivedSeed } from "@/types/myjobarchived";
-import { myJobSavedSeed } from "@/types/myjobsave";
-
-export type JobStatus = "inreview" | "interview" | "reject" | "accept";
+import { useState } from "react";
+import type {
+  FilterOptionItem,
+  PlaceSearchItem,
+  SearchJobPayload,
+  SearchSuggestItem,
+  SearchTypeCode,
+} from "@/types/search-job";
 
 export type Job = {
   id: number;
@@ -20,26 +22,19 @@ export type Job = {
   aboutTitle: string;
   companyDescription: string;
   extraDescription: string;
-  saved?: boolean;
-  applied?: boolean;
-  archived?: boolean;
-  status?: JobStatus;
-  appliedDate?: string;
 };
 
-const JOBS_STORAGE_KEY = "jobby.jobs.v3";
-
-const searchJobSeed: Job[] = [
+export const initialJobs: Job[] = [
   {
     id: 0,
     title: "Frontend Engineer (React)",
     company: "Select Service Partner Ltd.",
     location: "Lat Krabang, Bangkok",
-    meta: "4 Skills Match • 3 weeks ago",
+    meta: "4 Skills Match - 3 weeks ago",
     skills: ["React", "TypeScript", "Tailwind", "Figma"],
     category: "Technology",
     place: "Bangkok",
-    workType: "Full-time",
+    workType: "Full time",
     workOption: "On-site",
     postedAt: "2026-02-03",
     aboutTitle: "About this job",
@@ -53,11 +48,11 @@ const searchJobSeed: Job[] = [
     title: "Backend Engineer (Node.js)",
     company: "Blue Orbit Tech",
     location: "Bang Na, Bangkok",
-    meta: "3 Skills Match • 2 weeks ago",
+    meta: "3 Skills Match - 2 weeks ago",
     skills: ["Node.js", "PostgreSQL", "Redis", "Docker"],
     category: "Technology",
     place: "Bangkok",
-    workType: "Full-time",
+    workType: "Full time",
     workOption: "Hybrid",
     postedAt: "2026-01-28",
     aboutTitle: "About this job",
@@ -71,11 +66,11 @@ const searchJobSeed: Job[] = [
     title: "Product Designer",
     company: "Aurora Studio",
     location: "Phaya Thai, Bangkok",
-    meta: "2 Skills Match • 4 weeks ago",
+    meta: "2 Skills Match - 4 weeks ago",
     skills: ["Figma", "User Research", "Prototyping"],
-    category: "Design",
+    category: "Technology",
     place: "Bangkok",
-    workType: "Full-time",
+    workType: "Full time",
     workOption: "On-site",
     postedAt: "2026-01-15",
     aboutTitle: "About this job",
@@ -89,11 +84,11 @@ const searchJobSeed: Job[] = [
     title: "Data Analyst",
     company: "Nimbus Analytics",
     location: "Huai Khwang, Bangkok",
-    meta: "5 Skills Match • 1 week ago",
+    meta: "5 Skills Match - 1 week ago",
     skills: ["SQL", "Python", "Tableau", "Excel", "Statistics"],
-    category: "Data",
+    category: "Finance",
     place: "Bangkok",
-    workType: "Full-time",
+    workType: "Full time",
     workOption: "Hybrid",
     postedAt: "2026-02-06",
     aboutTitle: "About this job",
@@ -107,11 +102,11 @@ const searchJobSeed: Job[] = [
     title: "QA Engineer (Automation)",
     company: "Siam Mobile Labs",
     location: "Chatuchak, Bangkok",
-    meta: "3 Skills Match • 5 days ago",
+    meta: "3 Skills Match - 5 days ago",
     skills: ["Playwright", "Jest", "CI/CD"],
     category: "Technology",
     place: "Bangkok",
-    workType: "Full-time",
+    workType: "Contract",
     workOption: "On-site",
     postedAt: "2026-02-05",
     aboutTitle: "About this job",
@@ -125,11 +120,11 @@ const searchJobSeed: Job[] = [
     title: "DevOps Engineer",
     company: "Cloud Harbor Co., Ltd.",
     location: "Sathorn, Bangkok",
-    meta: "4 Skills Match • 6 days ago",
+    meta: "4 Skills Match - 6 days ago",
     skills: ["AWS", "Kubernetes", "Terraform", "GitHub Actions"],
     category: "Technology",
     place: "Bangkok",
-    workType: "Full-time",
+    workType: "Full time",
     workOption: "Remote",
     postedAt: "2026-02-04",
     aboutTitle: "About this job",
@@ -138,192 +133,127 @@ const searchJobSeed: Job[] = [
     extraDescription:
       "You will optimize costs, harden security, and automate infrastructure with infrastructure-as-code.",
   },
+];
+
+export const searchTypeOptions = [
+  { label: "Any", value: 0 as SearchTypeCode },
+  { label: "Skill", value: 1 as SearchTypeCode },
+  { label: "Job", value: 2 as SearchTypeCode },
+];
+
+export const skillOptions: SearchSuggestItem[] = [
   {
-    id: 6,
-    title: "Mobile Developer (iOS)",
-    company: "Riverline Digital",
-    location: "Rama 9, Bangkok",
-    meta: "3 Skills Match • 2 days ago",
-    skills: ["Swift", "UIKit", "REST APIs"],
-    category: "Technology",
-    place: "Bangkok",
-    workType: "Full-time",
-    workOption: "On-site",
-    postedAt: "2026-02-08",
-    aboutTitle: "About this job",
-    companyDescription:
-      "Build iOS features with a focus on performance, accessibility, and polished user experience.",
-    extraDescription:
-      "You will collaborate with product, design, and QA to deliver reliable mobile releases.",
+    type: "job",
+    id: "4:5d2e0108-be5f-4abc-8128-9f1bd6a6f70a:10879",
+    name: "3D Graphics And Display Software Engineering Intern",
   },
   {
-    id: 7,
-    title: "Mobile Developer (Android)",
-    company: "Skyline Works",
-    location: "Ratchada, Bangkok",
-    meta: "2 Skills Match • 1 week ago",
-    skills: ["Kotlin", "Jetpack", "MVVM"],
-    category: "Technology",
-    place: "Bangkok",
-    workType: "Full-time",
-    workOption: "Hybrid",
-    postedAt: "2026-02-01",
-    aboutTitle: "About this job",
-    companyDescription:
-      "Develop Android applications, optimize performance, and maintain a clean architecture.",
-    extraDescription:
-      "You will write reusable components and work closely with backend and QA teams.",
+    type: "job",
+    id: "4:5d2e0108-be5f-4abc-8128-9f1bd6a6f70a:2382",
+    name: "Frontend Software Engineer",
   },
   {
-    id: 8,
-    title: "UI/UX Researcher",
-    company: "Nimble Labs",
-    location: "Ari, Bangkok",
-    meta: "2 Skills Match • 3 days ago",
-    skills: ["Interviews", "Surveys", "Usability Testing"],
-    category: "Design",
-    place: "Bangkok",
-    workType: "Contract",
-    workOption: "On-site",
-    postedAt: "2026-02-07",
-    aboutTitle: "About this job",
-    companyDescription:
-      "Plan and run user research, analyze findings, and drive actionable product insights.",
-    extraDescription:
-      "You will build research plans and share results with cross-functional partners.",
+    type: "job",
+    id: "4:5d2e0108-be5f-4abc-8128-9f1bd6a6f70a:44",
+    name: "Backend Software Engineer",
   },
   {
-    id: 9,
-    title: "Full-stack Engineer",
-    company: "Orbitsoft",
-    location: "Onnut, Bangkok",
-    meta: "4 Skills Match • 4 days ago",
-    skills: ["React", "Node.js", "PostgreSQL", "Docker"],
-    category: "Technology",
-    place: "Bangkok",
-    workType: "Full-time",
-    workOption: "Remote",
-    postedAt: "2026-02-06",
-    aboutTitle: "About this job",
-    companyDescription:
-      "Work across frontend and backend, delivering features end-to-end for core products.",
-    extraDescription:
-      "You will collaborate on architecture decisions and improve developer workflows.",
+    type: "skill",
+    id: "skill:react",
+    name: "React",
   },
   {
-    id: 10,
-    title: "Security Engineer",
-    company: "Fortress Cloud",
-    location: "Silom, Bangkok",
-    meta: "3 Skills Match • 5 days ago",
-    skills: ["Threat Modeling", "SIEM", "Pen Testing"],
-    category: "Security",
-    place: "Bangkok",
-    workType: "Full-time",
-    workOption: "On-site",
-    postedAt: "2026-02-02",
-    aboutTitle: "About this job",
-    companyDescription:
-      "Strengthen security posture, monitor risks, and guide secure development practices.",
-    extraDescription:
-      "You will run security reviews and implement continuous monitoring controls.",
+    type: "skill",
+    id: "skill:typescript",
+    name: "TypeScript",
   },
   {
-    id: 11,
-    title: "Machine Learning Engineer",
-    company: "Aether AI",
-    location: "Asoke, Bangkok",
-    meta: "5 Skills Match • 1 day ago",
-    skills: ["Python", "PyTorch", "MLOps", "Data Pipelines"],
-    category: "Data",
-    place: "Bangkok",
-    workType: "Full-time",
-    workOption: "Hybrid",
-    postedAt: "2026-02-09",
-    aboutTitle: "About this job",
-    companyDescription:
-      "Develop ML models, improve data quality, and deploy solutions into production.",
-    extraDescription:
-      "You will iterate on experiments and collaborate with product to measure impact.",
+    type: "skill",
+    id: "skill:nodejs",
+    name: "Node.js",
   },
 ];
 
-export const initialJobs: Job[] = [
-  ...searchJobSeed,
-  ...myJobSavedSeed,
-  ...myJobAppliedSeed,
-  ...myJobArchivedSeed,
+export const categoryOptions: FilterOptionItem[] = [
+  { id: 1, text_th: "เทคโนโลยี", text_eng: "Technology" },
+  { id: 2, text_th: "ธุรกิจ", text_eng: "Business" },
+  { id: 3, text_th: "การเงิน", text_eng: "Finance" },
+  { id: 4, text_th: "สุขภาพ", text_eng: "Healthcare" },
+  { id: 5, text_th: "การศึกษา", text_eng: "Education" },
+  { id: 6, text_th: "อุตสาหกรรม", text_eng: "Manufacturing" },
+  { id: 7, text_th: "ค้าปลีก", text_eng: "Retail" },
+  { id: 8, text_th: "อื่นๆ", text_eng: "Other" },
 ];
 
-export const skillOptions = [
-  "Front-End",
-  "Back-End",
-  "React",
-  "React Native",
-  "TypeScript",
-  "Node.js",
-  "Figma",
-  "SQL",
-  "Docker",
-  "AWS",
+export const workTypeOptions: FilterOptionItem[] = [
+  { id: 1, text_th: "เต็มเวลา", text_eng: "Full time" },
+  { id: 2, text_th: "พาร์ทไทม์", text_eng: "Part-time" },
+  { id: 3, text_th: "ฝึกงาน", text_eng: "Intern" },
+  { id: 4, text_th: "สัญญาจ้าง", text_eng: "Contract" },
+  { id: 5, text_th: "ฟรีแลนซ์", text_eng: "Freelance" },
+  { id: 6, text_th: "ตามโครงการ", text_eng: "Project-based" },
+  { id: 7, text_th: "ชั่วคราว", text_eng: "Temporary" },
 ];
-export const categoryOptions = ["Technology", "Design", "Data", "Security"];
-export const workTypeOptions = ["Full-time", "Contract"];
-export const workOptionOptions = ["On-site", "Hybrid", "Remote"];
-export const pageSize = 6;
 
-export type SearchType = "any" | "skill" | "job";
-export type FilterMode = "relevance" | "date" | "unviewed";
+export const workOptionOptions: FilterOptionItem[] = [
+  { id: 1, text_th: "ไฮบริด", text_eng: "Hybrid" },
+  { id: 2, text_th: "ออนไซต์", text_eng: "On-site" },
+  { id: 3, text_th: "รีโมท", text_eng: "Remote" },
+];
 
-const getInitialJobs = () => initialJobs.map((job) => ({ ...job }));
+export const placeOptions: PlaceSearchItem[] = [
+  {
+    province_name: "BANGKOK",
+    district_name: "KHLONG TOEI",
+    province_code: 100000,
+    district_code: 101001,
+  },
+  {
+    province_name: "CHIANG RAI",
+    district_name: "KHUN TAN",
+    province_code: 570000,
+    district_code: 571400,
+  },
+  {
+    province_name: "CHIANG RAI",
+    district_name: "CHIANG KHONG",
+    province_code: 570000,
+    district_code: 570300,
+  },
+];
 
-const loadJobs = () => {
-  if (typeof window === "undefined") return getInitialJobs();
+export const pageSize = 10;
 
-  try {
-    const stored = window.localStorage.getItem(JOBS_STORAGE_KEY);
-    if (!stored) return getInitialJobs();
-
-    const parsed = JSON.parse(stored) as Job[];
-    if (!Array.isArray(parsed) || parsed.length === 0) return getInitialJobs();
-
-    return parsed;
-  } catch {
-    return getInitialJobs();
-  }
-};
+export const buildInitialSearchPayload = (): SearchJobPayload => ({
+  user_id: "",
+  search_text: "",
+  search_type: 0,
+  skill: [],
+  category: [],
+  place: {
+    province_id: 0,
+    district_id: 0,
+  },
+  type: [],
+  option: [],
+  sort_type: 0,
+  page: 0,
+  limit: pageSize,
+});
 
 export const useSearchJobState = () => {
-  const [jobs, setJobs] = useState<Job[]>(() => loadJobs());
-  const [selectedJobId, setSelectedJobId] = useState<number | null>(null);
+  const [jobs, setJobs] = useState(initialJobs);
+  const [selectedJobId, setSelectedJobId] = useState<number | null>(
+    initialJobs[0]?.id ?? null,
+  );
   const [viewed, setViewed] = useState<Set<number>>(new Set());
-  const [selectedSkills, setSelectedSkills] = useState<Set<string>>(new Set());
-  const [searchType, setSearchType] = useState<SearchType>("any");
+  const [searchPayload, setSearchPayload] = useState<SearchJobPayload>(
+    buildInitialSearchPayload(),
+  );
   const [skillOpen, setSkillOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [selectedCategories, setSelectedCategories] = useState<Set<string>>(
-    new Set(),
-  );
-  const [placeFilter, setPlaceFilter] = useState("Any Place");
-  const [selectedWorkTypes, setSelectedWorkTypes] = useState<Set<string>>(
-    new Set(),
-  );
-  const [selectedWorkOptions, setSelectedWorkOptions] = useState<Set<string>>(
-    new Set(),
-  );
-  const [categoryOpen, setCategoryOpen] = useState(false);
-  const [workTypeOpen, setWorkTypeOpen] = useState(false);
-  const [workOptionOpen, setWorkOptionOpen] = useState(false);
-  const [filterMode, setFilterMode] = useState<FilterMode>("relevance");
   const [messageCount, setMessageCount] = useState<number>(0);
   const [applyOpen, setApplyOpen] = useState(false);
   const [applyDialogKey, setApplyDialogKey] = useState(0);
-  const [currentPage, setCurrentPage] = useState(1);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    window.localStorage.setItem(JOBS_STORAGE_KEY, JSON.stringify(jobs));
-  }, [jobs]);
 
   return {
     jobs,
@@ -332,37 +262,15 @@ export const useSearchJobState = () => {
     setSelectedJobId,
     viewed,
     setViewed,
-    selectedSkills,
-    setSelectedSkills,
-    searchType,
-    setSearchType,
+    searchPayload,
+    setSearchPayload,
     skillOpen,
     setSkillOpen,
-    searchQuery,
-    setSearchQuery,
-    selectedCategories,
-    setSelectedCategories,
-    placeFilter,
-    setPlaceFilter,
-    selectedWorkTypes,
-    setSelectedWorkTypes,
-    selectedWorkOptions,
-    setSelectedWorkOptions,
-    categoryOpen,
-    setCategoryOpen,
-    workTypeOpen,
-    setWorkTypeOpen,
-    workOptionOpen,
-    setWorkOptionOpen,
-    filterMode,
-    setFilterMode,
     messageCount,
     setMessageCount,
     applyOpen,
     setApplyOpen,
     applyDialogKey,
     setApplyDialogKey,
-    currentPage,
-    setCurrentPage,
   };
-};
+};

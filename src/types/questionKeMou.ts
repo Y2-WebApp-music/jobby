@@ -113,12 +113,7 @@ const seeds: ExamQuestionSeed[] = [
   },
   {
     prompt: "Ke mou behavior often ignores:",
-    choices: [
-      "Facts",
-      "Meetings",
-      "Deadlines",
-      "Keyboard shortcuts",
-    ],
+    choices: ["Facts", "Meetings", "Deadlines", "Keyboard shortcuts"],
     correctAnswer: 0,
   },
   {
@@ -172,7 +167,8 @@ const seeds: ExamQuestionSeed[] = [
     correctAnswer: 0,
   },
   {
-    prompt: "If a manager praises you for a team win, what is a solid response?",
+    prompt:
+      "If a manager praises you for a team win, what is a solid response?",
     choices: [
       "Accept politely and acknowledge the team",
       "Say you did all of it yourself",
@@ -363,12 +359,7 @@ const seeds: ExamQuestionSeed[] = [
   },
   {
     prompt: "Trust grows when your words match your:",
-    choices: [
-      "Actions",
-      "Volume",
-      "Ego",
-      "Excuses",
-    ],
+    choices: ["Actions", "Volume", "Ego", "Excuses"],
     correctAnswer: 0,
   },
   {

@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { combine } from "zustand/middleware";
+import { combine, persist } from "zustand/middleware";
 
 type User = {
   id: string;
@@ -26,28 +26,30 @@ type AuthActions = {
 };
 
 export const useAuthStore = create(
-  combine<AuthState, AuthActions>(
+  persist(
+    combine<AuthState, AuthActions>(
+      {
+        user: null,
+        token: null,
+        forceGuestNav: false,
+      },
+      (set, get) => ({
+        getUser: () => get().user,
+        getToken: () => get().token,
+        getForceGuestNav: () => get().forceGuestNav,
+        setUser: (user) => set({ user }),
+        setToken: (token) => set({ token }),
+        setForceGuestNav: (forceGuestNav) => set({ forceGuestNav }),
+        logout: () => set({ user: null, token: null, forceGuestNav: false }),
+      }),
+    ),
     {
-      user: null,
-      token: null,
-      forceGuestNav: false,
+      name: "jobby-auth-store",
+      partialize: (state) => ({
+        user: state.user,
+        token: state.token,
+        forceGuestNav: state.forceGuestNav,
+      }),
     },
-    (set, get) => ({
-      getUser: () => get().user,
-      getToken: () => get().token,
-      getForceGuestNav: () => get().forceGuestNav,
-      setUser: (user) =>
-        set({
-          user,
-          forceGuestNav: user === null ? get().forceGuestNav : false,
-        }),
-      setToken: (token) =>
-        set({
-          token,
-          forceGuestNav: token === null ? get().forceGuestNav : false,
-        }),
-      setForceGuestNav: (forceGuestNav) => set({ forceGuestNav }),
-      logout: () => set({ user: null, token: null, forceGuestNav: true }),
-    }),
   ),
 );

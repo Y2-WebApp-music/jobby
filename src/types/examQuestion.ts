@@ -22,7 +22,7 @@ export const createExamQuestions = (
     ...seed,
   }));
 
-export const shuffleExamQuestions = <T,>(items: T[]) => {
+export const shuffleExamQuestions = <T>(items: T[]) => {
   const cloned = [...items];
 
   for (let index = cloned.length - 1; index > 0; index -= 1) {

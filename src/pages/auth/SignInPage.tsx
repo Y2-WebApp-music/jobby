@@ -3,7 +3,6 @@ import SignIn from "@/features/authentication/SignIn";
 import JobbyLogo from "@/assets/icons/JobbyLogologregis.svg?react";
 import { Link } from "react-router-dom";
 
-
 export default function SignInPage() {
   return (
     <main className="relative min-h-screen overflow-hidden bg-[#fff8f3]">

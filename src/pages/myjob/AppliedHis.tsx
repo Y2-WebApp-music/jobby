@@ -6,7 +6,12 @@ import { Card, CardContent } from "@/components/ui/card";
 import PageLayout from "@/components/layout/PageLayout";
 import { CgClose } from "react-icons/cg";
 import { IoIosArrowBack, IoIosArrowForward, IoIosMore } from "react-icons/io";
-import { pageSize, useSearchJobState, type Job, type JobStatus } from "@/types/job";
+import {
+  pageSize,
+  useSearchJobState,
+  type Job,
+  type JobStatus,
+} from "@/types/job";
 
 const now = Date.now();
 
@@ -91,7 +96,9 @@ export default function MyJobsPage() {
 
   const rawJobView = searchParams.get("view");
   const jobView: JobView =
-    rawJobView === "saved" || rawJobView === "applied" || rawJobView === "archived"
+    rawJobView === "saved" ||
+    rawJobView === "applied" ||
+    rawJobView === "archived"
       ? rawJobView
       : "saved";
 
@@ -110,28 +117,31 @@ export default function MyJobsPage() {
   };
 
   const filteredJobs = useMemo(() => {
-    return jobs
-      .filter((job) => {
-        if (jobView === "saved" && !job.saved) return false;
-        if (jobView === "applied" && !job.applied) return false;
-        if (
-          jobView === "archived" &&
-          (!job.archived || (job.status !== "reject" && job.status !== "accept"))
-        ) {
-          return false;
-        }
+    return jobs.filter((job) => {
+      if (jobView === "saved" && !job.saved) return false;
+      if (jobView === "applied" && !job.applied) return false;
+      if (
+        jobView === "archived" &&
+        (!job.archived || (job.status !== "reject" && job.status !== "accept"))
+      ) {
+        return false;
+      }
 
-        if (jobView === "applied" && statusFilter !== "all" && job.status !== statusFilter) {
-          return false;
-        }
+      if (
+        jobView === "applied" &&
+        statusFilter !== "all" &&
+        job.status !== statusFilter
+      ) {
+        return false;
+      }
 
-        if (!query) return true;
+      if (!query) return true;
 
-        return [job.title, job.company, job.location]
-          .join(" ")
-          .toLowerCase()
-          .includes(query);
-      });
+      return [job.title, job.company, job.location]
+        .join(" ")
+        .toLowerCase()
+        .includes(query);
+    });
   }, [jobs, jobView, query, statusFilter]);
 
   const totalPages = Math.max(1, Math.ceil(filteredJobs.length / pageSize));
@@ -145,7 +155,10 @@ export default function MyJobsPage() {
 
   const formatPostedAt = (postedAt: string) => {
     const postedTime = new Date(postedAt).getTime();
-    const diffDays = Math.max(0, Math.floor((now - postedTime) / (1000 * 60 * 60 * 24)));
+    const diffDays = Math.max(
+      0,
+      Math.floor((now - postedTime) / (1000 * 60 * 60 * 24)),
+    );
 
     if (diffDays === 0) return "posted today";
     if (diffDays === 1) return "posted 1 day ago";
@@ -184,14 +197,16 @@ export default function MyJobsPage() {
           applied: true,
           archived: false,
           status: "inreview",
-          appliedDate: new Date().toLocaleString("en-GB", {
-            day: "2-digit",
-            month: "short",
-            year: "numeric",
-            hour: "2-digit",
-            minute: "2-digit",
-            hour12: false,
-          }).replace(",", ""),
+          appliedDate: new Date()
+            .toLocaleString("en-GB", {
+              day: "2-digit",
+              month: "short",
+              year: "numeric",
+              hour: "2-digit",
+              minute: "2-digit",
+              hour12: false,
+            })
+            .replace(",", ""),
         };
       }),
     );
@@ -223,11 +238,16 @@ export default function MyJobsPage() {
         if (jobView === "applied" && !job.applied) return false;
         if (
           jobView === "archived" &&
-          (!job.archived || (job.status !== "reject" && job.status !== "accept"))
+          (!job.archived ||
+            (job.status !== "reject" && job.status !== "accept"))
         ) {
           return false;
         }
-        if (jobView === "applied" && statusFilter !== "all" && job.status !== statusFilter) {
+        if (
+          jobView === "applied" &&
+          statusFilter !== "all" &&
+          job.status !== statusFilter
+        ) {
           return false;
         }
         if (!query) return true;
@@ -242,7 +262,10 @@ export default function MyJobsPage() {
         setSelectedJobId(nextFilteredJobs[0]?.id ?? null);
       }
 
-      const nextTotalPages = Math.max(1, Math.ceil(nextFilteredJobs.length / pageSize));
+      const nextTotalPages = Math.max(
+        1,
+        Math.ceil(nextFilteredJobs.length / pageSize),
+      );
       setCurrentPage((prevPage) => Math.min(prevPage, nextTotalPages));
 
       return nextJobs;
@@ -253,7 +276,8 @@ export default function MyJobsPage() {
     if (!job.status) return null;
 
     const statusMeta = STATUS_META[job.status];
-    const infoLabel = jobView === "archived" ? "Result Updated" : "Applied Date";
+    const infoLabel =
+      jobView === "archived" ? "Result Updated" : "Applied Date";
     const infoValue = job.appliedDate ?? "-";
     const actionLabel = jobView === "archived" ? "View Result" : "See Applied";
 
@@ -265,11 +289,15 @@ export default function MyJobsPage() {
           <div className={`text-[22px] font-medium ${statusMeta.textClass}`}>
             {statusMeta.label}
           </div>
-          <div className={`mt-1 text-sm ${statusMeta.textClass}`}>{statusMeta.desc}</div>
+          <div className={`mt-1 text-sm ${statusMeta.textClass}`}>
+            {statusMeta.desc}
+          </div>
         </div>
         <div className="flex items-center justify-between rounded-2xl border border-[#e5e5e5] bg-white px-5 py-4 xl:flex-1">
           <div>
-            <div className="text-sm font-medium text-slate-950">{infoLabel}</div>
+            <div className="text-sm font-medium text-slate-950">
+              {infoLabel}
+            </div>
             <div className="mt-1 text-sm text-slate-500">{infoValue}</div>
           </div>
           <Button
@@ -289,7 +317,9 @@ export default function MyJobsPage() {
       <div className="h-[calc(100vh-56px)] px-6 pb-4 pt-4">
         <div className="flex h-full min-h-0 flex-col">
           <div className="mb-4 flex flex-wrap items-center gap-3">
-            <h1 className="text-[20px] font-semibold text-slate-950">My Jobs</h1>
+            <h1 className="text-[20px] font-semibold text-slate-950">
+              My Jobs
+            </h1>
 
             <Input
               placeholder="Search Job"
@@ -321,7 +351,8 @@ export default function MyJobsPage() {
               <div className="inline-flex overflow-hidden rounded-full border border-[#d7d7d7] bg-white shadow-[0_2px_8px_rgba(0,0,0,0.03)]">
                 {STATUS_FILTERS.map((filter, index) => {
                   const active = statusFilter === filter;
-                  const label = filter === "all" ? "All" : STATUS_META[filter].label;
+                  const label =
+                    filter === "all" ? "All" : STATUS_META[filter].label;
 
                   return (
                     <button
@@ -350,7 +381,9 @@ export default function MyJobsPage() {
                 <div className="space-y-0">
                   {pagedJobs.map((job) => {
                     const isSelected = selectedJob?.id === job.id;
-                    const statusMeta = job.status ? STATUS_META[job.status] : null;
+                    const statusMeta = job.status
+                      ? STATUS_META[job.status]
+                      : null;
 
                     return (
                       <Card
@@ -383,8 +416,12 @@ export default function MyJobsPage() {
                               <div className="max-w-[320px] text-[15px] font-medium leading-snug text-slate-950">
                                 {job.title}
                               </div>
-                              <div className="mt-1 text-sm text-slate-600">{job.company}</div>
-                              <div className="text-sm text-slate-500">{job.location}</div>
+                              <div className="mt-1 text-sm text-slate-600">
+                                {job.company}
+                              </div>
+                              <div className="text-sm text-slate-500">
+                                {job.location}
+                              </div>
                               <div className="mt-2 text-xs text-slate-500">
                                 {viewed.has(job.id) ? "Viewed • " : ""}
                                 {job.meta}
@@ -442,7 +479,9 @@ export default function MyJobsPage() {
                   <button
                     type="button"
                     className="inline-flex items-center gap-1 rounded-full px-2 py-1 text-slate-600 hover:bg-slate-100 disabled:opacity-40"
-                    onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                    onClick={() =>
+                      setCurrentPage((p) => Math.min(totalPages, p + 1))
+                    }
                     disabled={currentPage === totalPages}
                   >
                     Next
@@ -454,15 +493,22 @@ export default function MyJobsPage() {
 
             <div className="h-full overflow-y-auto border-l border-[#e5e5e5] pl-4">
               {filteredJobs.length === 0 || !selectedJob ? (
-                <div className="pt-6 text-sm text-slate-500">No jobs to display.</div>
+                <div className="pt-6 text-sm text-slate-500">
+                  No jobs to display.
+                </div>
               ) : (
                 <div className="pt-2">
                   <div className="flex items-center gap-3">
                     <div className="h-10 w-10 rounded-full bg-[#e0e0e0]" />
                     <div className="min-w-0 flex-1">
-                      <div className="text-sm font-medium text-slate-500">{selectedJob.company}</div>
+                      <div className="text-sm font-medium text-slate-500">
+                        {selectedJob.company}
+                      </div>
                     </div>
-                    <button className="ml-auto text-slate-700 hover:text-slate-950" type="button">
+                    <button
+                      className="ml-auto text-slate-700 hover:text-slate-950"
+                      type="button"
+                    >
                       <IoIosMore size={20} />
                     </button>
                   </div>
@@ -509,7 +555,9 @@ export default function MyJobsPage() {
                   )}
 
                   <div className="mt-5">
-                    <h3 className="mb-2 text-base font-medium text-slate-950">Skill Use</h3>
+                    <h3 className="mb-2 text-base font-medium text-slate-950">
+                      Skill Use
+                    </h3>
                     <div className="flex flex-wrap gap-2">
                       {selectedJob.skills.map((skill) => (
                         <button
@@ -529,7 +577,9 @@ export default function MyJobsPage() {
                     <h3 className="mb-2 text-base font-medium text-slate-950">
                       {selectedJob.aboutTitle}
                     </h3>
-                    <p className="text-sm leading-relaxed text-slate-500">Company Description</p>
+                    <p className="text-sm leading-relaxed text-slate-500">
+                      Company Description
+                    </p>
                     <p className="mt-2 text-sm leading-relaxed text-slate-500">
                       {selectedJob.companyDescription}
                     </p>
