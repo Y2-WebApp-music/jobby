@@ -22,6 +22,11 @@ export type Job = {
   aboutTitle: string;
   companyDescription: string;
   extraDescription: string;
+  status?: string;
+  applied?: boolean;
+  archived?: boolean;
+  appliedDate?: string;
+  saved?: boolean;
 };
 
 export const initialJobs: Job[] = [
