@@ -6,16 +6,19 @@ import { Card, CardContent } from "@/components/ui/card";
 import PageLayout from "@/components/layout/PageLayout";
 import { CgClose } from "react-icons/cg";
 import { IoIosArrowBack, IoIosArrowForward, IoIosMore } from "react-icons/io";
-import {
-  pageSize,
-  useSearchJobState,
-  type Job,
-  type JobStatus,
-} from "@/types/job";
+import { pageSize, useSearchJobState, type Job } from "@/types/job";
+import type { SearchJobPayload } from "@/types/search-job";
 
 const now = Date.now();
 
 type JobView = "saved" | "applied" | "archived";
+type JobStatus = "inreview" | "interview" | "reject" | "accept";
+const parseJobView = (rawJobView: string | null): JobView =>
+  rawJobView === "saved" ||
+  rawJobView === "applied" ||
+  rawJobView === "archived"
+    ? rawJobView
+    : "saved";
 
 const JOB_VIEW_TABS: Array<{ value: JobView; label: string }> = [
   { value: "saved", label: "Save" },
@@ -70,6 +73,11 @@ const STATUS_META: Record<
     bgClass: "bg-[#edfdf3]",
   },
 };
+const isJobStatus = (status: Job["status"]): status is JobStatus =>
+  status === "inreview" ||
+  status === "interview" ||
+  status === "reject" ||
+  status === "accept";
 
 const gradientOutlineChipClassName =
   "inline-flex items-center rounded-full border border-transparent px-3 text-xs text-primary-pink [background:linear-gradient(var(--color-background),var(--color-background))_padding-box,linear-gradient(90deg,var(--color-main),var(--color-second))_border-box]";
@@ -86,23 +94,41 @@ export default function MyJobsPage() {
     setSelectedJobId,
     viewed,
     setViewed,
-    searchQuery,
-    setSearchQuery,
-    currentPage,
-    setCurrentPage,
+    searchPayload,
+    setSearchPayload,
   } = useSearchJobState();
+  const searchQuery = searchPayload.search_text;
+  const currentPage = searchPayload.page + 1;
+  const setSearchQuery = (value: string) => {
+    setSearchPayload((prev: SearchJobPayload) => ({
+      ...prev,
+      search_text: value,
+      page: 0,
+    }));
+  };
+  const setCurrentPage = (page: number | ((prevPage: number) => number)) => {
+    setSearchPayload((prev: SearchJobPayload) => {
+      const prevPage = prev.page + 1;
+      const nextPage = typeof page === "function" ? page(prevPage) : page;
+
+      return {
+        ...prev,
+        page: Math.max(0, nextPage - 1),
+      };
+    });
+  };
   const [statusFilter, setStatusFilter] = useState<"all" | JobStatus>("all");
   const jobListRef = useRef<HTMLDivElement | null>(null);
-
-  const rawJobView = searchParams.get("view");
-  const jobView: JobView =
-    rawJobView === "saved" ||
-    rawJobView === "applied" ||
-    rawJobView === "archived"
-      ? rawJobView
-      : "saved";
+  const [jobView, setJobView] = useState<JobView>(() =>
+    parseJobView(searchParams.get("view")),
+  );
 
   const query = searchQuery.trim().toLowerCase();
+
+  useEffect(() => {
+    const nextJobView = parseJobView(searchParams.get("view"));
+    setJobView((prev) => (prev === nextJobView ? prev : nextJobView));
+  }, [searchParams]);
 
   useEffect(() => {
     setCurrentPage(1);
@@ -113,7 +139,10 @@ export default function MyJobsPage() {
   }, [currentPage]);
 
   const handleJobViewChange = (view: JobView) => {
-    setSearchParams({ view }, { replace: true });
+    setJobView(view);
+    const nextParams = new URLSearchParams(searchParams);
+    nextParams.set("view", view);
+    setSearchParams(nextParams, { replace: true });
   };
 
   const filteredJobs = useMemo(() => {
@@ -273,7 +302,7 @@ export default function MyJobsPage() {
   };
 
   const renderStatusPanel = (job: Job) => {
-    if (!job.status) return null;
+    if (!isJobStatus(job.status)) return null;
 
     const statusMeta = STATUS_META[job.status];
     const infoLabel =
@@ -330,18 +359,15 @@ export default function MyJobsPage() {
 
             <div className="flex flex-wrap items-center gap-2">
               {JOB_VIEW_TABS.map((tab) => (
-                <button
+                <Button
                   key={tab.value}
                   type="button"
+                  variant={jobView === tab.value ? "default" : "outline"}
                   onClick={() => handleJobViewChange(tab.value)}
-                  className={`inline-flex h-9 items-center rounded-full border px-4 text-sm transition ${
-                    jobView === tab.value
-                      ? "border-transparent bg-[linear-gradient(90deg,var(--color-main),var(--color-second))] text-white"
-                      : "border-[#dcdcdc] bg-white text-slate-500 hover:bg-slate-50"
-                  }`}
+                  className="inline-flex h-9 items-center rounded-full px-4 text-sm"
                 >
                   {tab.label}
-                </button>
+                </Button>
               ))}
             </div>
           </div>
@@ -381,7 +407,7 @@ export default function MyJobsPage() {
                 <div className="space-y-0">
                   {pagedJobs.map((job) => {
                     const isSelected = selectedJob?.id === job.id;
-                    const statusMeta = job.status
+                    const statusMeta = isJobStatus(job.status)
                       ? STATUS_META[job.status]
                       : null;
 
