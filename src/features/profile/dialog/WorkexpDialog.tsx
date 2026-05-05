@@ -1,13 +1,16 @@
-import { useEffect, useState, type FormEvent, type ReactNode } from "react";
+import { useState, type FormEvent } from "react";
 import { CgClose } from "react-icons/cg";
 import { RiPencilFill } from "react-icons/ri";
-import { ChevronLeft, ChevronRight } from "lucide-react";
 import { IoIosArrowDown } from "react-icons/io";
+import { Calendar } from "@/components/ui/calendar";
+import { Button } from "@/components/ui/button";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import AddskillDialog from "@/features/profile/dialog/AddskillDialog";
+// import SkillinfoDialog from "@/features/profile/dialog/SkillinfoDialog";
 
 export type WorkExperienceItem = {
   id: number;
@@ -29,26 +32,6 @@ interface WorkexpDialogProps {
 }
 
 const WORK_TYPE_OPTIONS = ["Full-time", "Part-time", "Internship", "Contract"];
-const DAYS = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
-const MONTH_OPTIONS = [
-  "Jan",
-  "Feb",
-  "Mar",
-  "Apr",
-  "May",
-  "Jun",
-  "Jul",
-  "Aug",
-  "Sep",
-  "Oct",
-  "Nov",
-  "Dec",
-];
-const PAST_YEAR_RANGE = 40;
-const MAX_FUTURE_YEAR_OFFSET = 5;
-const CURRENT_YEAR = new Date().getFullYear();
-const MIN_YEAR = CURRENT_YEAR - PAST_YEAR_RANGE;
-const MAX_YEAR = CURRENT_YEAR + MAX_FUTURE_YEAR_OFFSET;
 
 const createEmptyWorkExp = (): WorkExperienceItem => ({
   id: Date.now(),
@@ -75,6 +58,7 @@ const formatDateToYmd = (date: Date) => {
   const day = String(date.getDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
 };
+const TODAY_YMD = formatDateToYmd(new Date());
 
 const formatDate = (value: string) => {
   if (!value) return "";
@@ -98,214 +82,6 @@ const buildDateRange = (
   return `${start || "-"} - ${end}`;
 };
 
-const normalizeSkillInput = (raw: string) => raw.trim().replace(/\s+/g, " ");
-
-const isSameDay = (d1: Date, d2: Date) =>
-  d1.getFullYear() === d2.getFullYear() &&
-  d1.getMonth() === d2.getMonth() &&
-  d1.getDate() === d2.getDate();
-
-function CalendarPopup({
-  value,
-  minDate,
-  maxDate,
-  onChange,
-}: {
-  value: string;
-  minDate?: string;
-  maxDate?: string;
-  onChange: (nextValue: string) => void;
-}) {
-  const today = new Date();
-  const selectedDate = parseYmdToDate(value);
-  const minDateValue = parseYmdToDate(minDate ?? "");
-  const maxDateValue = parseYmdToDate(maxDate ?? "");
-  const [viewDate, setViewDate] = useState(selectedDate ?? today);
-  const [openMonth, setOpenMonth] = useState(false);
-  const [openYear, setOpenYear] = useState(false);
-
-  useEffect(() => {
-    setViewDate(selectedDate ?? today);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [value]);
-
-  const year = viewDate.getFullYear();
-  const month = viewDate.getMonth();
-  const firstDay = new Date(year, month, 1).getDay();
-  const totalDays = new Date(year, month + 1, 0).getDate();
-  const prevMonthDays = new Date(year, month, 0).getDate();
-  const minVisibleYear = Math.max(MIN_YEAR, year - 10);
-  const maxVisibleYear = Math.min(MAX_YEAR, year + 10);
-  const yearRange = Array.from(
-    { length: maxVisibleYear - minVisibleYear + 1 },
-    (_, i) => minVisibleYear + i,
-  );
-
-  const goPrev = () => setViewDate(new Date(year, month - 1, 1));
-  const goNext = () => setViewDate(new Date(year, month + 1, 1));
-
-  const selectMonth = (nextMonth: number) => {
-    setViewDate(new Date(year, nextMonth, 1));
-    setOpenMonth(false);
-  };
-
-  const selectYear = (nextYear: number) => {
-    setViewDate(new Date(nextYear, month, 1));
-    setOpenYear(false);
-  };
-
-  const cells: ReactNode[] = [];
-
-  for (let i = firstDay - 1; i >= 0; i--) {
-    cells.push(
-      <div
-        key={`prev-${i}`}
-        className="flex h-10 w-10 items-center justify-center text-sm text-[#9a9a9a]"
-      >
-        {prevMonthDays - i}
-      </div>,
-    );
-  }
-
-  for (let day = 1; day <= totalDays; day++) {
-    const date = new Date(year, month, day);
-    const isSelected = selectedDate ? isSameDay(date, selectedDate) : false;
-    const isToday = isSameDay(date, today);
-    const isBeforeMin = minDateValue ? date < minDateValue : false;
-    const isAfterMax = maxDateValue ? date > maxDateValue : false;
-    const isDisabled = isBeforeMin || isAfterMax;
-
-    cells.push(
-      <button
-        key={`curr-${day}`}
-        type="button"
-        disabled={isDisabled}
-        onClick={() => {
-          if (isDisabled) return;
-          onChange(formatDateToYmd(date));
-          setOpenMonth(false);
-          setOpenYear(false);
-        }}
-        className={`flex h-10 w-10 items-center justify-center rounded-xl text-base font-normal transition-colors ${
-          isSelected
-            ? "bg-gradient-to-r from-[#FF8E00] to-[#F335EC] text-white"
-            : isDisabled
-              ? "cursor-not-allowed text-[#c9c9c9]"
-              : isToday
-                ? "bg-[#d8d8db] text-black"
-                : "text-black hover:bg-[#e7e7e7]"
-        }`}
-      >
-        {day}
-      </button>,
-    );
-  }
-
-  const nextFill = cells.length % 7 === 0 ? 0 : 7 - (cells.length % 7);
-  for (let i = 1; i <= nextFill; i++) {
-    cells.push(
-      <div
-        key={`next-${i}`}
-        className="flex h-10 w-10 items-center justify-center text-sm text-[#9a9a9a]"
-      >
-        {i}
-      </div>,
-    );
-  }
-
-  return (
-    <div className="w-[390px] rounded-[28px] border-2 border-[#d3d3d3] bg-[#f3f3f3] p-3">
-      <div className="mb-3 flex items-center justify-between">
-        <button
-          type="button"
-          onClick={goPrev}
-          className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#e7e7e7] text-black hover:bg-[#dedede]"
-        >
-          <ChevronLeft className="h-4 w-4" />
-        </button>
-
-        <div className="flex items-center gap-2">
-          <div className="relative">
-            <button
-              type="button"
-              onClick={() => {
-                setOpenMonth((prev) => !prev);
-                setOpenYear(false);
-              }}
-              className="inline-flex h-9 min-w-[98px] items-center justify-center gap-1 rounded-xl border-2 border-[#d3d3d3] bg-[#f3f3f3] px-2 text-sm font-medium"
-            >
-              <span>{MONTH_OPTIONS[month]}</span>
-              <IoIosArrowDown className="h-3.5 w-3.5" />
-            </button>
-            {openMonth ? (
-              <div className="absolute left-0 z-20 mt-1 grid w-36 grid-cols-3 rounded-xl border border-slate-200 bg-white p-1 shadow-lg">
-                {MONTH_OPTIONS.map((monthName, idx) => (
-                  <button
-                    key={monthName}
-                    type="button"
-                    onClick={() => selectMonth(idx)}
-                    className="rounded px-1 py-1 text-xs hover:bg-slate-100"
-                  >
-                    {monthName}
-                  </button>
-                ))}
-              </div>
-            ) : null}
-          </div>
-          <div className="relative">
-            <button
-              type="button"
-              onClick={() => {
-                setOpenYear((prev) => !prev);
-                setOpenMonth(false);
-              }}
-              className="inline-flex h-9 min-w-[98px] items-center justify-center gap-1 rounded-xl border-2 border-[#d3d3d3] bg-[#f3f3f3] px-2 text-sm font-medium"
-            >
-              <span>{year}</span>
-              <IoIosArrowDown className="h-3.5 w-3.5" />
-            </button>
-            {openYear ? (
-              <div className="absolute left-0 z-20 mt-1 max-h-40 w-24 overflow-y-auto rounded-xl border border-slate-200 bg-white p-1 shadow-lg">
-                {yearRange.map((y) => (
-                  <button
-                    key={y}
-                    type="button"
-                    onClick={() => selectYear(y)}
-                    className="block w-full rounded px-2 py-1 text-left text-xs hover:bg-slate-100"
-                  >
-                    {y}
-                  </button>
-                ))}
-              </div>
-            ) : null}
-          </div>
-        </div>
-
-        <button
-          type="button"
-          onClick={goNext}
-          className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#e7e7e7] text-black hover:bg-[#dedede]"
-        >
-          <ChevronRight className="h-4 w-4" />
-        </button>
-      </div>
-
-      <div className="mb-0.5 mt-0.5 grid grid-cols-7">
-        {DAYS.map((day) => (
-          <div
-            key={day}
-            className="text-center text-xs font-normal text-[#9a9a9a]"
-          >
-            {day}
-          </div>
-        ))}
-      </div>
-
-      <div className="mt-1.5 grid grid-cols-7 gap-y-1">{cells}</div>
-    </div>
-  );
-}
-
 function DatePickerField({
   label,
   value,
@@ -319,10 +95,15 @@ function DatePickerField({
   maxDate?: string;
   onChange: (nextValue: string) => void;
 }) {
+  const [open, setOpen] = useState(false);
+  const selectedDate = parseYmdToDate(value);
+  const minDateValue = parseYmdToDate(minDate ?? "");
+  const maxDateValue = parseYmdToDate(maxDate ?? "");
+
   return (
     <div>
       <label className="mb-1 block text-sm text-slate-700">{label}</label>
-      <Popover>
+      <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
           <button
             type="button"
@@ -336,13 +117,22 @@ function DatePickerField({
         </PopoverTrigger>
         <PopoverContent
           align="start"
-          className="w-auto border-0 bg-transparent p-0 shadow-none"
+          className="w-auto border-0 p-0 shadow-none"
         >
-          <CalendarPopup
-            value={value}
-            minDate={minDate}
-            maxDate={maxDate}
-            onChange={onChange}
+          <Calendar
+            mode="single"
+            selected={selectedDate}
+            onSelect={(date) => {
+              if (!date) return;
+              onChange(formatDateToYmd(date));
+              setOpen(false);
+            }}
+            disabled={[
+              ...(minDateValue ? [{ before: minDateValue }] : []),
+              ...(maxDateValue ? [{ after: maxDateValue }] : []),
+            ]}
+            captionLayout="dropdown"
+            className="rounded-[28px] border-2 border-c-d3d3d3 bg-c-f3f3f3 p-3"
           />
         </PopoverContent>
       </Popover>
@@ -358,9 +148,9 @@ export default function WorkexpDialog({
 }: WorkexpDialogProps) {
   const [items, setItems] = useState<WorkExperienceItem[]>(initialData);
   const [editorOpen, setEditorOpen] = useState(false);
+  const [addSkillDialogOpen, setAddSkillDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [draft, setDraft] = useState<WorkExperienceItem>(createEmptyWorkExp());
-  const [skillInput, setSkillInput] = useState("");
 
   if (!open) return null;
 
@@ -372,19 +162,12 @@ export default function WorkexpDialog({
       setEditingId(null);
       setDraft(createEmptyWorkExp());
     }
-    setSkillInput("");
     setEditorOpen(true);
   };
 
-  const handleAddSkill = () => {
-    const nextSkill = normalizeSkillInput(skillInput);
-    if (!nextSkill) return;
-    if (draft.skills.includes(nextSkill)) {
-      setSkillInput("");
-      return;
-    }
+  const handleAddSkill = (nextSkill: string) => {
+    if (!nextSkill || draft.skills.includes(nextSkill)) return;
     setDraft((prev) => ({ ...prev, skills: [...prev.skills, nextSkill] }));
-    setSkillInput("");
   };
 
   const handleRemoveSkill = (skill: string) => {
@@ -431,8 +214,7 @@ export default function WorkexpDialog({
               Work Experience
             </h2>
             <p className="text-sm text-slate-500">
-              Make changes to your Experience here. Click save when you&apos;re
-              done.
+              Make changes to your Experience here. Click save when you're done.
             </p>
           </div>
           <button
@@ -445,7 +227,11 @@ export default function WorkexpDialog({
           </button>
         </div>
 
-        <div className="space-y-3">
+        <div
+          className={`space-y-3 ${
+            items.length > 3 ? "max-h-[360px] overflow-y-auto pr-2" : ""
+          }`}
+        >
           {items.map((item) => (
             <div
               key={item.id}
@@ -492,13 +278,13 @@ export default function WorkexpDialog({
           >
             Cancel
           </button>
-          <button
+          <Button
             type="button"
             onClick={handleSaveAll}
-            className="rounded-full bg-gradient-to-r from-[#FF8E00] to-[#F335EC] px-5 py-1.5 text-base font-medium text-white"
+            className="rounded-full bg-gradient-to-r from-main to-second px-5 py-1.5 text-base font-medium text-white"
           >
             Save Change
-          </button>
+          </Button>
         </div>
       </div>
 
@@ -511,8 +297,8 @@ export default function WorkexpDialog({
                   Work Experience
                 </h2>
                 <p className="text-sm text-slate-500">
-                  Make changes to your Experience here. Click save when
-                  you&apos;re done.
+                  Make changes to your Experience here. Click save when you're
+                  done.
                 </p>
               </div>
               <button
@@ -582,22 +368,27 @@ export default function WorkexpDialog({
                 </label>
                 <div className="mb-2 flex flex-wrap gap-2">
                   {draft.skills.map((skill) => (
-                    <button
+                    <span
                       key={skill}
-                      type="button"
-                      onClick={() => handleRemoveSkill(skill)}
-                      className="inline-flex items-center gap-1 rounded-full border border-[#F335EC] px-3 py-1 text-xs text-[#F335EC]"
+                      className="inline-flex items-center gap-1 rounded-full border border-transparent px-3 py-1 text-xs text-primary-pink [background:linear-gradient(var(--color-background),var(--color-background))_padding-box,linear-gradient(to_right,var(--color-main),var(--color-second))_border-box]"
                     >
                       <span className="text-sm">{skill}</span>
-                      <span className="text-base leading-none">x</span>
-                    </button>
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveSkill(skill)}
+                        className="text-base leading-none"
+                        aria-label={`Remove ${skill}`}
+                      >
+                        x
+                      </button>
+                    </span>
                   ))}
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
                   <button
                     type="button"
-                    onClick={handleAddSkill}
-                    className="rounded-full bg-gradient-to-r from-[#FF8E00] to-[#F335EC] px-5 py-1.5 text-base font-medium text-white"
+                    onClick={() => setAddSkillDialogOpen(true)}
+                    className="rounded-full bg-gradient-to-r from-main to-second px-5 py-1.5 text-base font-medium text-white"
                   >
                     + Add Skill
                   </button>
@@ -608,7 +399,11 @@ export default function WorkexpDialog({
                 <DatePickerField
                   label="Start date"
                   value={draft.startDate}
-                  maxDate={draft.endDate}
+                  maxDate={
+                    draft.endDate && draft.endDate < TODAY_YMD
+                      ? draft.endDate
+                      : TODAY_YMD
+                  }
                   onChange={(nextValue) =>
                     setDraft((prev) => ({ ...prev, startDate: nextValue }))
                   }
@@ -616,7 +411,11 @@ export default function WorkexpDialog({
                 <DatePickerField
                   label="End date"
                   value={draft.endDate}
-                  minDate={draft.startDate}
+                  minDate={
+                    draft.startDate && draft.startDate > TODAY_YMD
+                      ? draft.startDate
+                      : TODAY_YMD
+                  }
                   onChange={(nextValue) =>
                     setDraft((prev) => ({ ...prev, endDate: nextValue }))
                   }
@@ -655,15 +454,22 @@ export default function WorkexpDialog({
                   >
                     Cancel
                   </button>
-                  <button
+                  <Button
                     type="submit"
-                    className="rounded-full bg-gradient-to-r from-[#FF8E00] to-[#F335EC] px-5 py-1.5 text-base font-medium text-white"
+                    className="rounded-full bg-gradient-to-r from-main to-second px-5 py-1.5 text-base font-medium text-white"
                   >
                     Save Change
-                  </button>
+                  </Button>
                 </div>
               </div>
             </form>
+            <AddskillDialog
+              open={addSkillDialogOpen}
+              onClose={() => setAddSkillDialogOpen(false)}
+              existingSkills={draft.skills}
+              onAddSkill={handleAddSkill}
+              onRemoveSkill={handleRemoveSkill}
+            />
           </div>
         </div>
       ) : null}

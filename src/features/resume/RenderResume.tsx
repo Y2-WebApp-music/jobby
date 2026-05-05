@@ -186,7 +186,7 @@ const RenderResume = ({ resume, templateId }: Props) => {
                         top: (idx + 1) * A4_HEIGHT,
                         left: 0,
                         right: 0,
-                        borderTop: "1px dashed #e5e7eb",
+                        borderTop: "1px dashed var(--color-c-e5e7eb)",
                       }}
                     />
                   ))}

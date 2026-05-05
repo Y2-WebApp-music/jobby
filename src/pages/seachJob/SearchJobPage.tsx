@@ -1,302 +1,186 @@
-﻿import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import PageLayout from "@/components/layout/PageLayout";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
-import JobbyLogo from "@/assets/icons/JobbyLogo.svg?react";
-import { Link } from "react-router-dom";
-import { useEffect, useState } from "react";
+import {
+  Combobox,
+  ComboboxContent,
+  ComboboxEmpty,
+  ComboboxInput,
+  ComboboxItem,
+  ComboboxList,
+} from "@/components/ui/combobox";
+import SkillinfoDialog from "@/features/profile/dialog/SkillinfoDialog";
+import { ApplyDialog } from "@/features/searchJob/dialogs/ApplyDialog";
+import type { Job } from "../../types/job";
+import {
+  categoryOptions,
+  pageSize,
+  placeOptions,
+  searchTypeOptions,
+  skillOptions,
+  useSearchJobState,
+  workOptionOptions,
+  workTypeOptions,
+} from "../../types/job";
+import {
+  MultiSelect,
+  type MultiSelectOption,
+} from "@/components/ui/multi-select";
+import type {
+  FilterOptionItem,
+  SortTypeCode,
+  SearchSuggestItem,
+  PlaceSearchItem,
+  SearchJobPayload,
+  SearchTypeCode,
+} from "@/types/search-job";
+import {
+  initialApplyDialogJob,
+  initialApplyPayload,
+  type ApplyPayload,
+} from "@/types/searchJob";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { CgClose } from "react-icons/cg";
-import { IoIosMore } from "react-icons/io";
 import { HiOutlineSelector } from "react-icons/hi";
-import { IoIosArrowForward, IoIosArrowBack } from "react-icons/io";
+import { IoIosArrowBack, IoIosArrowForward, IoIosMore } from "react-icons/io";
+
+const sortTypeToMode = (sortType: SortTypeCode) => {
+  if (sortType === 1) return "date";
+  if (sortType === 2) return "unviewed";
+  return "relevance";
+};
+
+const modeToSortType = (
+  mode: "relevance" | "date" | "unviewed",
+): SortTypeCode => {
+  if (mode === "date") return 1;
+  if (mode === "unviewed") return 2;
+  return 0;
+};
 
 export default function SearchJobPage() {
-  const navItem = [
-    { label: "Message", href: "/message" },
-    { label: "Profile", href: "/profile" },
-    { label: "Resume", href: "/resume" },
-  ];
+  const {
+    jobs,
+    setJobs,
+    selectedJobId,
+    setSelectedJobId,
+    viewed,
+    setViewed,
+    searchPayload,
+    setSearchPayload,
+    skillOpen,
+    setSkillOpen,
+    applyOpen,
+    setApplyOpen,
+    applyDialogKey,
+    setApplyDialogKey,
+    setMessageCount,
+  } = useSearchJobState();
 
-  // jobs data + state
-  const initialJobs = [
-    {
-      id: 0,
-      title: "Frontend Engineer (React)",
-      company: "Select Service Partner Ltd.",
-      location: "Lat Krabang, Bangkok",
-      meta: "4 Skills Match • 3 weeks ago",
-      skills: ["React", "TypeScript", "Tailwind", "Figma"],
-      category: "Technology",
-      place: "Bangkok",
-      workType: "Full-time",
-      workOption: "On-site",
-      postedAt: "2026-02-03",
-      aboutTitle: "About this job",
-      companyDescription:
-        "Build modern web interfaces with React and collaborate with product and design teams to ship customer-facing features.",
-      extraDescription:
-        "You will refine UI performance, improve accessibility, and maintain a reusable component system.",
-    },
-    {
-      id: 1,
-      title: "Backend Engineer (Node.js)",
-      company: "Blue Orbit Tech",
-      location: "Bang Na, Bangkok",
-      meta: "3 Skills Match • 2 weeks ago",
-      skills: ["Node.js", "PostgreSQL", "Redis", "Docker"],
-      category: "Technology",
-      place: "Bangkok",
-      workType: "Full-time",
-      workOption: "Hybrid",
-      postedAt: "2026-01-28",
-      aboutTitle: "About this job",
-      companyDescription:
-        "Design scalable APIs and data services, improve system reliability, and optimize performance across backend systems.",
-      extraDescription:
-        "You will own service health, write integrations, and help shape the data model across teams.",
-    },
-    {
-      id: 2,
-      title: "Product Designer",
-      company: "Aurora Studio",
-      location: "Phaya Thai, Bangkok",
-      meta: "2 Skills Match • 4 weeks ago",
-      skills: ["Figma", "User Research", "Prototyping"],
-      category: "Design",
-      place: "Bangkok",
-      workType: "Full-time",
-      workOption: "On-site",
-      postedAt: "2026-01-15",
-      aboutTitle: "About this job",
-      companyDescription:
-        "Lead end-to-end product design, validate user needs, and create intuitive experiences across web and mobile.",
-      extraDescription:
-        "You will run workshops, prototype quickly, and translate feedback into clear design decisions.",
-    },
-    {
-      id: 3,
-      title: "Data Analyst",
-      company: "Nimbus Analytics",
-      location: "Huai Khwang, Bangkok",
-      meta: "5 Skills Match • 1 week ago",
-      skills: ["SQL", "Python", "Tableau", "Excel", "Statistics"],
-      category: "Data",
-      place: "Bangkok",
-      workType: "Full-time",
-      workOption: "Hybrid",
-      postedAt: "2026-02-06",
-      aboutTitle: "About this job",
-      companyDescription:
-        "Analyze datasets, build dashboards, and deliver insights that guide business decisions and strategy.",
-      extraDescription:
-        "You will define metrics, automate reporting, and partner with stakeholders to validate hypotheses.",
-    },
-    {
-      id: 4,
-      title: "QA Engineer (Automation)",
-      company: "Siam Mobile Labs",
-      location: "Chatuchak, Bangkok",
-      meta: "3 Skills Match • 5 days ago",
-      skills: ["Playwright", "Jest", "CI/CD"],
-      category: "Technology",
-      place: "Bangkok",
-      workType: "Full-time",
-      workOption: "On-site",
-      postedAt: "2026-02-05",
-      aboutTitle: "About this job",
-      companyDescription:
-        "Create automated test suites, ensure product quality, and collaborate with engineers to prevent regressions.",
-      extraDescription:
-        "You will expand coverage, maintain test infrastructure, and build reliable release checks.",
-    },
-    {
-      id: 5,
-      title: "DevOps Engineer",
-      company: "Cloud Harbor Co., Ltd.",
-      location: "Sathorn, Bangkok",
-      meta: "4 Skills Match • 6 days ago",
-      skills: ["AWS", "Kubernetes", "Terraform", "GitHub Actions"],
-      category: "Technology",
-      place: "Bangkok",
-      workType: "Full-time",
-      workOption: "Remote",
-      postedAt: "2026-02-04",
-      aboutTitle: "About this job",
-      companyDescription:
-        "Build CI/CD pipelines, manage cloud infrastructure, and improve deployment reliability and observability.",
-      extraDescription:
-        "You will optimize costs, harden security, and automate infrastructure with infrastructure-as-code.",
-    },
-    {
-      id: 6,
-      title: "Mobile Developer (iOS)",
-      company: "Riverline Digital",
-      location: "Rama 9, Bangkok",
-      meta: "3 Skills Match • 2 days ago",
-      skills: ["Swift", "UIKit", "REST APIs"],
-      category: "Technology",
-      place: "Bangkok",
-      workType: "Full-time",
-      workOption: "On-site",
-      postedAt: "2026-02-08",
-      aboutTitle: "About this job",
-      companyDescription:
-        "Build iOS features with a focus on performance, accessibility, and polished user experience.",
-      extraDescription:
-        "You will collaborate with product, design, and QA to deliver reliable mobile releases.",
-    },
-    {
-      id: 7,
-      title: "Mobile Developer (Android)",
-      company: "Skyline Works",
-      location: "Ratchada, Bangkok",
-      meta: "2 Skills Match • 1 week ago",
-      skills: ["Kotlin", "Jetpack", "MVVM"],
-      category: "Technology",
-      place: "Bangkok",
-      workType: "Full-time",
-      workOption: "Hybrid",
-      postedAt: "2026-02-01",
-      aboutTitle: "About this job",
-      companyDescription:
-        "Develop Android applications, optimize performance, and maintain a clean architecture.",
-      extraDescription:
-        "You will write reusable components and work closely with backend and QA teams.",
-    },
-    {
-      id: 8,
-      title: "UI/UX Researcher",
-      company: "Nimble Labs",
-      location: "Ari, Bangkok",
-      meta: "2 Skills Match • 3 days ago",
-      skills: ["Interviews", "Surveys", "Usability Testing"],
-      category: "Design",
-      place: "Bangkok",
-      workType: "Contract",
-      workOption: "On-site",
-      postedAt: "2026-02-07",
-      aboutTitle: "About this job",
-      companyDescription:
-        "Plan and run user research, analyze findings, and drive actionable product insights.",
-      extraDescription:
-        "You will build research plans and share results with cross-functional partners.",
-    },
-    {
-      id: 9,
-      title: "Full-stack Engineer",
-      company: "Orbitsoft",
-      location: "Onnut, Bangkok",
-      meta: "4 Skills Match • 4 days ago",
-      skills: ["React", "Node.js", "PostgreSQL", "Docker"],
-      category: "Technology",
-      place: "Bangkok",
-      workType: "Full-time",
-      workOption: "Remote",
-      postedAt: "2026-02-06",
-      aboutTitle: "About this job",
-      companyDescription:
-        "Work across frontend and backend, delivering features end-to-end for core products.",
-      extraDescription:
-        "You will collaborate on architecture decisions and improve developer workflows.",
-    },
-    {
-      id: 10,
-      title: "Security Engineer",
-      company: "Fortress Cloud",
-      location: "Silom, Bangkok",
-      meta: "3 Skills Match • 5 days ago",
-      skills: ["Threat Modeling", "SIEM", "Pen Testing"],
-      category: "Security",
-      place: "Bangkok",
-      workType: "Full-time",
-      workOption: "On-site",
-      postedAt: "2026-02-02",
-      aboutTitle: "About this job",
-      companyDescription:
-        "Strengthen security posture, monitor risks, and guide secure development practices.",
-      extraDescription:
-        "You will run security reviews and implement continuous monitoring controls.",
-    },
-    {
-      id: 11,
-      title: "Machine Learning Engineer",
-      company: "Aether AI",
-      location: "Asoke, Bangkok",
-      meta: "5 Skills Match • 1 day ago",
-      skills: ["Python", "PyTorch", "MLOps", "Data Pipelines"],
-      category: "Data",
-      place: "Bangkok",
-      workType: "Full-time",
-      workOption: "Hybrid",
-      postedAt: "2026-02-09",
-      aboutTitle: "About this job",
-      companyDescription:
-        "Develop ML models, improve data quality, and deploy solutions into production.",
-      extraDescription:
-        "You will iterate on experiments and collaborate with product to measure impact.",
-    },
-  ];
+  const skillInfoRef = useRef<HTMLDivElement | null>(null);
+  const jobListScrollRef = useRef<HTMLDivElement | null>(null);
+  const [skillInfoOpen, setSkillInfoOpen] = useState(false);
+  const [selectedSkillName, setSelectedSkillName] = useState<string | null>(
+    null,
+  );
+  const [applyData, setApplyData] = useState<ApplyPayload>(initialApplyPayload);
 
-  const [jobs, setJobs] = useState(initialJobs);
-  const [selectedJobId, setSelectedJobId] = useState<number | null>(
-    initialJobs[0]?.id ?? null,
-  );
-  const [viewed, setViewed] = useState<Set<number>>(new Set());
-  const [selectedSkills, setSelectedSkills] = useState<Set<string>>(
-    new Set(["Front-End", "Back-End", "React"]),
-  );
-  const [searchType, setSearchType] = useState<"any" | "skill" | "job">("any");
-  const [skillOpen, setSkillOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [selectedCategories, setSelectedCategories] = useState<Set<string>>(
-    new Set(),
-  );
-  const [placeFilter, setPlaceFilter] = useState("Any Place");
-  const [selectedWorkTypes, setSelectedWorkTypes] = useState<Set<string>>(
-    new Set(),
-  );
-  const [selectedWorkOptions, setSelectedWorkOptions] = useState<Set<string>>(
-    new Set(),
-  );
-  const [categoryOpen, setCategoryOpen] = useState(false);
-  const [workTypeOpen, setWorkTypeOpen] = useState(false);
-  const [workOptionOpen, setWorkOptionOpen] = useState(false);
-  const [filterMode, setFilterMode] = useState<
-    "relevance" | "date" | "unviewed"
-  >("relevance");
-  const [messageCount, setMessageCount] = useState<number>(0);
+  const query = searchPayload.search_text.trim().toLowerCase();
+  const currentPage = searchPayload.page + 1;
+  const filterMode = sortTypeToMode(searchPayload.sort_type);
 
-  const skillOptions = [
-    "Front-End",
-    "Back-End",
-    "React",
-    "React Native",
-    "TypeScript",
-    "Node.js",
-    "Figma",
-    "SQL",
-    "Docker",
-    "AWS",
-  ];
-  const categoryOptions = ["Technology", "Design", "Data", "Security"];
-  const workTypeOptions = ["Full-time", "Contract"];
-  const workOptionOptions = ["On-site", "Hybrid", "Remote"];
-  const pageSize = 6;
-  const [currentPage, setCurrentPage] = useState(1);
-  const query = searchQuery.trim().toLowerCase();
+  const selectedSkillIds = useMemo(
+    () => new Set(searchPayload.skill),
+    [searchPayload.skill],
+  );
+  const selectedSkillNames = useMemo(
+    () =>
+      searchPayload.skill
+        .map(
+          (id: string) =>
+            skillOptions.find((item: SearchSuggestItem) => item.id === id)
+              ?.name,
+        )
+        .filter((name: string | undefined): name is string => Boolean(name)),
+    [searchPayload.skill],
+  );
+  const selectedCategorySet = useMemo(
+    () => new Set(searchPayload.category),
+    [searchPayload.category],
+  );
+  const selectedTypeSet = useMemo(
+    () => new Set(searchPayload.type),
+    [searchPayload.type],
+  );
+  const selectedOptionSet = useMemo(
+    () => new Set(searchPayload.option),
+    [searchPayload.option],
+  );
+
+  const categoryNameToId = useMemo(
+    () =>
+      new Map(
+        categoryOptions.map((option: FilterOptionItem) => [
+          option.text_eng,
+          option.id,
+        ]),
+      ),
+    [],
+  );
+  const workTypeNameToId = useMemo(
+    () =>
+      new Map(
+        workTypeOptions.map((option: FilterOptionItem) => [
+          option.text_eng,
+          option.id,
+        ]),
+      ),
+    [],
+  );
+  const workOptionNameToId = useMemo(
+    () =>
+      new Map(
+        workOptionOptions.map((option: FilterOptionItem) => [
+          option.text_eng,
+          option.id,
+        ]),
+      ),
+    [],
+  );
+
+  const selectedPlaceLabel = useMemo(() => {
+    const { province_id, district_id } = searchPayload.place;
+    if (!province_id || !district_id) return "Any Place";
+    const selected = placeOptions.find(
+      (option: PlaceSearchItem) =>
+        option.province_code === province_id &&
+        option.district_code === district_id,
+    );
+    if (!selected) return "Any Place";
+    return `${selected.province_name}, ${selected.district_name}`;
+  }, [searchPayload.place]);
 
   const filteredJobs = jobs
-    .filter((job) => {
+    .filter((job: Job) => {
+      const categoryId = categoryNameToId.get(job.category) ?? -1;
+      const workTypeId = workTypeNameToId.get(job.workType) ?? -1;
+      const workOptionId = workOptionNameToId.get(job.workOption) ?? -1;
+
       const matchesCategory =
-        selectedCategories.size === 0 || selectedCategories.has(job.category);
+        searchPayload.category.length === 0 ||
+        selectedCategorySet.has(categoryId);
       const matchesPlace =
-        placeFilter === "Any Place" || job.place === placeFilter;
+        searchPayload.place.province_id === 0 ||
+        job.place.toUpperCase() ===
+          (placeOptions.find(
+            (option: PlaceSearchItem) =>
+              option.province_code === searchPayload.place.province_id,
+          )?.province_name ?? "");
       const matchesWorkType =
-        selectedWorkTypes.size === 0 || selectedWorkTypes.has(job.workType);
+        searchPayload.type.length === 0 || selectedTypeSet.has(workTypeId);
       const matchesWorkOption =
-        selectedWorkOptions.size === 0 ||
-        selectedWorkOptions.has(job.workOption);
+        searchPayload.option.length === 0 ||
+        selectedOptionSet.has(workOptionId);
 
       if (!query) {
         return (
@@ -311,14 +195,14 @@ export default function SearchJobPage() {
         .join(" ")
         .toLowerCase()
         .includes(query);
-      const queryInSkill = job.skills.some((skill) =>
+      const queryInSkill = job.skills.some((skill: string) =>
         skill.toLowerCase().includes(query),
       );
 
       const matchesQuery =
-        searchType === "skill"
+        searchPayload.search_type === 1
           ? queryInSkill
-          : searchType === "job"
+          : searchPayload.search_type === 2
             ? queryInJob
             : queryInJob || queryInSkill;
 
@@ -330,37 +214,38 @@ export default function SearchJobPage() {
         matchesQuery
       );
     })
-    .sort((a, b) => {
+    .sort((a: Job, b: Job) => {
       if (filterMode === "date") {
         return new Date(b.postedAt).getTime() - new Date(a.postedAt).getTime();
       }
+
       if (filterMode === "unviewed") {
         const aViewed = viewed.has(a.id) ? 1 : 0;
         const bViewed = viewed.has(b.id) ? 1 : 0;
         return aViewed - bViewed;
       }
 
-      const score = (job: (typeof jobs)[number]) => {
+      const score = (job: Job) => {
         let points = 0;
         const queryInJob = [job.title, job.company, job.location]
           .join(" ")
           .toLowerCase()
           .includes(query);
-        const queryInSkill = job.skills.some((skill) =>
+        const queryInSkill = job.skills.some((skill: string) =>
           skill.toLowerCase().includes(query),
         );
 
         if (query) {
-          if (searchType === "skill" && queryInSkill) points += 2;
-          if (searchType === "job" && queryInJob) points += 2;
-          if (searchType === "any") {
+          if (searchPayload.search_type === 1 && queryInSkill) points += 2;
+          if (searchPayload.search_type === 2 && queryInJob) points += 2;
+          if (searchPayload.search_type === 0) {
             if (queryInJob) points += 2;
             if (queryInSkill) points += 1;
           }
         }
 
-        const skillMatchCount = job.skills.filter((skill) =>
-          selectedSkills.has(skill),
+        const skillMatchCount = job.skills.filter((skill: string) =>
+          selectedSkillNames.includes(skill),
         ).length;
         points += skillMatchCount;
         return points;
@@ -368,20 +253,86 @@ export default function SearchJobPage() {
 
       return score(b) - score(a);
     })
-    .filter((job) => (filterMode === "unviewed" ? !viewed.has(job.id) : true));
+    .filter((job: Job) =>
+      filterMode === "unviewed" ? !viewed.has(job.id) : true,
+    );
 
   const totalPages = Math.max(1, Math.ceil(filteredJobs.length / pageSize));
   const safePage = Math.min(currentPage, totalPages);
   const startIndex = (safePage - 1) * pageSize;
   const pagedJobs = filteredJobs.slice(startIndex, startIndex + pageSize);
   const selectedJob =
-    filteredJobs.find((job) => job.id === selectedJobId) ??
+    filteredJobs.find((job: Job) => job.id === selectedJobId) ??
     filteredJobs[0] ??
     null;
+  const applyDetail = useMemo(
+    () => ({
+      ...initialApplyDialogJob,
+      id: selectedJob ? String(selectedJob.id) : "",
+      company_name: selectedJob?.company ?? "",
+      job_title: selectedJob?.title ?? "",
+    }),
+    [selectedJob],
+  );
+
+  const headerSkills = selectedSkillNames.slice(0, 4);
+  const headerSkillsOverflow = Math.max(0, selectedSkillNames.length - 4);
+
+  useEffect(() => {
+    jobListScrollRef.current?.scrollTo({ top: 0 });
+  }, [safePage]);
+
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setSearchPayload((prev: SearchJobPayload) => ({
+        ...prev,
+        page: Math.max(0, totalPages - 1),
+      }));
+    }
+  }, [currentPage, setSearchPayload, totalPages]);
+
+  useEffect(() => {
+    if (filteredJobs.length === 0) {
+      setSelectedJobId(null);
+      return;
+    }
+
+    const exists = filteredJobs.some((job: Job) => job.id === selectedJobId);
+    if (!exists) {
+      setSelectedJobId(filteredJobs[0].id);
+    }
+  }, [filteredJobs, selectedJobId, setSelectedJobId]);
+
+  useEffect(() => {
+    setMessageCount(100);
+  }, [setMessageCount]);
+
+  const updatePayload = (partial: Partial<typeof searchPayload>) => {
+    setSearchPayload((prev: SearchJobPayload) => ({
+      ...prev,
+      ...partial,
+    }));
+  };
+
+  useEffect(() => {
+    const handler = () => updatePayload({ search_text: "", page: 0 });
+    window.addEventListener("combobox-clear", handler);
+    return () => window.removeEventListener("combobox-clear", handler);
+  }, [updatePayload]);
+
+  const toggleSkill = (skillId: string) => {
+    setSearchPayload((prev: SearchJobPayload) => {
+      const exists = prev.skill.includes(skillId);
+      const nextSkills = exists
+        ? prev.skill.filter((item) => item !== skillId)
+        : [...prev.skill, skillId];
+      return { ...prev, skill: nextSkills, page: 0 };
+    });
+  };
 
   const handleSelect = (id: number) => {
     setSelectedJobId(id);
-    setViewed((prev) => {
+    setViewed((prev: Set<number>) => {
       if (prev.has(id)) return prev;
       const next = new Set(prev);
       next.add(id);
@@ -390,16 +341,15 @@ export default function SearchJobPage() {
   };
 
   const handleDelete = (id: number) => {
-    setJobs((prev) => {
+    setJobs((prev: Job[]) => {
       const nextJobs = prev.filter((job) => job.id !== id);
       if (selectedJobId === id) {
         setSelectedJobId(nextJobs[0]?.id ?? null);
       }
-      const nextTotalPages = Math.max(1, Math.ceil(nextJobs.length / pageSize));
-      setCurrentPage((prevPage) => Math.min(prevPage, nextTotalPages));
       return nextJobs;
     });
-    setViewed((prev) => {
+
+    setViewed((prev: Set<number>) => {
       if (!prev.has(id)) return prev;
       const next = new Set(prev);
       next.delete(id);
@@ -407,618 +357,565 @@ export default function SearchJobPage() {
     });
   };
 
-  const toggleCategory = (value: string) => {
-    setSelectedCategories((prev) => {
-      const next = new Set(prev);
-      if (next.has(value)) {
-        next.delete(value);
-      } else {
-        next.add(value);
-      }
-      return next;
-    });
+  const handleScrollToSkillInfo = () => {
+    if (!skillInfoRef.current) return;
+    skillInfoRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
-  const toggleWorkType = (value: string) => {
-    setSelectedWorkTypes((prev) => {
-      const next = new Set(prev);
-      if (next.has(value)) {
-        next.delete(value);
-      } else {
-        next.add(value);
-      }
-      return next;
-    });
+  const handleOpenSkillInfo = (skillName: string) => {
+    setSelectedSkillName(skillName);
+    setSkillInfoOpen(true);
   };
 
-  const toggleWorkOption = (value: string) => {
-    setSelectedWorkOptions((prev) => {
-      const next = new Set(prev);
-      if (next.has(value)) {
-        next.delete(value);
-      } else {
-        next.add(value);
-      }
-      return next;
-    });
-  };
+  const handlePlaceSelect = (label: string) => {
+    if (label === "Any Place") {
+      updatePayload({
+        place: { province_id: 0, district_id: 0 },
+        page: 0,
+      });
+      return;
+    }
 
-  useEffect(() => {
-    // เชื่อมต่อกับ API เพื่อดึงจำนวนข้อความที่ยังไม่ได้อ่านมาแสดง
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setMessageCount(100);
-  }, []);
+    const selected = placeOptions.find(
+      (option: PlaceSearchItem) =>
+        `${option.province_name}, ${option.district_name}` === label,
+    );
+    if (!selected) return;
 
-  const toggleSkill = (skill: string) => {
-    setSelectedSkills((prev) => {
-      const next = new Set(prev);
-      if (next.has(skill)) {
-        next.delete(skill);
-      } else {
-        next.add(skill);
-      }
-      return next;
+    updatePayload({
+      place: {
+        province_id: selected.province_code,
+        district_id: selected.district_code,
+      },
+      page: 0,
     });
   };
 
   return (
-    <div className="w-full min-h-screen bg-white">
-      {/* Top Navbar */}
-      <div className="fixed w-full h-14 bg-white flex items-center border-b border-gray-200 shadow z-20">
-        <div className="px-4">
-          <JobbyLogo height={40} width={110} />
-        </div>
+    <PageLayout>
+      <div className="h-[calc(100vh-56px)] min-h-0 overflow-hidden bg-white">
+        <div className="flex h-full w-full flex-col px-6 pb-3 pt-4">
+          <div className="mb-3 flex items-center gap-4">
+            <h1 className="shrink-0 text-[32px] font-medium tracking-tight text-slate-950">
+              Search Job
+            </h1>
 
-        <div className="ml-auto px-4 flex items-center gap-3">
-          <Button className="h-8 rounded-full px-4 text-white bg-[linear-gradient(90deg,var(--color-main),var(--color-second))] hover:opacity-90">
-            Find Job
-          </Button>
-          {navItem.map((item, idx) => (
-            <Link to={item.href} key={idx}>
-              <Button variant="ghost" size="sm" className="relative">
-                {item.label}
-                {item.label === "Message" && messageCount > 0 && (
-                  <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] text-white">
-                    {messageCount > 99 ? "99+" : messageCount}
-                  </span>
-                )}
-              </Button>
-            </Link>
-          ))}
-          <div className="h-8 w-8 rounded-full bg-gray-300" />
-        </div>
-      </div>
-
-      {/* Header Search */}
-      <div className="border-b bg-white sticky top-14 z-10">
-        <div className="w-full px-6 py-4 flex items-start gap-6">
-          <h1 className="text-2xl font-bold">Search Job</h1>
-
-          <div className="flex-1">
-            <div className="flex items-center gap-4">
-              <div className="flex items-center gap-3 px-4 py-2.5 rounded-full border border-gray-200 bg-white shadow-[0_6px_18px_rgba(0,0,0,0.12)]">
-                <Input
-                  placeholder="Software Engineer"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="search-input max-w-full rounded-full border-0 h-9 focus-visible:ring-0"
-                />
-                <div className="relative">
-                  <select
-                    value={searchType}
-                    onChange={(e) =>
-                      setSearchType(e.target.value as "any" | "skill" | "job")
+            <div className="flex min-w-0 flex-1 flex-wrap items-center gap-3">
+              <div className="flex min-w-[420px] flex-1 items-center gap-1 rounded-xl border border-[#d9d9d9] bg-white px-2 py-2 shadow-[0_2px_14px_rgba(0,0,0,0.09)]">
+                <Combobox
+                  items={skillOptions.map((o: SearchSuggestItem) => o.name)}
+                >
+                  <ComboboxInput
+                    placeholder="Software Engineer"
+                    value={searchPayload.search_text}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                      updatePayload({ search_text: e.target.value, page: 0 })
                     }
-                    className={`h-9 px-3 border rounded-full bg-transparent appearance-none pr-8 text-sm ${
-                      searchType === "skill"
-                        ? "text-[var(--color-second)] border-[var(--color-second)]"
-                        : searchType === "job"
-                          ? "text-[var(--color-main)] border-[var(--color-main)]"
-                          : "text-[#A1A1A1] border-[#E5E5E5]"
+                    className="h-10 min-w-0 flex-1 bg-transparent px-1 border-0 text-xl focus-visible:ring-0 outline-none **:data-[slot=input-group-control]:border-0 **:data-[slot=input-group-control]:bg-transparent **:data-[slot=input-group-control]:shadow-none **:data-[slot=input-group-button]:bg-none! **:data-[slot=input-group-button]:bg-transparent! **:data-[slot=input-group-button]:hover:bg-transparent!"
+                    showTrigger={false}
+                    showClear
+                  />
+                  <ComboboxContent className="mt-2 p-1 rounded-xl">
+                    <ComboboxEmpty>No suggestions.</ComboboxEmpty>
+                    <ComboboxList>
+                      {(item: string) => {
+                        const opt = skillOptions.find(
+                          (s: SearchSuggestItem) => s.name === item,
+                        );
+                        const label =
+                          opt?.type === "job"
+                            ? "Job"
+                            : opt?.type === "skill"
+                              ? "Skill"
+                              : "";
+                        return (
+                          <ComboboxItem
+                            key={item}
+                            value={item}
+                            onClick={() =>
+                              updatePayload({ search_text: item, page: 0 })
+                            }
+                          >
+                            <span>{item}</span>
+                            <span
+                              className={`ml-auto mr-0 inline-flex border items-center font-medium rounded-full px-2 py-0.5 text-xs bg-transparent data-highlighted:bg-transparent ${
+                                opt?.type === "job"
+                                  ? "border-main text-main hover:text-main"
+                                  : "border-second text-second hover:text-second"
+                              }`}
+                              role="status"
+                            >
+                              {label}
+                            </span>
+                          </ComboboxItem>
+                        );
+                      }}
+                    </ComboboxList>
+                  </ComboboxContent>
+                </Combobox>
+                <div className="relative shrink-0">
+                  <select
+                    value={searchPayload.search_type}
+                    onChange={(e) =>
+                      updatePayload({
+                        search_type: Number(e.target.value) as 0 | 1 | 2,
+                        page: 0,
+                      })
+                    }
+                    className={`h-8 appearance-none rounded-xl border bg-white px-3 pr-7 text-xs outline-none ${
+                      searchPayload.search_type === 1
+                        ? "border-second text-second"
+                        : searchPayload.search_type === 2
+                          ? "border-main text-main"
+                          : "border-[#d7d7d7] text-[#A1A1A1]"
                     }`}
                   >
-                    <option value="any" className="text-[#A1A1A1]">
-                      Any
-                    </option>
-                    <option value="skill" className="text-[#A1A1A1]">
-                      Skill
-                    </option>
-                    <option value="job" className="text-[#A1A1A1]">
-                      Job
-                    </option>
+                    {searchTypeOptions.map(
+                      (option: { label: string; value: SearchTypeCode }) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ),
+                    )}
                   </select>
                   <HiOutlineSelector
-                    className={`pointer-events-none absolute right-2 top-1/2 h-4 w-4 -translate-y-1/2 ${
-                      searchType === "skill"
-                        ? "text-[var(--color-second)]"
-                        : searchType === "job"
-                          ? "text-[var(--color-main)]"
+                    className={`pointer-events-none absolute right-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 ${
+                      searchPayload.search_type === 1
+                        ? "text-second"
+                        : searchPayload.search_type === 2
+                          ? "text-main"
                           : "text-[#A1A1A1]"
                     }`}
                   />
                 </div>
               </div>
 
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-muted-foreground whitespace-nowrap">
+              <div className="relative flex min-w-0 flex-1 items-center gap-3 rounded-[18px] border border-[#d9d9d9] bg-white px-4 py-2 shadow-[0_2px_14px_rgba(0,0,0,0.09)]">
+                <button
+                  type="button"
+                  onClick={handleScrollToSkillInfo}
+                  className="whitespace-nowrap text-sm text-slate-900 hover:text-slate-700"
+                >
                   Skill Use:
-                </span>
-                <div className="relative w-[540px] min-h-[54px]">
-                  <div className="flex items-center gap-2 rounded-full border border-[#e2e2e2] bg-white px-3 py-2 shadow-sm w-full min-h-[54px]">
-                    <div className="flex items-center gap-2 min-w-0">
-                      {(() => {
-                        const selected = Array.from(selectedSkills);
-                        return selected.slice(0, 5).map((skill) => (
-                          <button
-                            key={skill}
-                            type="button"
-                            onClick={() => toggleSkill(skill)}
-                            className="h-7 inline-flex items-center justify-center rounded-full border border-transparent px-3 text-xs text-white bg-[linear-gradient(90deg,var(--color-main),var(--color-second))] whitespace-nowrap"
-                          >
-                            {skill}
-                          </button>
-                        ));
-                      })()}
+                </button>
+                <div className="flex min-w-0 flex-1 items-center gap-2 overflow-hidden">
+                  {headerSkills.map((skillName: string) => {
+                    const skillItem = skillOptions.find(
+                      (item: SearchSuggestItem) => item.name === skillName,
+                    );
+                    return (
+                      <button
+                        key={skillName}
+                        type="button"
+                        onClick={() => {
+                          if (!skillItem) return;
+                          toggleSkill(skillItem.id);
+                        }}
+                        className="inline-flex h-7 items-center whitespace-nowrap rounded-full border border-transparent bg-[linear-gradient(90deg,var(--color-main),var(--color-second))] px-3 text-xs text-white"
+                      >
+                        {skillName}
+                      </button>
+                    );
+                  })}
+                  {headerSkillsOverflow > 0 ? (
+                    <span className="inline-flex h-7 items-center rounded-full border border-[#e2e2e2] bg-[#f5f5f5] px-3 text-xs text-[#8a8a8a]">
+                      +{headerSkillsOverflow}
+                    </span>
+                  ) : null}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setSkillOpen((v: boolean) => !v)}
+                  className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[#b3b3b3] hover:bg-slate-100"
+                  aria-label="toggle skill list"
+                >
+                  <HiOutlineSelector className="h-4 w-4" />
+                </button>
+                <button
+                  type="button"
+                  className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[#999999] hover:bg-slate-100"
+                  aria-label="clear skill use"
+                  onClick={() => updatePayload({ skill: [], page: 0 })}
+                >
+                  <CgClose />
+                </button>
 
-                      {(() => {
-                        const total = selectedSkills.size;
-                        const remaining = Math.max(0, total - 5);
+                {skillOpen ? (
+                  <div className="absolute left-0 top-full z-20 mt-2 w-full rounded-2xl border border-[#e2e2e2] bg-white p-3 shadow-lg">
+                    <div className="flex flex-wrap gap-2">
+                      {skillOptions.map((skill: SearchSuggestItem) => {
+                        const active = selectedSkillIds.has(skill.id);
                         return (
-                          remaining > 0 && (
-                            <span className="h-7 rounded-full border px-3 text-xs bg-[#f5f5f5] text-[#8a8a8a] border-[#e2e2e2] inline-flex items-center">
-                              +{remaining}
-                            </span>
-                          )
+                          <button
+                            key={skill.id}
+                            type="button"
+                            onClick={() => toggleSkill(skill.id)}
+                            className={`h-8 rounded-full border px-3 text-xs ${
+                              active
+                                ? "border-transparent bg-[linear-gradient(90deg,var(--color-main),var(--color-second))] text-white"
+                                : "border-[#e2e2e2] bg-white text-[#666666]"
+                            }`}
+                          >
+                            {skill.name}
+                          </button>
                         );
-                      })()}
+                      })}
                     </div>
-
-                    <button
-                      type="button"
-                      onClick={() => setSkillOpen((v) => !v)}
-                      className="ml-auto h-6 w-6 flex items-center justify-center rounded-full hover:bg-gray-100"
-                      aria-label="toggle skill list"
-                    >
-                      <HiOutlineSelector className="h-4 w-4 text-[#b3b3b3]" />
-                    </button>
-                    <button
-                      type="button"
-                      className="h-6 w-6 flex items-center justify-center rounded-full hover:bg-gray-100 text-muted-foreground"
-                      aria-label="clear skill use"
-                      onClick={() => setSelectedSkills(new Set())}
-                    >
-                      <CgClose />
-                    </button>
                   </div>
-                  {skillOpen && (
-                    <div className="absolute left-0 top-full mt-2 w-full rounded-2xl border border-[#e2e2e2] bg-white shadow-lg p-3 z-20">
-                      <div className="flex flex-wrap gap-2">
-                        {skillOptions.map((skill) => {
-                          const active = selectedSkills.has(skill);
-                          return (
-                            <button
-                              key={skill}
-                              type="button"
-                              onClick={() => toggleSkill(skill)}
-                              className={`h-8 rounded-full border px-3 text-xs ${
-                                active
-                                  ? "bg-[#fff4f9] text-[#f335ec] border-[#f7c3e8]"
-                                  : "bg-white text-[#b3b3b3] border-[#e2e2e2]"
-                              }`}
-                            >
-                              {skill}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
+                ) : null}
+              </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-4 gap-3">
+            <div className="relative">
+              <MultiSelect
+                options={categoryOptions.map(
+                  (o: FilterOptionItem): MultiSelectOption => ({
+                    label: o.text_eng,
+                    value: String(o.id),
+                  }),
+                )}
+                value={searchPayload.category.map((id: number) => String(id))}
+                onValueChange={(vals: string[]) =>
+                  updatePayload({ category: vals.map((v) => Number(v)) })
+                }
+                placeholder="Any Category"
+                className="h-10 w-full border border-[#e5e5e5] bg-white px-4 pr-4 text-sm text-[#A1A1A1] shadow-[0_2px_10px_rgba(0,0,0,0.06)] outline-none **:data-[slot=input-group-control]:border-0 **:data-[slot=input-group-control]:bg-transparent **:data-[slot=input-group-control]:shadow-none **:data-[slot=input-group-button]:bg-none! **:data-[slot=input-group-button]:bg-transparent! **:data-[slot=input-group-button]:hover:bg-transparent!"
+                badgeClassName="bg-[#C1C1C1]/20 text-neutral-800"
+                maxWidth="max-w-full"
+                maxDisplay={2}
+              />
+            </div>
+
+            <div className="relative">
+              <Combobox
+                items={[
+                  "Any Place",
+                  ...placeOptions.map(
+                    (option: PlaceSearchItem) =>
+                      `${option.province_name}, ${option.district_name}`,
+                  ),
+                ]}
+              >
+                <ComboboxInput
+                  placeholder={selectedPlaceLabel}
+                  className="h-10 w-full rounded-xl border border-[#e5e5e5] bg-white px-4 pr-4 text-sm text-[#A1A1A1] shadow-[0_2px_10px_rgba(0,0,0,0.06)] outline-none **:data-[slot=input-group-control]:border-0 **:data-[slot=input-group-control]:bg-transparent **:data-[slot=input-group-control]:shadow-none **:data-[slot=input-group-button]:bg-none! **:data-[slot=input-group-button]:bg-transparent! **:data-[slot=input-group-button]:hover:bg-transparent!"
+                />
+                <ComboboxContent>
+                  <ComboboxEmpty>No place found.</ComboboxEmpty>
+                  <ComboboxList>
+                    {(item: string) => (
+                      <ComboboxItem
+                        key={item}
+                        value={item}
+                        onClick={() => handlePlaceSelect(item)}
+                      >
+                        {item}
+                      </ComboboxItem>
+                    )}
+                  </ComboboxList>
+                </ComboboxContent>
+              </Combobox>
+            </div>
+
+            <div className="relative">
+              <MultiSelect
+                options={workTypeOptions.map(
+                  (o: FilterOptionItem): MultiSelectOption => ({
+                    label: o.text_eng,
+                    value: String(o.id),
+                  }),
+                )}
+                value={searchPayload.type.map((id: number) => String(id))}
+                onValueChange={(vals: string[]) =>
+                  updatePayload({ type: vals.map((v) => Number(v)) })
+                }
+                placeholder="Any Work Type"
+                className="h-10 w-full border border-[#e5e5e5] bg-white px-4 pr-4 text-sm text-[#A1A1A1] shadow-[0_2px_10px_rgba(0,0,0,0.06)] outline-none **:data-[slot=input-group-control]:border-0 **:data-[slot=input-group-control]:bg-transparent **:data-[slot=input-group-control]:shadow-none **:data-[slot=input-group-button]:bg-none! **:data-[slot=input-group-button]:bg-transparent! **:data-[slot=input-group-button]:hover:bg-transparent!"
+                badgeClassName="bg-[#C1C1C1]/20 text-neutral-800"
+                maxWidth="max-w-full"
+                maxDisplay={2}
+              />
+            </div>
+
+            <div className="relative">
+              <MultiSelect
+                options={workOptionOptions.map(
+                  (o: FilterOptionItem): MultiSelectOption => ({
+                    label: o.text_eng,
+                    value: String(o.id),
+                  }),
+                )}
+                value={searchPayload.option.map((id: number) => String(id))}
+                onValueChange={(vals: string[]) =>
+                  updatePayload({ option: vals.map((v) => Number(v)) })
+                }
+                placeholder="Any Work Option"
+                className="h-10 w-full border border-[#e5e5e5] bg-white px-4 pr-4 text-sm text-[#A1A1A1] shadow-[0_2px_10px_rgba(0,0,0,0.06)] outline-none **:data-[slot=input-group-control]:border-0 **:data-[slot=input-group-control]:bg-transparent **:data-[slot=input-group-control]:shadow-none **:data-[slot=input-group-button]:bg-none! **:data-[slot=input-group-button]:bg-transparent! **:data-[slot=input-group-button]:hover:bg-transparent!"
+                badgeClassName="bg-[#C1C1C1]/20 text-neutral-800"
+                maxWidth="max-w-full"
+                maxDisplay={2}
+              />
+            </div>
+          </div>
+
+          <div className="mt-3 grid min-h-0 flex-1 grid-cols-[minmax(0,420px)_minmax(0,1fr)] overflow-hidden border-t border-[#e5e5e5]">
+            <div className="flex h-full min-h-0 flex-col border-r border-[#e5e5e5] pb-3 pr-0">
+              <div className="flex items-center gap-3 py-4">
+                <span className="text-sm font-medium text-slate-950">
+                  {filteredJobs.length} Results
+                </span>
+                <div className="inline-flex overflow-hidden rounded-full border border-[#d7d7d7] bg-white text-sm">
+                  {(["relevance", "date", "unviewed"] as const).map(
+                    (
+                      mode: "relevance" | "date" | "unviewed",
+                      index: number,
+                    ) => (
+                      <button
+                        key={mode}
+                        type="button"
+                        onClick={() =>
+                          updatePayload({
+                            sort_type: modeToSortType(mode),
+                            page: 0,
+                          })
+                        }
+                        className={`${index < 2 ? "border-r border-[#d7d7d7]" : ""} px-4 py-2 ${
+                          filterMode === mode
+                            ? "bg-[linear-gradient(90deg,var(--color-main),var(--color-second))] text-white"
+                            : "bg-white text-slate-600"
+                        }`}
+                      >
+                        {mode === "relevance"
+                          ? "Relevance"
+                          : mode === "date"
+                            ? "Date"
+                            : "No browsed yet"}
+                      </button>
+                    ),
                   )}
                 </div>
               </div>
-            </div>
 
-            <div className="mt-3 grid grid-cols-4 gap-3">
-              <div className="relative">
-                <button
-                  type="button"
-                  onClick={() => setCategoryOpen((prev) => !prev)}
-                  className="h-10 w-full px-3 border rounded-full border-[#E5E5E5] bg-transparent text-sm shadow-sm flex items-center"
-                >
-                  <div className="flex items-center gap-1.5 min-w-0 overflow-hidden">
-                    {selectedCategories.size === 0 ? (
-                      <span className="text-[#A1A1A1]">Any Category</span>
-                    ) : (
-                      <>
-                        {Array.from(selectedCategories)
-                          .slice(0, 3)
-                          .map((item) => (
-                            <span
-                              key={item}
-                              className="h-6 px-2 rounded-full bg-[#eeeeee] text-black inline-flex items-center whitespace-nowrap text-xs"
-                            >
-                              {item}
-                            </span>
-                          ))}
-                        {selectedCategories.size > 3 && (
-                          <span className="h-6 px-2 rounded-full bg-[#eeeeee] text-black inline-flex items-center whitespace-nowrap text-xs">
-                            +{selectedCategories.size - 3}
-                          </span>
-                        )}
-                      </>
-                    )}
-                  </div>
-                  <HiOutlineSelector className="ml-auto h-4 w-4 text-[#A1A1A1]" />
-                </button>
-                {categoryOpen && (
-                  <div className="absolute top-full left-0 mt-2 w-full rounded-2xl border border-[#e2e2e2] bg-white shadow-lg p-2 z-30">
-                    <div className="flex flex-wrap gap-2">
-                      {categoryOptions.map((option) => {
-                        const active = selectedCategories.has(option);
-                        return (
-                          <button
-                            key={option}
-                            type="button"
-                            onClick={() => toggleCategory(option)}
-                            className={`h-7 px-3 rounded-full text-xs ${
-                              active
-                                ? "bg-[#e5e5e5] text-black"
-                                : "bg-white text-[#666] border border-[#e2e2e2]"
-                            }`}
-                          >
-                            {option}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
-              </div>
-              <div className="relative">
-                <select
-                  value={placeFilter}
-                  onChange={(e) => setPlaceFilter(e.target.value)}
-                  className="h-10 w-full px-4 border rounded-full text-[#A1A1A1] border-[#E5E5E5] bg-transparent appearance-none pr-8 text-sm shadow-sm"
-                >
-                  <option>Any Place</option>
-                  <option>Bangkok</option>
-                </select>
-                <HiOutlineSelector className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#A1A1A1]" />
-              </div>
-              <div className="relative">
-                <button
-                  type="button"
-                  onClick={() => setWorkTypeOpen((prev) => !prev)}
-                  className="h-10 w-full px-3 border rounded-full border-[#E5E5E5] bg-transparent text-sm shadow-sm flex items-center"
-                >
-                  <div className="flex items-center gap-1.5 min-w-0 overflow-hidden">
-                    {selectedWorkTypes.size === 0 ? (
-                      <span className="text-[#A1A1A1]">Any Work Type</span>
-                    ) : (
-                      <>
-                        {Array.from(selectedWorkTypes)
-                          .slice(0, 3)
-                          .map((item) => (
-                            <span
-                              key={item}
-                              className="h-6 px-2 rounded-full bg-[#eeeeee] text-black inline-flex items-center whitespace-nowrap text-xs"
-                            >
-                              {item}
-                            </span>
-                          ))}
-                        {selectedWorkTypes.size > 3 && (
-                          <span className="h-6 px-2 rounded-full bg-[#eeeeee] text-black inline-flex items-center whitespace-nowrap text-xs">
-                            +{selectedWorkTypes.size - 3}
-                          </span>
-                        )}
-                      </>
-                    )}
-                  </div>
-                  <HiOutlineSelector className="ml-auto h-4 w-4 text-[#A1A1A1]" />
-                </button>
-                {workTypeOpen && (
-                  <div className="absolute top-full left-0 mt-2 w-full rounded-2xl border border-[#e2e2e2] bg-white shadow-lg p-2 z-30">
-                    <div className="flex flex-wrap gap-2">
-                      {workTypeOptions.map((option) => {
-                        const active = selectedWorkTypes.has(option);
-                        return (
-                          <button
-                            key={option}
-                            type="button"
-                            onClick={() => toggleWorkType(option)}
-                            className={`h-7 px-3 rounded-full text-xs ${
-                              active
-                                ? "bg-[#e5e5e5] text-black"
-                                : "bg-white text-[#666] border border-[#e2e2e2]"
-                            }`}
-                          >
-                            {option}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
-              </div>
-              <div className="relative">
-                <button
-                  type="button"
-                  onClick={() => setWorkOptionOpen((prev) => !prev)}
-                  className="h-10 w-full px-3 border rounded-full border-[#E5E5E5] bg-transparent text-sm shadow-sm flex items-center"
-                >
-                  <div className="flex items-center gap-1.5 min-w-0 overflow-hidden">
-                    {selectedWorkOptions.size === 0 ? (
-                      <span className="text-[#A1A1A1]">Any Work Option</span>
-                    ) : (
-                      <>
-                        {Array.from(selectedWorkOptions)
-                          .slice(0, 3)
-                          .map((item) => (
-                            <span
-                              key={item}
-                              className="h-6 px-2 rounded-full bg-[#eeeeee] text-black inline-flex items-center whitespace-nowrap text-xs"
-                            >
-                              {item}
-                            </span>
-                          ))}
-                        {selectedWorkOptions.size > 3 && (
-                          <span className="h-6 px-2 rounded-full bg-[#eeeeee] text-black inline-flex items-center whitespace-nowrap text-xs">
-                            +{selectedWorkOptions.size - 3}
-                          </span>
-                        )}
-                      </>
-                    )}
-                  </div>
-                  <HiOutlineSelector className="ml-auto h-4 w-4 text-[#A1A1A1]" />
-                </button>
-                {workOptionOpen && (
-                  <div className="absolute top-full left-0 mt-2 w-full rounded-2xl border border-[#e2e2e2] bg-white shadow-lg p-2 z-30">
-                    <div className="flex flex-wrap gap-2">
-                      {workOptionOptions.map((option) => {
-                        const active = selectedWorkOptions.has(option);
-                        return (
-                          <button
-                            key={option}
-                            type="button"
-                            onClick={() => toggleWorkOption(option)}
-                            className={`h-7 px-3 rounded-full text-xs ${
-                              active
-                                ? "bg-[#e5e5e5] text-black"
-                                : "bg-white text-[#666] border border-[#e2e2e2]"
-                            }`}
-                          >
-                            {option}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Content */}
-      <div className="w-full px-6 py-6 grid grid-cols-[460px_1fr] gap-0">
-        {/* Job List */}
-        <div className="job-list bg-white divide-y divide-gray-100">
-          <div className="flex items-center gap-3 mt-15 px-4 py-5">
-            <span className="text-sm">{filteredJobs.length} Results</span>
-            <div className="inline-flex overflow-hidden rounded-full border border-[#cfcfcf] bg-white">
-              <button
-                type="button"
-                onClick={() => setFilterMode("relevance")}
-                className={`px-5 py-2.5 text-[14px] leading-none whitespace-nowrap border-r border-[#d8d8d8] ${
-                  filterMode === "relevance"
-                    ? "text-white border-r-transparent bg-[linear-gradient(90deg,var(--color-main),var(--color-second))]"
-                    : "text-[#555] bg-white hover:bg-[#f7f7f7]"
-                }`}
+              <div
+                ref={jobListScrollRef}
+                className="min-h-0 flex-1 overflow-y-auto"
               >
-                Relevance
-              </button>
-              <button
-                type="button"
-                onClick={() => setFilterMode("date")}
-                className={`px-5 py-2.5 text-[14px] leading-none whitespace-nowrap border-r border-[#d8d8d8] ${
-                  filterMode === "date"
-                    ? "text-white border-r-transparent bg-[linear-gradient(90deg,var(--color-main),var(--color-second))]"
-                    : "text-[#555] bg-white hover:bg-[#f7f7f7]"
-                }`}
-              >
-                Date
-              </button>
-              <button
-                type="button"
-                onClick={() => setFilterMode("unviewed")}
-                className={`px-5 py-2.5 text-[14px] leading-none whitespace-nowrap ${
-                  filterMode === "unviewed"
-                    ? "text-white bg-[linear-gradient(90deg,var(--color-main),var(--color-second))]"
-                    : "text-[#555] bg-white hover:bg-[#f7f7f7]"
-                }`}
-              >
-                No browsed yet
-              </button>
-            </div>
-          </div>
+                <div className="space-y-0">
+                  {pagedJobs.map((job: Job) => {
+                    const isSelected = selectedJob?.id === job.id;
+                    return (
+                      <Card
+                        key={job.id}
+                        onClick={() => handleSelect(job.id)}
+                        className={`group relative w-full cursor-pointer rounded-none border-x-0 border-b border-t-0 border-[#e5e5e5] bg-white transition ${
+                          isSelected ? "bg-[#fafafa]" : "hover:bg-[#fcfcfc]"
+                        }`}
+                      >
+                        {isSelected ? (
+                          <div className="absolute left-0 top-0 h-full w-1 bg-main" />
+                        ) : null}
 
-          {pagedJobs.map((job) => (
-            <Card
-              key={job.id}
-              onClick={() => handleSelect(job.id)}
-              className={`job-card relative min-h-[137px] w-full overflow-hidden cursor-pointer border border-gray-100 rounded-none ${
-                selectedJob?.id === job.id
-                  ? "shadow-md bg-slate-50"
-                  : "hover:bg-white"
-              }`}
-            >
-              {/* rectangular orange bar: sharp corners, full card height, only for selected */}
-              {selectedJob?.id === job.id && (
-                <div
-                  className="absolute left-0 top-0 bottom-0"
-                  style={{ width: 4, background: "var(--color-main)" }}
-                />
-              )}
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDelete(job.id);
+                          }}
+                          className="absolute right-3 top-3 text-slate-500 hover:text-slate-950"
+                          aria-label="delete"
+                          type="button"
+                        >
+                          <CgClose />
+                        </button>
 
-              {/* close button top-right */}
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleDelete(job.id);
-                }}
-                className="close-btn absolute right-3 top-3 text-muted-foreground hover:text-foreground"
-                aria-label="delete"
-              >
-                <CgClose />
-              </button>
-
-              <CardContent className="p-4 pl-10">
-                <div className="flex gap-3">
-                  {/* avatar */}
-                  <div className="w-12 h-12 rounded-full bg-gray-200 dark:bg-gray-700 flex-shrink-0" />
-
-                  <div className="flex-1">
-                    <div className="font-medium">{job.title}</div>
-                    <div className="text-sm text-muted-foreground">
-                      {job.company}
-                    </div>
-                    <div className="text-xs text-muted-foreground">
-                      {job.location}
-                    </div>
-
-                    <div className="mt-3 text-xs text-muted-foreground">
-                      {viewed.has(job.id) && <span>Viewed • </span>}
-                      {job.meta}
-                    </div>
-                  </div>
+                        <CardContent className="p-4 pl-4">
+                          <div className="flex items-start gap-3">
+                            <div className="h-12 w-12 shrink-0 rounded-2xl bg-[#e6e6e6]" />
+                            <div className="min-w-0 flex-1">
+                              <div className="max-w-[320px] text-[15px] font-medium leading-snug text-slate-950">
+                                {job.title}
+                              </div>
+                              <div className="mt-1 text-sm text-slate-600">
+                                {job.company}
+                              </div>
+                              <div className="text-sm text-slate-500">
+                                {job.location}
+                              </div>
+                              <div className="mt-2 text-xs text-slate-500">
+                                {viewed.has(job.id) ? "Viewed - " : ""}
+                                {job.meta}
+                              </div>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
                 </div>
-              </CardContent>
-            </Card>
-          ))}
+              </div>
 
-          {/* Pagination */}
-          <div className="relative flex items-center mt-2 text-sm px-4 py-3">
-            <button
-              className="px-2 py-1 rounded hover:bg-gray-100 flex items-center gap-1 disabled:opacity-40"
-              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-              disabled={currentPage === 1}
-            >
-              <IoIosArrowBack />
-              Previous
-            </button>
+              <div className="relative -mt-px flex min-h-[52px] items-center border-t border-[#e5e5e5] bg-white py-2 text-sm">
+                <button
+                  className="inline-flex items-center gap-1 rounded-full px-2 py-1 text-slate-600 hover:bg-slate-100 disabled:opacity-40"
+                  onClick={() =>
+                    updatePayload({ page: Math.max(0, safePage - 2) })
+                  }
+                  disabled={safePage === 1}
+                  type="button"
+                >
+                  <IoIosArrowBack />
+                  Previous
+                </button>
 
-            <div className="absolute left-1/2 flex -translate-x-1/2 items-center gap-2">
-              {Array.from({ length: totalPages }).map((_, idx) => {
-                const page = idx + 1;
-                const active = page === currentPage;
-                return (
+                <div className="absolute left-1/2 top-1/2 flex -translate-x-1/2 -translate-y-1/2 items-center gap-2">
+                  {Array.from({ length: totalPages }).map((_, idx: number) => {
+                    const page = idx + 1;
+                    return (
+                      <button
+                        key={page}
+                        onClick={() => updatePayload({ page: page - 1 })}
+                        className={`h-8 w-8 rounded-lg text-sm ${
+                          page === safePage
+                            ? "bg-[linear-gradient(90deg,var(--color-main),var(--color-second))] text-white"
+                            : "text-slate-600 hover:bg-slate-100"
+                        }`}
+                        type="button"
+                      >
+                        {page}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <div className="ml-auto flex justify-end">
                   <button
-                    key={page}
-                    onClick={() => setCurrentPage(page)}
-                    className={`w-8 h-8 rounded-lg ${
-                      active
-                        ? "text-white bg-[linear-gradient(90deg,var(--color-main),var(--color-second))]"
-                        : "hover:bg-gray-100"
-                    }`}
+                    className="inline-flex items-center gap-1 rounded-full px-2 py-1 text-slate-600 hover:bg-slate-100 disabled:opacity-40"
+                    onClick={() =>
+                      updatePayload({
+                        page: Math.min(totalPages - 1, safePage),
+                      })
+                    }
+                    disabled={safePage === totalPages}
+                    type="button"
                   >
-                    {page}
+                    Next
+                    <IoIosArrowForward />
                   </button>
-                );
-              })}
+                </div>
+              </div>
             </div>
-            <div className="ml-auto">
-              <button
-                className="px-2 py-1 rounded hover:bg-gray-100 flex items-center gap-1 disabled:opacity-40"
-                onClick={() =>
-                  setCurrentPage((p) => Math.min(totalPages, p + 1))
-                }
-                disabled={currentPage === totalPages}
-              >
-                Next
-                <IoIosArrowForward />
-              </button>
+
+            <div className="h-full overflow-y-auto border-l border-[#e5e5e5] pl-4">
+              {filteredJobs.length === 0 || !selectedJob ? (
+                <div className="pt-6 text-sm text-slate-500">
+                  No jobs to display.
+                </div>
+              ) : (
+                <div className="pt-2">
+                  <div className="flex items-start gap-3">
+                    <div className="h-10 w-10 rounded-full bg-[#e0e0e0]" />
+                    <div className="min-w-0">
+                      <div className="text-sm text-slate-500">
+                        {selectedJob.company}
+                      </div>
+                      <h2 className="text-[22px] font-semibold leading-tight text-slate-950">
+                        {selectedJob.title}
+                      </h2>
+                      <p className="text-sm text-slate-500">
+                        {selectedJob.location} - posted 1 week ago
+                      </p>
+                    </div>
+                    <button
+                      className="ml-auto text-slate-700 hover:text-slate-950"
+                      type="button"
+                    >
+                      <IoIosMore size={20} />
+                    </button>
+                  </div>
+
+                  <div className="mt-3 flex gap-2">
+                    <span className="inline-flex h-7 items-center rounded-full bg-[#f1f1f1] px-3 text-xs text-slate-700">
+                      {selectedJob.workOption}
+                    </span>
+                    <span className="inline-flex h-7 items-center rounded-full bg-[#f1f1f1] px-3 text-xs text-slate-700">
+                      {selectedJob.workType}
+                    </span>
+                  </div>
+
+                  <div className="mt-4 flex items-center gap-3">
+                    <Button
+                      onClick={() => {
+                        setApplyDialogKey((prev: number) => prev + 1);
+                        setApplyOpen(true);
+                      }}
+                      className="h-10 rounded-full bg-[linear-gradient(90deg,var(--color-main),var(--color-second))] px-5 text-sm font-medium text-white shadow-none hover:opacity-90"
+                    >
+                      Apply This Job
+                    </Button>
+                    <Button
+                      variant="outline"
+                      className="h-10 rounded-full border border-[#ff9ad3] px-5 text-sm text-[#ff5db1] hover:bg-[#fff4fa]"
+                    >
+                      Save
+                    </Button>
+                  </div>
+
+                  <div ref={skillInfoRef} className="mt-5">
+                    <h3 className="mb-2 text-base font-medium text-slate-950">
+                      Skill Use
+                    </h3>
+                    <div className="flex flex-wrap gap-2">
+                      {selectedJob.skills.map((skill: string) => (
+                        <Button
+                          key={skill}
+                          type="button"
+                          variant="outline_gradient"
+                          size="sm"
+                          onClick={() => handleOpenSkillInfo(skill)}
+                          // className="inline-flex h-8 items-center rounded-full border border-[#ff9ad3] bg-white px-3 text-xs text-[#ff5db1]"
+                        >
+                          {skill}
+                        </Button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="my-6 h-px bg-[#e5e5e5]" />
+
+                  <div>
+                    <h3 className="mb-2 text-base font-medium text-slate-950">
+                      {selectedJob.aboutTitle}
+                    </h3>
+                    <p className="text-sm leading-relaxed text-slate-500">
+                      Company Description
+                    </p>
+                    <p className="mt-2 text-sm leading-relaxed text-slate-500">
+                      {selectedJob.companyDescription}
+                    </p>
+                    <p className="mt-2 text-sm leading-relaxed text-slate-500">
+                      {selectedJob.extraDescription}
+                    </p>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>
-
-        {/* Job Detail */}
-        <div className="border rounded-none p-6 mt-6 min-h-[720px]">
-          {filteredJobs.length === 0 || !selectedJob ? (
-            <div className="text-sm text-muted-foreground">
-              No jobs to display.
-            </div>
-          ) : (
-            <>
-              <div className="flex items-start gap-3">
-                <div className="h-10 w-10 rounded-full bg-gray-300" />
-                <div>
-                  <div className="text-sm text-muted-foreground">
-                    {selectedJob.company}
-                  </div>
-                  <h2 className="text-lg font-semibold">{selectedJob.title}</h2>
-                  <p className="text-xs text-muted-foreground">
-                    {selectedJob.location} • posted 1 week ago
-                  </p>
-                </div>
-                <button className="ml-auto text-muted-foreground hover:text-foreground">
-                  <IoIosMore size={20} />
-                </button>
-              </div>
-
-              <div className="flex gap-2 mt-3">
-                <Badge className="rounded-full">On-site</Badge>
-                <Badge variant="outline" className="rounded-full">
-                  Internship
-                </Badge>
-              </div>
-
-              <div className="flex gap-3 mt-4">
-                <Button
-                  onClick={() => console.log("Apply This Job")}
-                  className="rounded-full px-4 py-2 bg-[linear-gradient(90deg,var(--color-main),var(--color-second))] text-white hover:opacity-90"
-                >
-                  Apply This Job
-                </Button>
-                <Button variant="outline" className="rounded-full">
-                  Saved
-                </Button>
-              </div>
-
-              <Separator className="my-6" />
-
-              <div>
-                <h3 className="font-medium mb-2">Skill Use</h3>
-                <div className="flex gap-2 flex-wrap">
-                  {selectedJob.skills?.map((skill) => (
-                    <Badge
-                      key={skill}
-                      variant="outline"
-                      className="rounded-full"
-                    >
-                      {skill}
-                    </Badge>
-                  ))}
-                </div>
-              </div>
-
-              <Separator className="my-6" />
-
-              <div>
-                <h3 className="font-medium mb-2">{selectedJob.aboutTitle}</h3>
-                <p className="text-sm leading-relaxed text-muted-foreground">
-                  Company Description
-                </p>
-                <p className="text-sm leading-relaxed text-muted-foreground mt-2">
-                  {selectedJob.companyDescription}
-                </p>
-                <p className="text-sm leading-relaxed text-muted-foreground mt-2">
-                  {selectedJob.extraDescription}
-                </p>
-              </div>
-            </>
-          )}
-        </div>
       </div>
-    </div>
+      <SkillinfoDialog
+        open={skillInfoOpen}
+        onClose={() => setSkillInfoOpen(false)}
+        skillName={selectedSkillName}
+      />
+      <ApplyDialog
+        key={applyDialogKey}
+        open={applyOpen}
+        onOpenChange={(open) => setApplyOpen(open)}
+        applyDetail={applyDetail}
+        applyData={applyData}
+        setApplyData={setApplyData}
+      />
+    </PageLayout>
   );
 }

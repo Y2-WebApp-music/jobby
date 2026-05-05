@@ -239,7 +239,7 @@ export default function ImageEditorModal({
             <div className="mt-auto pt-6">
               <button
                 onClick={handleSave}
-                className="w-full rounded-full bg-[#FF8E00] px-4 py-2 text-sm font-medium text-white hover:bg-[#e97f00]"
+                className="w-full rounded-full bg-main px-4 py-2 text-sm font-medium text-white hover:bg-main/90"
               >
                 Save
               </button>

@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from "react";
 import { CgClose } from "react-icons/cg";
+import { Button } from "@/components/ui/button";
 
 interface AboutDialogProps {
   open: boolean;
@@ -8,6 +9,7 @@ interface AboutDialogProps {
   onSave: (value: string) => void;
 }
 
+const normalizeNewlines = (value: string) => value.replace(/\r\n/g, "\n");
 export default function AboutDialog({
   open,
   initialValue,
@@ -20,7 +22,7 @@ export default function AboutDialog({
 
   const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    onSave(aboutText.trim());
+    onSave(normalizeNewlines(aboutText).trim());
     onClose();
   };
 
@@ -31,7 +33,7 @@ export default function AboutDialog({
           <div>
             <h2 className="text-4 font-semibold text-slate-900">About Me</h2>
             <p className="text-4 text-slate-500">
-              Make changes to your About here. Click save when you&apos;re done.
+              Make changes to your About here. Click save when you're done.
             </p>
           </div>
           <button
@@ -47,7 +49,7 @@ export default function AboutDialog({
         <form onSubmit={handleSubmit}>
           <textarea
             value={aboutText}
-            onChange={(e) => setAboutText(e.target.value)}
+            onChange={(e) => setAboutText(normalizeNewlines(e.target.value))}
             placeholder="Type your message here"
             rows={5}
             className="w-full resize-none rounded-2xl border border-slate-200 p-4 text-sm outline-none"
@@ -61,12 +63,12 @@ export default function AboutDialog({
             >
               Cancel
             </button>
-            <button
+            <Button
               type="submit"
-              className="rounded-full bg-gradient-to-r from-[#FF8E00] to-[#F335EC] px-5 py-1.5 text-base font-medium text-white"
+              className="rounded-full bg-gradient-to-r from-main to-second px-5 py-1.5 text-base font-medium text-white"
             >
               Save Change
-            </button>
+            </Button>
           </div>
         </form>
       </div>
