@@ -93,16 +93,12 @@ const seeds: ExamQuestionSeed[] = [
   },
   {
     prompt: "Ke mou yes ma behavior usually ignores:",
-    choices: [
-      "Plausibility",
-      "Spelling",
-      "Color contrast",
-      "Keyboard layout",
-    ],
+    choices: ["Plausibility", "Spelling", "Color contrast", "Keyboard layout"],
     correctAnswer: 0,
   },
   {
-    prompt: "A teammate shares an impossible metric. What is the best reaction?",
+    prompt:
+      "A teammate shares an impossible metric. What is the best reaction?",
     choices: [
       "Ask for the source and details respectfully",
       "Believe it instantly",

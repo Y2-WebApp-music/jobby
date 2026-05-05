@@ -7,4 +7,3 @@ export const placeOfJobOptions = [
   "Chonburi",
   "Nonthaburi",
 ];
-

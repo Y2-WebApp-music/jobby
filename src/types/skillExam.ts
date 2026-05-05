@@ -62,7 +62,8 @@ export const getSkillExam = (skillName: string | null | undefined) => {
   if (!skillName) return null;
 
   const normalizedSkillName = normalizeExamSkillKey(skillName);
-  const resolvedKey = skillExamAliases[normalizedSkillName] ?? normalizedSkillName;
+  const resolvedKey =
+    skillExamAliases[normalizedSkillName] ?? normalizedSkillName;
 
   return skillExams.find((exam) => exam.key === resolvedKey) ?? null;
 };

@@ -79,7 +79,6 @@ const buildDateRange = (startDate: string, endDate: string) => {
   return `${start || "-"} - ${end || "Present"}`;
 };
 
-
 const normalizeNewlines = (value: string) => value.replace(/\r\n/g, "\n");
 function DatePickerField({
   label,
@@ -114,7 +113,10 @@ function DatePickerField({
             <IoIosArrowDown className="h-4 w-4 text-slate-500" />
           </button>
         </PopoverTrigger>
-        <PopoverContent align="start" className="w-auto border-0 p-0 shadow-none">
+        <PopoverContent
+          align="start"
+          className="w-auto border-0 p-0 shadow-none"
+        >
           <Calendar
             mode="single"
             selected={selectedDate}

@@ -2,7 +2,11 @@ import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import ExamDialog from "@/features/profile/dialog/ExamDialog";
 import { ImportResumeDialog } from "@/features/resume/dialogs/ImportResumeDialog";
 import { useAuthStore } from "@/store/auth";
@@ -29,8 +33,7 @@ type RegisterFieldErrors = Partial<Record<RegisterFieldName, string>>;
 const inputClassName =
   "h-10 rounded-lg border-[#e6e6e6] bg-white px-4 text-[13px] shadow-none placeholder:text-[#b8b8b8]";
 
-const sanitizeLetters = (value: string) =>
-  value.replace(/[^\p{L}\s'-]/gu, "");
+const sanitizeLetters = (value: string) => value.replace(/[^\p{L}\s'-]/gu, "");
 
 const sanitizeDigits = (value: string) => value.replace(/\D/g, "");
 
@@ -254,9 +257,9 @@ export default function Register() {
   const [importResumeOpen, setImportResumeOpen] = useState(false);
   const [skillQuery, setSkillQuery] = useState("");
   const [selectedSkills, setSelectedSkills] = useState<string[]>([]);
-  const [pendingExamSkillName, setPendingExamSkillName] = useState<string | null>(
-    null,
-  );
+  const [pendingExamSkillName, setPendingExamSkillName] = useState<
+    string | null
+  >(null);
 
   const matchedSkills = useMemo(() => {
     const keyword = skillQuery.trim().toLowerCase();
@@ -380,7 +383,9 @@ export default function Register() {
 
           <div className="space-y-3">
             <div className="space-y-1">
-              <label className="text-[14px] font-medium text-[#3b3b3b]">Email</label>
+              <label className="text-[14px] font-medium text-[#3b3b3b]">
+                Email
+              </label>
               <Input
                 type="email"
                 placeholder="email"
@@ -401,7 +406,9 @@ export default function Register() {
             </div>
 
             <div className="space-y-1">
-              <label className="text-[14px] font-medium text-[#3b3b3b]">Password</label>
+              <label className="text-[14px] font-medium text-[#3b3b3b]">
+                Password
+              </label>
               <div className="relative">
                 <Input
                   type={showPassword ? "text" : "password"}
@@ -550,7 +557,9 @@ export default function Register() {
                       className="flex h-10 w-full cursor-pointer items-center justify-between rounded-lg border border-[#e6e6e6] bg-white px-4 text-left text-[13px] text-[#171717]"
                     >
                       <span>
-                        {dateOfBirth ? format(dateOfBirth, "dd MMM yyyy") : "Select date"}
+                        {dateOfBirth
+                          ? format(dateOfBirth, "dd MMM yyyy")
+                          : "Select date"}
                       </span>
                       <IoChevronDown className="size-4 text-[#7d7d7d]" />
                     </button>
@@ -566,7 +575,10 @@ export default function Register() {
                       onSelect={(date) => {
                         setDateOfBirth(date);
                         if (date) {
-                          setFieldErrors((prev) => ({ ...prev, dateOfBirth: "" }));
+                          setFieldErrors((prev) => ({
+                            ...prev,
+                            dateOfBirth: "",
+                          }));
                         }
                         setCalendarOpen(false);
                       }}
@@ -680,8 +692,8 @@ export default function Register() {
               Add Skill
             </h1>
             <p className="mx-auto max-w-[420px] text-center text-[14px] leading-5 text-[#8d8d8d]">
-              Add relevant skills to highlight your strengths
-              and help employers find you faster.
+              Add relevant skills to highlight your strengths and help employers
+              find you faster.
             </p>
           </div>
 
@@ -740,8 +752,8 @@ export default function Register() {
               Add Skill
             </h1>
             <p className="mx-auto max-w-[460px] text-center text-[14px] leading-5 text-[#8d8d8d]">
-              Add relevant skills to highlight your strengths
-              and help employers find you faster.
+              Add relevant skills to highlight your strengths and help employers
+              find you faster.
             </p>
           </div>
 
@@ -759,7 +771,9 @@ export default function Register() {
                   </button>
                 ))
               ) : (
-                <span className="text-sm text-[#9a9a9a]">No skills selected yet.</span>
+                <span className="text-sm text-[#9a9a9a]">
+                  No skills selected yet.
+                </span>
               )}
             </div>
           </div>

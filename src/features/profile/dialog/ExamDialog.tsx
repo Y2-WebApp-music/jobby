@@ -52,8 +52,9 @@ export default function ExamDialog({
   if (!open || !exam) return null;
 
   const currentQuestion = selectedQuestions[currentQuestionIndex];
-  const selectedAnswer =
-    currentQuestion ? answers[currentQuestion.id] : undefined;
+  const selectedAnswer = currentQuestion
+    ? answers[currentQuestion.id]
+    : undefined;
   const isLastQuestion = currentQuestionIndex === exam.questionCount - 1;
   const showResultDialog = result !== null;
 
@@ -112,7 +113,9 @@ export default function ExamDialog({
 
                 <div className="mt-8 space-y-5 text-black">
                   <div>
-                    <h3 className="text-[18px] font-semibold">Exam Description</h3>
+                    <h3 className="text-[18px] font-semibold">
+                      Exam Description
+                    </h3>
                     <p className="mt-4 text-lg leading-8 text-[#2a2a2a]">
                       {exam.description}
                     </p>

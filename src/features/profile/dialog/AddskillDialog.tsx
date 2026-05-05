@@ -28,13 +28,14 @@ export default function AddskillDialog({
   enableSkillExam = false,
 }: AddskillDialogProps) {
   const [input, setInput] = useState("");
-  const [selectedSkillName, setSelectedSkillName] = useState<string | null>(null);
-  const [draftSkills, setDraftSkills] = useState<string[]>(existingSkills);
-  const [pendingExamSkillName, setPendingExamSkillName] = useState<string | null>(
+  const [selectedSkillName, setSelectedSkillName] = useState<string | null>(
     null,
   );
+  const [draftSkills, setDraftSkills] = useState<string[]>(existingSkills);
+  const [pendingExamSkillName, setPendingExamSkillName] = useState<
+    string | null
+  >(null);
   const keyword = input.trim().toLowerCase();
-
 
   const listSkills = showSkillsList ? draftSkills : existingSkills;
 
@@ -49,13 +50,16 @@ export default function AddskillDialog({
   }, [listSkills, keyword]);
 
   const selectedSkill = useMemo(
-    () => profileSkillCatalog.find((item) => item.name === selectedSkillName) ?? null,
+    () =>
+      profileSkillCatalog.find((item) => item.name === selectedSkillName) ??
+      null,
     [selectedSkillName],
   );
 
   const shouldShowSkillsList = showSkillsList && !keyword && !selectedSkill;
   const shouldShowSuggestions = suggestions.length > 0;
-  const shouldShowNotFound = keyword && suggestions.length === 0 && !selectedSkill;
+  const shouldShowNotFound =
+    keyword && suggestions.length === 0 && !selectedSkill;
 
   const hasSkillChanges = useMemo(() => {
     if (!showSkillsList) return false;
@@ -153,7 +157,9 @@ export default function AddskillDialog({
             <h2 className="text-2xl leading-none font-semibold text-slate-900">
               Add Skill
             </h2>
-            <p className="mt-1 text-sm text-slate-500">Search Skill you want to add</p>
+            <p className="mt-1 text-sm text-slate-500">
+              Search Skill you want to add
+            </p>
           </div>
           <button
             type="button"
@@ -216,20 +222,26 @@ export default function AddskillDialog({
             ))}
           </div>
         ) : shouldShowNotFound ? (
-          <div className="mt-3 flex h-24 items-center justify-center rounded-xl bg-[#FFFFFF] px-4 text-center text-base font-medium text-slate-500">Not Found Skill</div>
+          <div className="mt-3 flex h-24 items-center justify-center rounded-xl bg-[#FFFFFF] px-4 text-center text-base font-medium text-slate-500">
+            Not Found Skill
+          </div>
         ) : null}
 
         {selectedSkill ? (
           <div className="mt-4 space-y-3 text-slate-900">
             <div>
-              <h3 className="text-[18px] font-normal leading-none">Skill Description</h3>
+              <h3 className="text-[18px] font-normal leading-none">
+                Skill Description
+              </h3>
               <p className="mt-1 text-sm leading-relaxed text-[#000000]">
                 {selectedSkill.description}
               </p>
             </div>
 
             <div>
-              <h3 className="text-[18px] font-normal leading-none">Pre-Skill</h3>
+              <h3 className="text-[18px] font-normal leading-none">
+                Pre-Skill
+              </h3>
               <div className="mt-2 flex flex-wrap gap-2">
                 {selectedSkill.preSkills.map((item) => (
                   <span
@@ -263,8 +275,12 @@ export default function AddskillDialog({
 
         {shouldShowSkillsList ? (
           <div className="mt-4 border-t border-slate-200 pt-3">
-            <h3 className="text-[18px] font-semibold text-slate-900">Skills List</h3>
-            <p className="text-sm text-slate-500">List of skills you have chosen.</p>
+            <h3 className="text-[18px] font-semibold text-slate-900">
+              Skills List
+            </h3>
+            <p className="text-sm text-slate-500">
+              List of skills you have chosen.
+            </p>
 
             <div className="mt-3 flex flex-wrap gap-2">
               {listSkills.length > 0 ? (

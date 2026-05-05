@@ -9,7 +9,6 @@ interface AboutDialogProps {
   onSave: (value: string) => void;
 }
 
-
 const normalizeNewlines = (value: string) => value.replace(/\r\n/g, "\n");
 export default function AboutDialog({
   open,
@@ -76,5 +75,3 @@ export default function AboutDialog({
     </div>
   );
 }
-
-

@@ -16,11 +16,7 @@ const sampleSkills = [
 export default function ShowCaseDialogs() {
   const [skillInfoOpen, setSkillInfoOpen] = useState(false);
   const [userSkillOpen, setUserSkillOpen] = useState(false);
-  const [userSkills] = useState<string[]>([
-    "React",
-    "TypeScript",
-    "Figma",
-  ]);
+  const [userSkills] = useState<string[]>(["React", "TypeScript", "Figma"]);
   const [selectedSkillName, setSelectedSkillName] = useState<string | null>(
     "React",
   );

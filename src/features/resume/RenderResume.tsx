@@ -218,4 +218,3 @@ const RenderResume = ({ resume, templateId }: Props) => {
 };
 
 export default RenderResume;
-

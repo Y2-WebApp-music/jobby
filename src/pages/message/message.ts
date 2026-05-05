@@ -52,7 +52,8 @@ export const initialConversations: Conversation[] = [
   {
     id: 3,
     name: "Aurora Studio",
-    preview: "Your design case study looks strong. We have a few follow-up questions.",
+    preview:
+      "Your design case study looks strong. We have a few follow-up questions.",
     timestamp: now - 5 * 60 * 60 * 1000,
   },
   {

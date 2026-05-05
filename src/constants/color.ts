@@ -28,5 +28,3 @@ export const resume_color_classes = [
   { bg: "bg-c-e86df6", text: "text-c-e86df6", border: "border-c-e86df6" },
   { bg: "bg-c-fe8d36", text: "text-c-fe8d36", border: "border-c-fe8d36" },
 ];
-
-

@@ -225,7 +225,7 @@ export const placeOptions: PlaceSearchItem[] = [
 export const pageSize = 10;
 
 export const buildInitialSearchPayload = (): SearchJobPayload => ({
-  user_id: "U8EWRV1eppz7AP1HmhpxVW0WuYOy7bu6",
+  user_id: "",
   search_text: "",
   search_type: 0,
   skill: [],
@@ -251,9 +251,6 @@ export const useSearchJobState = () => {
     buildInitialSearchPayload(),
   );
   const [skillOpen, setSkillOpen] = useState(false);
-  const [categoryOpen, setCategoryOpen] = useState(false);
-  const [workTypeOpen, setWorkTypeOpen] = useState(false);
-  const [workOptionOpen, setWorkOptionOpen] = useState(false);
   const [messageCount, setMessageCount] = useState<number>(0);
   const [applyOpen, setApplyOpen] = useState(false);
   const [applyDialogKey, setApplyDialogKey] = useState(0);
@@ -269,12 +266,6 @@ export const useSearchJobState = () => {
     setSearchPayload,
     skillOpen,
     setSkillOpen,
-    categoryOpen,
-    setCategoryOpen,
-    workTypeOpen,
-    setWorkTypeOpen,
-    workOptionOpen,
-    setWorkOptionOpen,
     messageCount,
     setMessageCount,
     applyOpen,
@@ -283,4 +274,3 @@ export const useSearchJobState = () => {
     setApplyDialogKey,
   };
 };
-

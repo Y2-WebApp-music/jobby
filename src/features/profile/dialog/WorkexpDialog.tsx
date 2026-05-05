@@ -115,7 +115,10 @@ function DatePickerField({
             <IoIosArrowDown className="h-4 w-4 text-slate-500" />
           </button>
         </PopoverTrigger>
-        <PopoverContent align="start" className="w-auto border-0 p-0 shadow-none">
+        <PopoverContent
+          align="start"
+          className="w-auto border-0 p-0 shadow-none"
+        >
           <Calendar
             mode="single"
             selected={selectedDate}
@@ -211,8 +214,7 @@ export default function WorkexpDialog({
               Work Experience
             </h2>
             <p className="text-sm text-slate-500">
-              Make changes to your Experience here. Click save when you're
-              done.
+              Make changes to your Experience here. Click save when you're done.
             </p>
           </div>
           <button
@@ -295,8 +297,8 @@ export default function WorkexpDialog({
                   Work Experience
                 </h2>
                 <p className="text-sm text-slate-500">
-                  Make changes to your Experience here. Click save when
-                  you're done.
+                  Make changes to your Experience here. Click save when you're
+                  done.
                 </p>
               </div>
               <button
@@ -474,14 +476,3 @@ export default function WorkexpDialog({
     </div>
   );
 }
-
-
-
-
-
-
-
-
-
-
-
