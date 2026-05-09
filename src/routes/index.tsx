@@ -12,7 +12,7 @@ import AppliedHis from "@/pages/myjob/AppliedHis";
 import SignInPage from "@/pages/auth/SignInPage";
 import RegisterPage from "@/pages/auth/RegisterPage";
 import ForgotPasswordPage from "@/pages/auth/ForgotPasswordPage";
-import AccountSettingsPage from "@/pages/settings/AccountSettingsPage";
+import AccountSettingsPage from "@/pages/pagesetting/AccountSettingsPage";
 
 export const router = createBrowserRouter(
   [

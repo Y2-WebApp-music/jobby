@@ -1,132 +1,129 @@
 import PageLayout from "@/components/layout/PageLayout";
 import { Button } from "@/components/ui/button";
 import { ResumeList } from "@/features/resume/ResumeList";
-import { ViewResumeDialog } from "@/features/resume/dialogs/ViewResumeDialog";
-import type { ResumeCreateProps, ResumeListItem } from "@/types/resumeType";
-import { initialResume } from "@/types/resumeType";
-import { HiOutlinePlus } from "react-icons/hi";
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
 import { ImportResumeDialog } from "@/features/resume/dialogs/ImportResumeDialog";
+import { ViewResumeDialog } from "@/features/resume/dialogs/ViewResumeDialog";
+import resumeService, {
+  mapResumeDetailToResumeForm,
+} from "@/services/resumeService";
+import { useAuthStore } from "@/store/auth";
+import type { ResumeCreateProps, ResumeListItem } from "@/types/resumeType";
+import { useCallback, useEffect, useState } from "react";
+import { HiOutlinePlus } from "react-icons/hi";
+import { useNavigate } from "react-router-dom";
+import { toast } from "sonner";
 
-/** Build full resume data for view dialog. Replace with API fetch when available. */
-function getResumeDataForView(item: ResumeListItem): ResumeCreateProps {
-  return {
-    ...initialResume,
-    id: item.id,
-    name: item.name,
-    create_date: item.create_date,
-    data: {
-      ...initialResume.data,
-      phone: "062-XXX-XXXX",
-      phone_region: 66,
-      email: "xxxx.xxdsxdsxdsxsdxdsxsdxsdx@gmail.com",
-      contact: [
-        {
-          label: "linkedIn",
-          link: "www.linkedin.com/in/nut-somwang-598a18292",
-        },
-      ],
-      skills: Array.from({ length: 10 }, (_, i) => ({
-        id: `skill-${i}`,
-        name: "React",
-      })),
-      address: {
-        ...initialResume.data.address,
-        address_line: "xxxx.xxdsxdsxdsxsdxdsxsdxsdx@gmail.com",
-      },
-      education: [
-        {
-          school_name: "School Name",
-          logo: "",
-          degree: "Associate's degree",
-          field_of_study: "Computer Science",
-          start_date: "2022-03-01",
-          end_date: "2026-09-01",
-          gpax: 0,
-        },
-        {
-          school_name: "School Name",
-          logo: "",
-          degree: "Associate's degree",
-          field_of_study: "Computer Science",
-          start_date: "2022-03-01",
-          end_date: "2026-09-01",
-          gpax: 0,
-        },
-      ],
-    },
-  };
-}
-
-// Mock data for layout – replace with real API later
-const MOCK_RESUMES: ResumeListItem[] = [
-  {
-    id: "1",
-    name: "Resume 23 Aug 2025 15:56",
-    create_date: "2025-08-23T15:56:00",
-  },
-  {
-    id: "2",
-    name: "Resume 23 Aug 2025 15:56",
-    create_date: "2025-08-23T15:56:00",
-  },
-  {
-    id: "3",
-    name: "Resume 23 Aug 2025 15:56",
-    create_date: "2025-08-23T15:56:00",
-  },
-  {
-    id: "4",
-    name: "Resume 23 Aug 2025 15:56",
-    create_date: "2025-08-23T15:56:00",
-  },
-  {
-    id: "5",
-    name: "Resume 23 Aug 2025 15:56",
-    create_date: "2025-08-23T15:56:00",
-  },
-  {
-    id: "6",
-    name: "Resume 23 Aug 2025 15:56",
-    create_date: "2025-08-23T15:56:00",
-  },
-  {
-    id: "7",
-    name: "Resume 23 Aug 2025 15:56",
-    create_date: "2025-08-23T15:56:00",
-  },
-  {
-    id: "8",
-    name: "Resume 23 Aug 2025 15:56",
-    create_date: "2025-08-23T15:56:00",
-  },
-];
+const downloadBlob = (blob: Blob, filename: string) => {
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = filename;
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+  URL.revokeObjectURL(url);
+};
 
 export default function ResumePage() {
   const navigate = useNavigate();
+  const user = useAuthStore((state) => state.user);
   const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
+  const [resumes, setResumes] = useState<ResumeListItem[]>([]);
+  const [loadingResumes, setLoadingResumes] = useState(true);
+  const [uploadingResume, setUploadingResume] = useState(false);
   const [selectedResume, setSelectedResume] = useState<ResumeListItem | null>(
     null,
   );
-
-  const handleOpenResume = (resume: ResumeListItem) => {
-    setSelectedResume(resume);
-    setViewDialogOpen(true);
-  };
+  const [selectedResumeDetail, setSelectedResumeDetail] =
+    useState<ResumeCreateProps | null>(null);
+  const [loadingSelectedResume, setLoadingSelectedResume] = useState(false);
 
   const handleEdit = (id: string) => {
     navigate(`/resume/create?id=${id}`);
   };
 
-  const handleFilesSelected = (files: File[]) => {
-    // TODO: upload to API / add to system
-    console.log("Import files", files);
-  };
+  const loadResumes = useCallback(async () => {
+    if (!user?.id) {
+      setResumes([]);
+      setLoadingResumes(false);
+      return;
+    }
 
-  const viewResumeData =
-    selectedResume != null ? getResumeDataForView(selectedResume) : null;
+    setLoadingResumes(true);
+
+    try {
+      const response = await resumeService.getUserResumeList(user.id);
+      setResumes(response.data);
+    } catch {
+      setResumes([]);
+      toast.error("Failed to load resumes");
+    } finally {
+      setLoadingResumes(false);
+    }
+  }, [user?.id]);
+
+  const handleOpenResume = useCallback(async (resume: ResumeListItem) => {
+    setSelectedResume(resume);
+    setSelectedResumeDetail(null);
+    setLoadingSelectedResume(true);
+    setViewDialogOpen(true);
+
+    try {
+      const response = await resumeService.getResumeDetail(resume.id);
+      setSelectedResumeDetail(mapResumeDetailToResumeForm(response.data));
+    } catch {
+      toast.error("Failed to load resume detail");
+    } finally {
+      setLoadingSelectedResume(false);
+    }
+  }, []);
+
+  const handleDownloadResume = useCallback(async (resumeId: string) => {
+    try {
+      const result = await resumeService.exportResume(resumeId);
+      downloadBlob(result.blob, result.filename);
+    } catch {
+      toast.error("Failed to export resume");
+    }
+  }, []);
+
+  const handleFilesSelected = useCallback(
+    async (files: File[]) => {
+      const file = files[0];
+      if (!file) return;
+
+      if (!user?.id) {
+        toast.error("Please sign in before importing a resume");
+        return;
+      }
+
+      setUploadingResume(true);
+      try {
+        await resumeService.uploadUserResumeFile(user.id, file);
+        toast.success("Resume uploaded successfully");
+        await loadResumes();
+      } catch {
+        toast.error("Failed to upload resume");
+      } finally {
+        setUploadingResume(false);
+      }
+    },
+    [loadResumes, user?.id],
+  );
+
+  useEffect(() => {
+    let cancelled = false;
+
+    void (async () => {
+      if (cancelled) return;
+      await loadResumes();
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [loadResumes]);
 
   return (
     <PageLayout>
@@ -138,21 +135,26 @@ export default function ResumePage() {
       <ViewResumeDialog
         open={viewDialogOpen}
         onOpenChange={setViewDialogOpen}
-        resumeData={viewResumeData}
+        loading={loadingSelectedResume}
+        resumeData={selectedResumeDetail}
         resumeItem={selectedResume}
-        templateId={1}
+        templateId={selectedResumeDetail?.theme ?? 1}
         onEdit={handleEdit}
-        onDownload={(id) => console.log("Download", id)}
+        onDownload={handleDownloadResume}
         onDelete={(id) => console.log("Delete", id)}
       />
       <div className="px-4 py-6">
-        <header className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-4">
+        <header className="mb-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <h1 className="text-2xl font-medium tracking-tight text-foreground sm:text-3xl">
             Resume
           </h1>
           <div className="flex flex-wrap items-center gap-4">
-            <Button variant="outline" onClick={() => setImportDialogOpen(true)}>
-              Import Resume/CV
+            <Button
+              variant="outline"
+              onClick={() => setImportDialogOpen(true)}
+              disabled={uploadingResume}
+            >
+              {uploadingResume ? "Uploading..." : "Import Resume/CV"}
             </Button>
             <Button onClick={() => navigate("/resume/create")}>
               <HiOutlinePlus className="size-4" />
@@ -161,13 +163,23 @@ export default function ResumePage() {
           </div>
         </header>
         <div className="space-y-6">
-          <ResumeList
-            resumes={MOCK_RESUMES}
-            onOpen={handleOpenResume}
-            onEdit={handleEdit}
-            onDownload={(id) => console.log("Download", id)}
-            onDelete={(id) => console.log("Delete", id)}
-          />
+          {loadingResumes ? (
+            <div className="px-4 py-8 text-sm text-muted-foreground">
+              Loading resumes...
+            </div>
+          ) : resumes.length > 0 ? (
+            <ResumeList
+              resumes={resumes}
+              onOpen={handleOpenResume}
+              onEdit={handleEdit}
+              onDownload={handleDownloadResume}
+              onDelete={(id) => console.log("Delete", id)}
+            />
+          ) : (
+            <div className="px-4 py-8 text-sm text-muted-foreground">
+              No resumes yet.
+            </div>
+          )}
         </div>
       </div>
     </PageLayout>

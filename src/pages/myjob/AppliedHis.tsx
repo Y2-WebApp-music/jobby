@@ -6,12 +6,17 @@ import { Card, CardContent } from "@/components/ui/card";
 import PageLayout from "@/components/layout/PageLayout";
 import { CgClose } from "react-icons/cg";
 import { IoIosArrowBack, IoIosArrowForward, IoIosMore } from "react-icons/io";
+import { useAuthStore } from "@/store/auth";
+import searchJobService from "@/services/searchJobService";
+import userService from "@/services/userService";
+import { ApplyDialog } from "@/features/searchJob/dialogs/ApplyDialog";
 import {
-  pageSize,
-  useSearchJobState,
-  type Job,
-  type JobStatus,
-} from "@/types/job";
+  initialApplyDialogJob,
+  initialApplyPayload,
+  type ApplyPayload,
+} from "@/types/searchJob";
+import { pageSize, type Job, type JobStatus } from "@/types/job";
+import { toast } from "sonner";
 
 const now = Date.now();
 
@@ -77,21 +82,82 @@ const gradientOutlineChipClassName =
 const searchInputClassName =
   "h-10 max-w-[220px] rounded-full border border-[#e5e5e5] bg-white px-4 text-sm shadow-[0_2px_10px_rgba(0,0,0,0.06)]";
 
+const mapStatus = (status: number): JobStatus | undefined => {
+  if (status === 1) return "inreview";
+  if (status === 2) return "interview";
+  if (status === 3) return "reject";
+  if (status === 4) return "accept";
+  return undefined;
+};
+
+const formatPostedAt = (postedAt: string) => {
+  const postedTime = new Date(postedAt).getTime();
+  const diffDays = Math.max(
+    0,
+    Math.floor((now - postedTime) / (1000 * 60 * 60 * 24)),
+  );
+
+  if (diffDays === 0) return "posted today";
+  if (diffDays === 1) return "posted 1 day ago";
+  if (diffDays < 7) return `posted ${diffDays} days ago`;
+  const weeks = Math.floor(diffDays / 7);
+  if (weeks === 1) return "posted 1 week ago";
+  return `posted ${weeks} weeks ago`;
+};
+
+const mapResultToJob = (
+  item: Awaited<
+    ReturnType<typeof userService.getSavedJobs>
+  >["data"]["job_result"][number],
+  view: JobView,
+): Job => {
+  const status = mapStatus(item.status);
+
+  return {
+    id: item.id,
+    nodeId: item.node_id,
+    title: item.name,
+    company: item.company.name,
+    companyId: item.company.id,
+    companyLogo: item.company.logo,
+    location: [item.district_name, item.province_name].filter(Boolean).join(", "),
+    provinceName: item.province_name,
+    districtName: item.district_name,
+    meta: `${item.match_skill_count} Skills Match - ${formatPostedAt(item.created_at)}`,
+    skills: [],
+    category: "",
+    workType: "",
+    workOption: "",
+    postedAt: item.created_at,
+    aboutTitle: "About this job",
+    companyDescription: "",
+    extraDescription: "",
+    matchSkillCount: item.match_skill_count,
+    viewed: item.is_viewed,
+    saved: view === "saved",
+    applied: view === "applied",
+    archived: view === "archived",
+    status,
+    appliedDate: item.created_at,
+  };
+};
+
 export default function MyJobsPage() {
   const [searchParams, setSearchParams] = useSearchParams();
-  const {
-    jobs,
-    setJobs,
-    selectedJobId,
-    setSelectedJobId,
-    viewed,
-    setViewed,
-    searchQuery,
-    setSearchQuery,
-    currentPage,
-    setCurrentPage,
-  } = useSearchJobState();
+  const user = useAuthStore((state) => state.user);
+  const [jobs, setJobs] = useState<Job[]>([]);
+  const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<"all" | JobStatus>("all");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [loading, setLoading] = useState(false);
+  const [applyOpen, setApplyOpen] = useState(false);
+  const [applyData, setApplyData] = useState<ApplyPayload>(initialApplyPayload);
+  const [applyDetail, setApplyDetail] = useState(initialApplyDialogJob);
+  const [resumesInJobby, setResumesInJobby] = useState<
+    { id: string; name: string; create_date: string }[]
+  >([]);
   const jobListRef = useRef<HTMLDivElement | null>(null);
 
   const rawJobView = searchParams.get("view");
@@ -102,174 +168,183 @@ export default function MyJobsPage() {
       ? rawJobView
       : "saved";
 
-  const query = searchQuery.trim().toLowerCase();
+  const selectedJob = useMemo(
+    () => jobs.find((job) => job.id === selectedJobId) ?? jobs[0] ?? null,
+    [jobs, selectedJobId],
+  );
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [jobView, statusFilter, setCurrentPage]);
+  }, [jobView, statusFilter]);
 
   useEffect(() => {
     jobListRef.current?.scrollTo({ top: 0 });
   }, [currentPage]);
 
+  useEffect(() => {
+    if (!selectedJobId) return;
+
+    let cancelled = false;
+
+    const loadJobDetail = async () => {
+      try {
+        const response = await searchJobService.getSearchJobDetail(selectedJobId);
+        if (cancelled) return;
+        setJobs((prev) =>
+          prev.map((job) =>
+            job.id === selectedJobId
+              ? {
+                  ...job,
+                  skills: response.data.skills.map((item) => item.name),
+                  category: response.data.categories
+                    .map((item) => item.text_eng)
+                    .join(", "),
+                  workType: response.data.work_types
+                    .map((item) => item.text_eng)
+                    .join(", "),
+                  workOption: response.data.work_options
+                    .map((item) => item.text_eng)
+                    .join(", "),
+                  companyDescription: response.data.description ?? "",
+                  extraDescription: response.data.description_rtf ?? "",
+                }
+              : job,
+          ),
+        );
+      } catch {
+        return;
+      }
+    };
+
+    void loadJobDetail();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedJobId]);
+
+  useEffect(() => {
+    if (!user?.id) return;
+
+    let cancelled = false;
+
+    const loadJobs = async () => {
+      setLoading(true);
+      try {
+        const params = {
+          page: currentPage - 1,
+          limit: pageSize,
+          search_text: searchQuery.trim(),
+        };
+
+        const response =
+          jobView === "saved"
+            ? await userService.getSavedJobs(user.id, params)
+            : jobView === "archived"
+              ? await userService.getArchivedJobs(user.id, params)
+              : await userService.getAppliedJobs(user.id, {
+                  ...params,
+                  applied_status:
+                    statusFilter === "all"
+                      ? undefined
+                      : statusFilter === "inreview"
+                        ? 1
+                        : statusFilter === "interview"
+                          ? 2
+                          : statusFilter === "reject"
+                            ? 3
+                            : 4,
+                });
+
+        if (cancelled) return;
+        const nextJobs = response.data.job_result.map((item) =>
+          mapResultToJob(item, jobView),
+        );
+        setJobs(nextJobs);
+        setTotalPages(Math.max(1, response.data.total_page));
+        setSelectedJobId((prev) => {
+          if (prev && nextJobs.some((job) => job.id === prev)) return prev;
+          return nextJobs[0]?.id ?? null;
+        });
+      } catch {
+        if (!cancelled) {
+          setJobs([]);
+          setTotalPages(1);
+          setSelectedJobId(null);
+          toast.error("Failed to load my jobs");
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+
+    void loadJobs();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [currentPage, jobView, searchQuery, statusFilter, user?.id]);
+
   const handleJobViewChange = (view: JobView) => {
     setSearchParams({ view }, { replace: true });
   };
 
-  const filteredJobs = useMemo(() => {
-    return jobs.filter((job) => {
-      if (jobView === "saved" && !job.saved) return false;
-      if (jobView === "applied" && !job.applied) return false;
-      if (
-        jobView === "archived" &&
-        (!job.archived || (job.status !== "reject" && job.status !== "accept"))
-      ) {
-        return false;
+  const handleRemoveFromView = async (id: string) => {
+    if (!user?.id) return;
+
+    try {
+      if (jobView === "saved") {
+        await searchJobService.unsaveJob(user.id, id);
       }
-
-      if (
-        jobView === "applied" &&
-        statusFilter !== "all" &&
-        job.status !== statusFilter
-      ) {
-        return false;
-      }
-
-      if (!query) return true;
-
-      return [job.title, job.company, job.location]
-        .join(" ")
-        .toLowerCase()
-        .includes(query);
-    });
-  }, [jobs, jobView, query, statusFilter]);
-
-  const totalPages = Math.max(1, Math.ceil(filteredJobs.length / pageSize));
-  const safePage = Math.min(currentPage, totalPages);
-  const startIndex = (safePage - 1) * pageSize;
-  const pagedJobs = filteredJobs.slice(startIndex, startIndex + pageSize);
-  const selectedJob =
-    filteredJobs.find((job) => job.id === selectedJobId) ??
-    pagedJobs[0] ??
-    null;
-
-  const formatPostedAt = (postedAt: string) => {
-    const postedTime = new Date(postedAt).getTime();
-    const diffDays = Math.max(
-      0,
-      Math.floor((now - postedTime) / (1000 * 60 * 60 * 24)),
-    );
-
-    if (diffDays === 0) return "posted today";
-    if (diffDays === 1) return "posted 1 day ago";
-    if (diffDays < 7) return `posted ${diffDays} days ago`;
-    const weeks = Math.floor(diffDays / 7);
-    if (weeks === 1) return "posted 1 week ago";
-    return `posted ${weeks} weeks ago`;
-  };
-
-  const handleSelect = (id: number) => {
-    setSelectedJobId(id);
-    setViewed((prev) => {
-      if (prev.has(id)) return prev;
-      const next = new Set(prev);
-      next.add(id);
-      return next;
-    });
-  };
-
-  const handleToggleSave = (jobId: number) => {
-    setJobs((prev) =>
-      prev.map((job) =>
-        job.id === jobId ? { ...job, saved: !job.saved } : job,
-      ),
-    );
-  };
-
-  const handleApplyJob = (jobId: number) => {
-    setJobs((prev) =>
-      prev.map((job) => {
-        if (job.id !== jobId) return job;
-
-        return {
-          ...job,
-          saved: false,
-          applied: true,
-          archived: false,
-          status: "inreview",
-          appliedDate: new Date()
-            .toLocaleString("en-GB", {
-              day: "2-digit",
-              month: "short",
-              year: "numeric",
-              hour: "2-digit",
-              minute: "2-digit",
-              hour12: false,
-            })
-            .replace(",", ""),
-        };
-      }),
-    );
-
-    setSearchParams({ view: "applied" }, { replace: true });
-    setStatusFilter("inreview");
-  };
-
-  const handleRemoveFromView = (id: number) => {
-    setJobs((prev) => {
-      const nextJobs = prev.map((job) => {
-        if (job.id !== id) return job;
-
-        if (jobView === "saved") {
-          return { ...job, saved: false };
+      setJobs((prev) => {
+        const nextJobs = prev.filter((job) => job.id !== id);
+        if (selectedJobId === id) {
+          setSelectedJobId(nextJobs[0]?.id ?? null);
         }
-
-        return {
-          ...job,
-          applied: false,
-          archived: false,
-          status: undefined,
-          appliedDate: undefined,
-        };
+        return nextJobs;
       });
+    } catch {
+      toast.error("Failed to update job list");
+    }
+  };
 
-      const nextFilteredJobs = nextJobs.filter((job) => {
-        if (jobView === "saved" && !job.saved) return false;
-        if (jobView === "applied" && !job.applied) return false;
-        if (
-          jobView === "archived" &&
-          (!job.archived ||
-            (job.status !== "reject" && job.status !== "accept"))
-        ) {
-          return false;
-        }
-        if (
-          jobView === "applied" &&
-          statusFilter !== "all" &&
-          job.status !== statusFilter
-        ) {
-          return false;
-        }
-        if (!query) return true;
+  const handleOpenApply = async () => {
+    if (!user?.id || !selectedJob) {
+      toast.error("Please sign in before applying");
+      return;
+    }
 
-        return [job.title, job.company, job.location]
-          .join(" ")
-          .toLowerCase()
-          .includes(query);
-      });
+    try {
+      const [needResponse, resumeResponse] = await Promise.all([
+        searchJobService.getApplyNeed(user.id, selectedJob.id),
+        searchJobService.getUserResumesForSearchJob(user.id),
+      ]);
 
-      if (selectedJobId === id) {
-        setSelectedJobId(nextFilteredJobs[0]?.id ?? null);
-      }
-
-      const nextTotalPages = Math.max(
-        1,
-        Math.ceil(nextFilteredJobs.length / pageSize),
+      setApplyDetail(
+        searchJobService.mapApplyNeedToDialogJob(needResponse.data, {
+          jobId: selectedJob.id,
+          companyName: selectedJob.company,
+          jobTitle: selectedJob.title,
+        }),
       );
-      setCurrentPage((prevPage) => Math.min(prevPage, nextTotalPages));
+      setApplyData(searchJobService.createApplyPayloadFromNeed(needResponse.data));
+      setResumesInJobby(
+        resumeResponse.data.map(searchJobService.mapSearchJobResumeToResumeListItem),
+      );
+      setApplyOpen(true);
+    } catch {
+      toast.error("Failed to load apply information");
+    }
+  };
 
-      return nextJobs;
-    });
+  const handleSubmitApply = async () => {
+    if (!user?.id || !selectedJob) {
+      throw new Error("User is not signed in");
+    }
+
+    await searchJobService.applyJob(user.id, selectedJob.id, applyData);
+    toast.success("Application submitted successfully");
+    setSearchParams({ view: "applied" }, { replace: true });
   };
 
   const renderStatusPanel = (job: Job) => {
@@ -295,9 +370,7 @@ export default function MyJobsPage() {
         </div>
         <div className="flex items-center justify-between rounded-2xl border border-[#e5e5e5] bg-white px-5 py-4 xl:flex-1">
           <div>
-            <div className="text-sm font-medium text-slate-950">
-              {infoLabel}
-            </div>
+            <div className="text-sm font-medium text-slate-950">{infoLabel}</div>
             <div className="mt-1 text-sm text-slate-500">{infoValue}</div>
           </div>
           <Button
@@ -317,9 +390,7 @@ export default function MyJobsPage() {
       <div className="h-[calc(100vh-56px)] px-6 pb-4 pt-4">
         <div className="flex h-full min-h-0 flex-col">
           <div className="mb-4 flex flex-wrap items-center gap-3">
-            <h1 className="text-[20px] font-semibold text-slate-950">
-              My Jobs
-            </h1>
+            <h1 className="text-[20px] font-semibold text-slate-950">My Jobs</h1>
 
             <Input
               placeholder="Search Job"
@@ -379,16 +450,14 @@ export default function MyJobsPage() {
             <div className="flex min-h-0 flex-col border-r border-[#e5e5e5]">
               <div ref={jobListRef} className="min-h-0 flex-1 overflow-y-auto">
                 <div className="space-y-0">
-                  {pagedJobs.map((job) => {
+                  {jobs.map((job) => {
                     const isSelected = selectedJob?.id === job.id;
-                    const statusMeta = job.status
-                      ? STATUS_META[job.status]
-                      : null;
+                    const statusMeta = job.status ? STATUS_META[job.status] : null;
 
                     return (
                       <Card
                         key={job.id}
-                        onClick={() => handleSelect(job.id)}
+                        onClick={() => setSelectedJobId(job.id)}
                         className={`group relative w-full cursor-pointer rounded-none border-x-0 border-b border-t-0 border-[#e5e5e5] bg-white transition ${
                           isSelected ? "bg-[#fafafa]" : "hover:bg-[#fcfcfc]"
                         }`}
@@ -401,7 +470,7 @@ export default function MyJobsPage() {
                           type="button"
                           onClick={(e) => {
                             e.stopPropagation();
-                            handleRemoveFromView(job.id);
+                            void handleRemoveFromView(job.id);
                           }}
                           className="absolute right-3 top-3 text-slate-500 transition hover:text-slate-950"
                           aria-label="delete"
@@ -411,7 +480,15 @@ export default function MyJobsPage() {
 
                         <CardContent className="p-4 pl-4">
                           <div className="flex items-start gap-3">
-                            <div className="h-12 w-12 shrink-0 rounded-2xl bg-[#e6e6e6]" />
+                            <div className="h-12 w-12 overflow-hidden rounded-2xl bg-slate-300">
+                              {job.companyLogo ? (
+                                <img
+                                  src={job.companyLogo}
+                                  alt={job.company}
+                                  className="h-full w-full object-cover"
+                                />
+                              ) : null}
+                            </div>
                             <div className="min-w-0 flex-1">
                               <div className="max-w-[320px] text-[15px] font-medium leading-snug text-slate-950">
                                 {job.title}
@@ -423,7 +500,6 @@ export default function MyJobsPage() {
                                 {job.location}
                               </div>
                               <div className="mt-2 text-xs text-slate-500">
-                                {viewed.has(job.id) ? "Viewed • " : ""}
                                 {job.meta}
                               </div>
                               {jobView === "archived" && statusMeta ? (
@@ -479,9 +555,7 @@ export default function MyJobsPage() {
                   <button
                     type="button"
                     className="inline-flex items-center gap-1 rounded-full px-2 py-1 text-slate-600 hover:bg-slate-100 disabled:opacity-40"
-                    onClick={() =>
-                      setCurrentPage((p) => Math.min(totalPages, p + 1))
-                    }
+                    onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
                     disabled={currentPage === totalPages}
                   >
                     Next
@@ -492,14 +566,24 @@ export default function MyJobsPage() {
             </div>
 
             <div className="h-full overflow-y-auto border-l border-[#e5e5e5] pl-4">
-              {filteredJobs.length === 0 || !selectedJob ? (
+              {loading ? (
+                <div className="pt-6 text-sm text-slate-500">Loading jobs...</div>
+              ) : jobs.length === 0 || !selectedJob ? (
                 <div className="pt-6 text-sm text-slate-500">
                   No jobs to display.
                 </div>
               ) : (
                 <div className="pt-2">
                   <div className="flex items-center gap-3">
-                    <div className="h-10 w-10 rounded-full bg-[#e0e0e0]" />
+                    <div className="h-10 w-10 overflow-hidden rounded-full bg-[#e0e0e0]">
+                      {selectedJob.companyLogo ? (
+                        <img
+                          src={selectedJob.companyLogo}
+                          alt={selectedJob.company}
+                          className="h-full w-full object-cover"
+                        />
+                      ) : null}
+                    </div>
                     <div className="min-w-0 flex-1">
                       <div className="text-sm font-medium text-slate-500">
                         {selectedJob.company}
@@ -519,24 +603,28 @@ export default function MyJobsPage() {
 
                   <div className="mt-2 flex flex-wrap items-center gap-2 text-sm text-slate-500">
                     <span>{selectedJob.location}</span>
-                    <span>•</span>
+                    <span>-</span>
                     <span>{formatPostedAt(selectedJob.postedAt)}</span>
                   </div>
 
                   <div className="mt-3 flex flex-wrap gap-2">
-                    <span className="inline-flex h-7 items-center rounded-full bg-[#f1f1f1] px-3 text-xs text-slate-700">
-                      {selectedJob.workOption}
-                    </span>
-                    <span className="inline-flex h-7 items-center rounded-full bg-[#f1f1f1] px-3 text-xs text-slate-700">
-                      {selectedJob.workType}
-                    </span>
+                    {selectedJob.workOption ? (
+                      <span className="inline-flex h-7 items-center rounded-full bg-[#f1f1f1] px-3 text-xs text-slate-700">
+                        {selectedJob.workOption}
+                      </span>
+                    ) : null}
+                    {selectedJob.workType ? (
+                      <span className="inline-flex h-7 items-center rounded-full bg-[#f1f1f1] px-3 text-xs text-slate-700">
+                        {selectedJob.workType}
+                      </span>
+                    ) : null}
                   </div>
 
                   {jobView === "saved" ? (
                     <div className="mt-4 flex items-center gap-3">
                       <Button
                         type="button"
-                        onClick={() => handleApplyJob(selectedJob.id)}
+                        onClick={() => void handleOpenApply()}
                         className="h-10 rounded-full bg-[linear-gradient(90deg,var(--color-main),var(--color-second))] px-5 text-sm font-medium text-white shadow-none hover:opacity-90"
                       >
                         Apply This Job
@@ -544,10 +632,10 @@ export default function MyJobsPage() {
                       <Button
                         type="button"
                         variant="outline"
-                        onClick={() => handleToggleSave(selectedJob.id)}
+                        onClick={() => void handleRemoveFromView(selectedJob.id)}
                         className="h-10 rounded-full border border-[#dcdcdc] px-5 text-sm text-slate-500 hover:bg-slate-50"
                       >
-                        {selectedJob.saved ? "Saved" : "Save"}
+                        Unsave
                       </Button>
                     </div>
                   ) : (
@@ -559,15 +647,21 @@ export default function MyJobsPage() {
                       Skill Use
                     </h3>
                     <div className="flex flex-wrap gap-2">
-                      {selectedJob.skills.map((skill) => (
-                        <button
-                          key={skill}
-                          type="button"
-                          className={`${gradientOutlineChipClassName} h-8 cursor-default`}
-                        >
-                          {skill}
-                        </button>
-                      ))}
+                      {selectedJob.skills.length > 0 ? (
+                        selectedJob.skills.map((skill) => (
+                          <button
+                            key={skill}
+                            type="button"
+                            className={`${gradientOutlineChipClassName} h-8 cursor-default`}
+                          >
+                            {skill}
+                          </button>
+                        ))
+                      ) : (
+                        <span className="text-sm text-slate-500">
+                          No skills available.
+                        </span>
+                      )}
                     </div>
                   </div>
 
@@ -581,11 +675,13 @@ export default function MyJobsPage() {
                       Company Description
                     </p>
                     <p className="mt-2 text-sm leading-relaxed text-slate-500">
-                      {selectedJob.companyDescription}
+                      {selectedJob.companyDescription || "No description available."}
                     </p>
-                    <p className="mt-2 text-sm leading-relaxed text-slate-500">
-                      {selectedJob.extraDescription}
-                    </p>
+                    {selectedJob.extraDescription ? (
+                      <p className="mt-2 text-sm leading-relaxed text-slate-500">
+                        {selectedJob.extraDescription}
+                      </p>
+                    ) : null}
                   </div>
                 </div>
               )}
@@ -593,6 +689,16 @@ export default function MyJobsPage() {
           </div>
         </div>
       </div>
+
+      <ApplyDialog
+        open={applyOpen}
+        onOpenChange={setApplyOpen}
+        applyDetail={applyDetail}
+        applyData={applyData}
+        setApplyData={setApplyData}
+        resumesInJobby={resumesInJobby}
+        onApply={handleSubmitApply}
+      />
     </PageLayout>
   );
 }

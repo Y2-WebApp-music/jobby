@@ -1,6 +1,10 @@
-import { useState, type FormEvent } from "react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { CgClose } from "react-icons/cg";
 import { Button } from "@/components/ui/button";
+import {
+  useAddressOptionStore,
+  type AddressOptionItem,
+} from "@/store/addressOption";
 
 export type ProfileLink = {
   id: number;
@@ -65,6 +69,49 @@ const extractLocalTel = (region: string, fullTel: string) => {
   return digits.slice(dialCode.length);
 };
 
+const FALLBACK_ADDRESS_TREE = [
+  {
+    province: "Bangkok",
+    districts: [
+      {
+        district: "Huai Khwang",
+        subDistricts: [{ subDistrict: "Bang Kapi", postalCode: "10310" }],
+      },
+      {
+        district: "Pathum Wan",
+        subDistricts: [{ subDistrict: "Lumphini", postalCode: "10330" }],
+      },
+    ],
+  },
+  {
+    province: "Chiang Mai",
+    districts: [
+      {
+        district: "Mueang Chiang Mai",
+        subDistricts: [{ subDistrict: "Suthep", postalCode: "50200" }],
+      },
+    ],
+  },
+  {
+    province: "Chon Buri",
+    districts: [
+      {
+        district: "Mueang Chon Buri",
+        subDistricts: [{ subDistrict: "Saen Suk", postalCode: "20130" }],
+      },
+    ],
+  },
+] as const;
+
+const withSelectedFallback = (
+  options: AddressOptionItem[],
+  selectedValue: string,
+) => {
+  if (!selectedValue) return options;
+  if (options.some((option) => option.value === selectedValue)) return options;
+  return [{ id: -1, value: selectedValue }, ...options];
+};
+
 export default function ProfileDialog({
   open,
   onClose,
@@ -75,8 +122,206 @@ export default function ProfileDialog({
   const [localTelInput, setLocalTelInput] = useState(() =>
     extractLocalTel(initialData.region, initialData.tel),
   );
+  const provinces = useAddressOptionStore((state) => state.provinces);
+  const districts = useAddressOptionStore((state) => state.districts);
+
+  useEffect(() => {
+    setFormValue(initialData);
+    setLocalTelInput(extractLocalTel(initialData.region, initialData.tel));
+  }, [initialData]);
+
+  const shouldUseFallbackAddressData =
+    provinces.length === 0 && districts.length === 0;
+  const fallbackProvinceOptions = useMemo(
+    () =>
+      FALLBACK_ADDRESS_TREE.map((item, index) => ({
+        id: index + 1,
+        value: item.province,
+      })),
+    [],
+  );
+  const selectedFallbackProvince = useMemo(
+    () =>
+      FALLBACK_ADDRESS_TREE.find((item) => item.province === formValue.province),
+    [formValue.province],
+  );
+  const fallbackDistrictOptions = useMemo(
+    () =>
+      (selectedFallbackProvince?.districts ?? []).map((item, index) => ({
+        id: index + 1,
+        value: item.district,
+      })),
+    [selectedFallbackProvince],
+  );
+  const selectedFallbackDistrict = useMemo(
+    () =>
+      selectedFallbackProvince?.districts.find(
+        (item) => item.district === formValue.district,
+      ),
+    [formValue.district, selectedFallbackProvince],
+  );
+  const fallbackSubDistrictOptions = useMemo(
+    () =>
+      (selectedFallbackDistrict?.subDistricts ?? []).map((item, index) => ({
+        id: index + 1,
+        value: item.subDistrict,
+      })),
+    [selectedFallbackDistrict],
+  );
+  const fallbackDerivedPostalCode = useMemo(
+    () =>
+      selectedFallbackDistrict?.subDistricts.find(
+        (item) => item.subDistrict === formValue.subDistrict,
+      )?.postalCode ?? "",
+    [formValue.subDistrict, selectedFallbackDistrict],
+  );
+
+  const baseProvinceOptions = useMemo(
+    () => useAddressOptionStore.getProvinceOptions(),
+    [provinces],
+  );
+  const selectedProvinceId = useMemo(
+    () =>
+      baseProvinceOptions.find((option) => option.value === formValue.province)
+        ?.id ?? 0,
+    [baseProvinceOptions, formValue.province],
+  );
+  const baseDistrictOptions = useMemo(
+    () =>
+      selectedProvinceId
+        ? useAddressOptionStore.getDistrictOptions(selectedProvinceId)
+        : [],
+    [districts, selectedProvinceId],
+  );
+  const selectedDistrictId = useMemo(
+    () =>
+      baseDistrictOptions.find((option) => option.value === formValue.district)
+        ?.id ?? 0,
+    [baseDistrictOptions, formValue.district],
+  );
+  const baseSubDistrictOptions = useMemo(
+    () =>
+      selectedDistrictId
+        ? useAddressOptionStore.getSubDistrictOptions(selectedDistrictId)
+        : [],
+    [districts, selectedDistrictId],
+  );
+  const selectedSubDistrictId = useMemo(
+    () =>
+      baseSubDistrictOptions.find(
+        (option) => option.value === formValue.subDistrict,
+      )?.id ?? 0,
+    [baseSubDistrictOptions, formValue.subDistrict],
+  );
+  const derivedPostalCode = useMemo(() => {
+    if (shouldUseFallbackAddressData) return fallbackDerivedPostalCode;
+    if (!selectedDistrictId || !selectedSubDistrictId) return "";
+    const postalCode = useAddressOptionStore.getPostalCode(
+      selectedDistrictId,
+      selectedSubDistrictId,
+    );
+    return postalCode ? String(postalCode) : "";
+  }, [
+    fallbackDerivedPostalCode,
+    selectedDistrictId,
+    selectedSubDistrictId,
+    shouldUseFallbackAddressData,
+  ]);
+  const provinceOptions = useMemo(
+    () =>
+      withSelectedFallback(
+        shouldUseFallbackAddressData
+          ? fallbackProvinceOptions
+          : baseProvinceOptions,
+        formValue.province,
+      ),
+    [
+      baseProvinceOptions,
+      fallbackProvinceOptions,
+      formValue.province,
+      shouldUseFallbackAddressData,
+    ],
+  );
+  const districtOptions = useMemo(
+    () =>
+      withSelectedFallback(
+        shouldUseFallbackAddressData
+          ? fallbackDistrictOptions
+          : baseDistrictOptions,
+        formValue.district,
+      ),
+    [
+      baseDistrictOptions,
+      fallbackDistrictOptions,
+      formValue.district,
+      shouldUseFallbackAddressData,
+    ],
+  );
+  const subDistrictOptions = useMemo(
+    () =>
+      withSelectedFallback(
+        shouldUseFallbackAddressData
+          ? fallbackSubDistrictOptions
+          : baseSubDistrictOptions,
+        formValue.subDistrict,
+      ),
+    [
+      baseSubDistrictOptions,
+      fallbackSubDistrictOptions,
+      formValue.subDistrict,
+      shouldUseFallbackAddressData,
+    ],
+  );
+  const postalCodeOptions = useMemo(() => {
+    const resolvedPostalCode = derivedPostalCode || formValue.postalCode;
+    if (!resolvedPostalCode) return [];
+    return [{ id: 1, value: resolvedPostalCode }];
+  }, [derivedPostalCode, formValue.postalCode]);
 
   if (!open) return null;
+
+  const handleProvinceChange = (value: string) => {
+    setFormValue((prev) => ({
+      ...prev,
+      province: value,
+      district: "",
+      subDistrict: "",
+      postalCode: "",
+    }));
+  };
+
+  const handleDistrictChange = (value: string) => {
+    setFormValue((prev) => ({
+      ...prev,
+      district: value,
+      subDistrict: "",
+      postalCode: "",
+    }));
+  };
+
+  const handleSubDistrictChange = (value: string) => {
+    const nextPostalCode = shouldUseFallbackAddressData
+      ? selectedFallbackDistrict?.subDistricts.find(
+          (item) => item.subDistrict === value,
+        )?.postalCode
+      : (() => {
+          const nextSubDistrictId =
+            baseSubDistrictOptions.find((option) => option.value === value)?.id ??
+            0;
+          return selectedDistrictId && nextSubDistrictId
+            ? useAddressOptionStore.getPostalCode(
+                selectedDistrictId,
+                nextSubDistrictId,
+              )
+            : undefined;
+        })();
+
+    setFormValue((prev) => ({
+      ...prev,
+      subDistrict: value,
+      postalCode: nextPostalCode ? String(nextPostalCode) : "",
+    }));
+  };
 
   const updateLink = (id: number, field: "label" | "url", value: string) => {
     setFormValue((prev) => ({
@@ -358,57 +603,62 @@ export default function ProfileDialog({
             <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
               <select
                 value={formValue.province}
-                onChange={(e) =>
-                  setFormValue((prev) => ({
-                    ...prev,
-                    province: e.target.value,
-                  }))
-                }
+                onChange={(e) => handleProvinceChange(e.target.value)}
                 className="h-9 w-full rounded-xl border border-slate-200 px-3 text-sm outline-none"
               >
                 <option value="">Select province</option>
-                <option value="Bangkok">Bangkok</option>
+                {provinceOptions.map((option) => (
+                  <option key={`${option.id}-${option.value}`} value={option.value}>
+                    {option.value}
+                  </option>
+                ))}
               </select>
               <select
                 value={formValue.district}
-                onChange={(e) =>
-                  setFormValue((prev) => ({
-                    ...prev,
-                    district: e.target.value,
-                  }))
-                }
+                onChange={(e) => handleDistrictChange(e.target.value)}
+                disabled={!formValue.province}
                 className="h-9 w-full rounded-xl border border-slate-200 px-3 text-sm outline-none"
               >
                 <option value="">Select district</option>
-                <option value="Huai Khwang">Huai Khwang</option>
+                {districtOptions.map((option) => (
+                  <option key={`${option.id}-${option.value}`} value={option.value}>
+                    {option.value}
+                  </option>
+                ))}
               </select>
             </div>
             <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-[minmax(0,1fr)_160px]">
               <select
                 value={formValue.subDistrict}
-                onChange={(e) =>
-                  setFormValue((prev) => ({
-                    ...prev,
-                    subDistrict: e.target.value,
-                  }))
-                }
+                onChange={(e) => handleSubDistrictChange(e.target.value)}
+                disabled={!formValue.district}
                 className="h-9 w-full rounded-xl border border-slate-200 px-3 text-sm outline-none"
               >
                 <option value="">Select sub-district</option>
-                <option value="Bang Kapi">Bang Kapi</option>
+                {subDistrictOptions.map((option) => (
+                  <option key={`${option.id}-${option.value}`} value={option.value}>
+                    {option.value}
+                  </option>
+                ))}
               </select>
-              <input
+              <select
                 value={formValue.postalCode}
-                inputMode="numeric"
-                placeholder="Postal code"
                 onChange={(e) =>
                   setFormValue((prev) => ({
                     ...prev,
-                    postalCode: e.target.value.replace(/\D/g, ""),
+                    postalCode: e.target.value,
                   }))
                 }
+                disabled={!formValue.subDistrict || postalCodeOptions.length === 0}
                 className="h-9 w-full rounded-xl border border-slate-200 px-3 text-sm outline-none"
-              />
+              >
+                <option value="">Select postal code</option>
+                {postalCodeOptions.map((option) => (
+                  <option key={`${option.id}-${option.value}`} value={option.value}>
+                    {option.value}
+                  </option>
+                ))}
+              </select>
             </div>
           </div>
 

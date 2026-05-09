@@ -125,7 +125,7 @@ export type ApplyPayload = {
   addition_file: AdditionFilePayload[];
 };
 
-export const initialApplyPayload = {
+export const initialApplyPayload: ApplyPayload = {
   email: "",
   phone: "",
   resume_id: "",

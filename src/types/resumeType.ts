@@ -6,6 +6,7 @@ export type ContactProps = {
 };
 
 export type EducationProps = {
+  id?: string;
   school_name: string;
   logo: File | string;
   degree: string;
@@ -16,6 +17,7 @@ export type EducationProps = {
 };
 
 export type WorkExperienceProps = {
+  id?: string;
   position: string;
   logo: File | string;
   company_name: string;
@@ -27,6 +29,7 @@ export type WorkExperienceProps = {
 };
 
 export type ProjectProps = {
+  id?: string;
   name: string;
   description: string;
   start_date: Date | string;
@@ -39,6 +42,7 @@ export type ProjectProps = {
 };
 
 export type AchievementProps = {
+  id?: string;
   name: string;
   project_name: string;
   description: string;
@@ -72,7 +76,7 @@ export type ResumeCreateProps = {
     last_name: string;
     logo: File | string;
     phone: string;
-    phone_region: number;
+    phone_region: number | string;
     email: string;
     contact: {
       label: string;
@@ -111,9 +115,17 @@ export const initialResume: ResumeCreateProps = {
       soi: "",
       street: "",
       sub_district: "",
+      sub_district_th: "",
+      sub_district_eng: "",
       district: "",
+      district_th: "",
+      district_eng: "",
       province: "",
+      province_th: "",
+      province_eng: "",
       country: "",
+      country_th: "",
+      country_eng: "",
       sub_district_id: 0,
       district_id: 0,
       province_id: 0,
