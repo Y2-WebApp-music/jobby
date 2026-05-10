@@ -2,7 +2,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import JobbyLogo from "@/assets/icons/JobbyLogologregis.svg?react";
 import { Link } from "react-router-dom";
-import { authClient, hydrateAuthStoreFromSession } from "@/services/authClient";
+import {
+  authClient,
+  hydrateAuthStoreFromPayload,
+  hydrateAuthStoreFromSession,
+} from "@/services/authClient";
 import { useState, type FormEvent } from "react";
 import { FcGoogle } from "react-icons/fc";
 
@@ -52,7 +56,10 @@ export default function SignInPage() {
       if (res?.error) {
         setErrorMsg(res.error?.message || "Sign in failed");
       } else {
-        await hydrateAuthStoreFromSession();
+        const hydrated = hydrateAuthStoreFromPayload(res);
+        if (!hydrated) {
+          await hydrateAuthStoreFromSession();
+        }
         window.location.replace("/");
       }
     } catch (err: unknown) {
@@ -85,7 +92,10 @@ export default function SignInPage() {
       if (res?.error) {
         setErrorMsg(res.error?.message || "Sign up failed");
       } else {
-        await hydrateAuthStoreFromSession();
+        const hydrated = hydrateAuthStoreFromPayload(res);
+        if (!hydrated) {
+          await hydrateAuthStoreFromSession();
+        }
         window.location.replace("/");
       }
     } catch (err: unknown) {
@@ -254,7 +264,9 @@ export default function SignInPage() {
             </section>
 
             <div className="mt-5 text-center text-[18px] text-[#222222]">
-              {mode === "signin" ? "Don&apos;t have an account?" : "Already have an account?"}{" "}
+              {mode === "signin"
+                ? "Don&apos;t have an account?"
+                : "Already have an account?"}{" "}
               <button
                 type="button"
                 onClick={() => {
