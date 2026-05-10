@@ -33,19 +33,19 @@ export default function UserMenuDropdown({
   const [loading, setLoading] = useState(true);
 
   const signOut = async () => {
-      try {
-        await authClient.signOut();
-        clearAuthStore();
-        window.location.replace("/");
-      } catch (err: any) {
-        // keep the user on the page and show an error / retry option
-        // eslint-disable-next-line no-console
-        console.error("Sign out failed", err);
-        setError(err?.message || "Sign out failed");
-      } finally {
-        setLoading(false);
-      }
-    };
+    try {
+      await authClient.signOut();
+      clearAuthStore();
+      window.location.replace("/");
+    } catch (err: any) {
+      // keep the user on the page and show an error / retry option
+      // eslint-disable-next-line no-console
+      console.error("Sign out failed", err);
+      setError(err?.message || "Sign out failed");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <DropdownMenu>
