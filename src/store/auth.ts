@@ -12,16 +12,13 @@ type User = {
 type AuthState = {
   user: User | null;
   token: string | null;
-  forceGuestNav: boolean;
 };
 
 type AuthActions = {
   getUser: () => AuthState["user"];
   getToken: () => AuthState["token"];
-  getForceGuestNav: () => AuthState["forceGuestNav"];
   setUser: (user: AuthState["user"]) => void;
   setToken: (token: AuthState["token"]) => void;
-  setForceGuestNav: (forceGuestNav: boolean) => void;
   logout: () => void;
 };
 
@@ -31,25 +28,18 @@ export const useAuthStore = create(
       {
         user: null,
         token: null,
-        forceGuestNav: false,
       },
       (set, get) => ({
         getUser: () => get().user,
         getToken: () => get().token,
-        getForceGuestNav: () => get().forceGuestNav,
         setUser: (user) => set({ user }),
         setToken: (token) => set({ token }),
-        setForceGuestNav: (forceGuestNav) => set({ forceGuestNav }),
-        logout: () => set({ user: null, token: null, forceGuestNav: false }),
+        logout: () => set({ user: null, token: null }),
       }),
     ),
     {
       name: "jobby-auth-store",
-      partialize: (state) => ({
-        user: state.user,
-        token: state.token,
-        forceGuestNav: state.forceGuestNav,
-      }),
+      partialize: (state) => ({ user: state.user, token: state.token }),
     },
   ),
 );
