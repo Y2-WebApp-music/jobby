@@ -142,7 +142,9 @@ export default function ProfileDialog({
   );
   const selectedFallbackProvince = useMemo(
     () =>
-      FALLBACK_ADDRESS_TREE.find((item) => item.province === formValue.province),
+      FALLBACK_ADDRESS_TREE.find(
+        (item) => item.province === formValue.province,
+      ),
     [formValue.province],
   );
   const fallbackDistrictOptions = useMemo(
@@ -306,8 +308,8 @@ export default function ProfileDialog({
         )?.postalCode
       : (() => {
           const nextSubDistrictId =
-            baseSubDistrictOptions.find((option) => option.value === value)?.id ??
-            0;
+            baseSubDistrictOptions.find((option) => option.value === value)
+              ?.id ?? 0;
           return selectedDistrictId && nextSubDistrictId
             ? useAddressOptionStore.getPostalCode(
                 selectedDistrictId,
@@ -608,7 +610,10 @@ export default function ProfileDialog({
               >
                 <option value="">Select province</option>
                 {provinceOptions.map((option) => (
-                  <option key={`${option.id}-${option.value}`} value={option.value}>
+                  <option
+                    key={`${option.id}-${option.value}`}
+                    value={option.value}
+                  >
                     {option.value}
                   </option>
                 ))}
@@ -621,7 +626,10 @@ export default function ProfileDialog({
               >
                 <option value="">Select district</option>
                 {districtOptions.map((option) => (
-                  <option key={`${option.id}-${option.value}`} value={option.value}>
+                  <option
+                    key={`${option.id}-${option.value}`}
+                    value={option.value}
+                  >
                     {option.value}
                   </option>
                 ))}
@@ -636,7 +644,10 @@ export default function ProfileDialog({
               >
                 <option value="">Select sub-district</option>
                 {subDistrictOptions.map((option) => (
-                  <option key={`${option.id}-${option.value}`} value={option.value}>
+                  <option
+                    key={`${option.id}-${option.value}`}
+                    value={option.value}
+                  >
                     {option.value}
                   </option>
                 ))}
@@ -649,12 +660,17 @@ export default function ProfileDialog({
                     postalCode: e.target.value,
                   }))
                 }
-                disabled={!formValue.subDistrict || postalCodeOptions.length === 0}
+                disabled={
+                  !formValue.subDistrict || postalCodeOptions.length === 0
+                }
                 className="h-9 w-full rounded-xl border border-slate-200 px-3 text-sm outline-none"
               >
                 <option value="">Select postal code</option>
                 {postalCodeOptions.map((option) => (
-                  <option key={`${option.id}-${option.value}`} value={option.value}>
+                  <option
+                    key={`${option.id}-${option.value}`}
+                    value={option.value}
+                  >
                     {option.value}
                   </option>
                 ))}

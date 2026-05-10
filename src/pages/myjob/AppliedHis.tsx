@@ -132,7 +132,9 @@ const mapResultToJob = (
     company: item.company.name,
     companyId: item.company.id,
     companyLogo: item.company.logo,
-    location: [item.district_name, item.province_name].filter(Boolean).join(", "),
+    location: [item.district_name, item.province_name]
+      .filter(Boolean)
+      .join(", "),
     provinceName: item.province_name,
     districtName: item.district_name,
     meta: `${item.match_skill_count} Skills Match - ${formatPostedAt(item.created_at)}`,
@@ -200,7 +202,8 @@ export default function MyJobsPage() {
 
     const loadJobDetail = async () => {
       try {
-        const response = await searchJobService.getSearchJobDetail(selectedJobId);
+        const response =
+          await searchJobService.getSearchJobDetail(selectedJobId);
         if (cancelled) return;
         setJobs((prev) =>
           prev.map((job) =>
@@ -339,9 +342,13 @@ export default function MyJobsPage() {
           jobTitle: selectedJob.title,
         }),
       );
-      setApplyData(searchJobService.createApplyPayloadFromNeed(needResponse.data));
+      setApplyData(
+        searchJobService.createApplyPayloadFromNeed(needResponse.data),
+      );
       setResumesInJobby(
-        resumeResponse.data.map(searchJobService.mapSearchJobResumeToResumeListItem),
+        resumeResponse.data.map(
+          searchJobService.mapSearchJobResumeToResumeListItem,
+        ),
       );
       setApplyOpen(true);
     } catch {
@@ -382,7 +389,9 @@ export default function MyJobsPage() {
         </div>
         <div className="flex items-center justify-between rounded-2xl border border-[#e5e5e5] bg-white px-5 py-4 xl:flex-1">
           <div>
-            <div className="text-sm font-medium text-slate-950">{infoLabel}</div>
+            <div className="text-sm font-medium text-slate-950">
+              {infoLabel}
+            </div>
             <div className="mt-1 text-sm text-slate-500">{infoValue}</div>
           </div>
           <Button
@@ -402,7 +411,9 @@ export default function MyJobsPage() {
       <div className="h-[calc(100vh-56px)] px-6 pb-4 pt-4">
         <div className="flex h-full min-h-0 flex-col">
           <div className="mb-4 flex flex-wrap items-center gap-3">
-            <h1 className="text-[20px] font-semibold text-slate-950">My Jobs</h1>
+            <h1 className="text-[20px] font-semibold text-slate-950">
+              My Jobs
+            </h1>
 
             <Input
               placeholder="Search Job"
@@ -461,7 +472,9 @@ export default function MyJobsPage() {
                 <div className="space-y-0">
                   {jobs.map((job) => {
                     const isSelected = selectedJob?.id === job.id;
-                    const statusMeta = job.status ? STATUS_META[job.status] : null;
+                    const statusMeta = job.status
+                      ? STATUS_META[job.status]
+                      : null;
 
                     return (
                       <Card
@@ -564,7 +577,9 @@ export default function MyJobsPage() {
                   <button
                     type="button"
                     className="inline-flex items-center gap-1 rounded-full px-2 py-1 text-slate-600 hover:bg-slate-100 disabled:opacity-40"
-                    onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                    onClick={() =>
+                      setCurrentPage((p) => Math.min(totalPages, p + 1))
+                    }
                     disabled={currentPage === totalPages}
                   >
                     Next
@@ -576,7 +591,9 @@ export default function MyJobsPage() {
 
             <div className="h-full overflow-y-auto border-l border-[#e5e5e5] pl-4">
               {loading ? (
-                <div className="pt-6 text-sm text-slate-500">Loading jobs...</div>
+                <div className="pt-6 text-sm text-slate-500">
+                  Loading jobs...
+                </div>
               ) : jobs.length === 0 || !selectedJob ? (
                 <div className="pt-6 text-sm text-slate-500">
                   No jobs to display.
@@ -641,7 +658,9 @@ export default function MyJobsPage() {
                       <Button
                         type="button"
                         variant="outline"
-                        onClick={() => void handleRemoveFromView(selectedJob.id)}
+                        onClick={() =>
+                          void handleRemoveFromView(selectedJob.id)
+                        }
                         className="h-10 rounded-full border border-[#dcdcdc] px-5 text-sm text-slate-500 hover:bg-slate-50"
                       >
                         Unsave
@@ -684,7 +703,8 @@ export default function MyJobsPage() {
                       Company Description
                     </p>
                     <p className="mt-2 text-sm leading-relaxed text-slate-500">
-                      {selectedJob.companyDescription || "No description available."}
+                      {selectedJob.companyDescription ||
+                        "No description available."}
                     </p>
                     {selectedJob.extraDescription ? (
                       <p className="mt-2 text-sm leading-relaxed text-slate-500">

@@ -59,7 +59,9 @@ const mapProvinceOptions = (
   }));
 
 const mapDistrictOptions = (
-  districts: Awaited<ReturnType<typeof utilityService.getDistrict>>["data"]["districts"],
+  districts: Awaited<
+    ReturnType<typeof utilityService.getDistrict>
+  >["data"]["districts"],
 ) =>
   districts.map((item) => ({
     district_id: item.district_code,
@@ -106,7 +108,8 @@ const buildResumePayload = (resume: ResumeCreateProps): CreateResumePayload => {
     (item) => item.district_id === (resume.data.address.district_id ?? 0),
   );
   const subDistrict = district?.sub_district_list?.find(
-    (item) => item.sub_district_id === (resume.data.address.sub_district_id ?? 0),
+    (item) =>
+      item.sub_district_id === (resume.data.address.sub_district_id ?? 0),
   );
   const fallbackResumeName =
     [resume.data.first_name, resume.data.last_name].filter(Boolean).join(" ") ||
@@ -309,7 +312,9 @@ export default function CreateResumePage() {
   const fetchDistricts = async (provinceId: number) => {
     try {
       const response = await utilityService.getDistrict(provinceId);
-      useAddressOptionStore.setDistricts(mapDistrictOptions(response.data.districts));
+      useAddressOptionStore.setDistricts(
+        mapDistrictOptions(response.data.districts),
+      );
     } catch {
       return;
     }

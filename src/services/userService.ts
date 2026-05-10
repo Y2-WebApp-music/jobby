@@ -27,10 +27,7 @@ const buildJobListParams = ({
   ...(search_text !== undefined ? { search_text } : {}),
 });
 
-export const getAppliedJobs = (
-  userId: string,
-  params: AppliedJobsParams,
-) => {
+export const getAppliedJobs = (userId: string, params: AppliedJobsParams) => {
   return apiService.fetchData<AppliedJobsResponse>({
     url: `${USER_ENDPOINT}/${encodeURIComponent(userId)}/applied-jobs`,
     method: "get",

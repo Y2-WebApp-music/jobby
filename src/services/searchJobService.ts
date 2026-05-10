@@ -167,9 +167,7 @@ export const getSearchFilterOptions = () => {
   });
 };
 
-export const getSearchAddressOptions = (
-  params: SearchAddressOptionsParams,
-) => {
+export const getSearchAddressOptions = (params: SearchAddressOptionsParams) => {
   return apiService.fetchData<PlaceSearchResponse>({
     url: `${SEARCH_ENDPOINT}/address-options`,
     method: "get",
@@ -294,8 +292,7 @@ const buildApplyJobFormData = (payload: ApplyPayload) => {
 
   const additionFileDescriptors = payload.addition_file
     .filter(
-      (item): item is typeof item & { data: File } =>
-        item.data instanceof File,
+      (item): item is typeof item & { data: File } => item.data instanceof File,
     )
     .map((item) => {
       const fieldName = `addition_file_${item.id}`;

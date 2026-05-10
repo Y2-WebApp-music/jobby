@@ -32,7 +32,12 @@ import {
   initialApplyPayload,
   type ApplyPayload,
 } from "@/types/searchJob";
-import { pageSize, searchTypeOptions, type Job, useSearchJobState } from "@/types/job";
+import {
+  pageSize,
+  searchTypeOptions,
+  type Job,
+  useSearchJobState,
+} from "@/types/job";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { CgClose } from "react-icons/cg";
 import { HiOutlineSelector } from "react-icons/hi";
@@ -119,23 +124,29 @@ export default function SearchJobPage() {
   const jobListScrollRef = useRef<HTMLDivElement | null>(null);
 
   const [skillInfoOpen, setSkillInfoOpen] = useState(false);
-  const [selectedSkillName, setSelectedSkillName] = useState<string | null>(null);
+  const [selectedSkillName, setSelectedSkillName] = useState<string | null>(
+    null,
+  );
   const [applyData, setApplyData] = useState<ApplyPayload>(initialApplyPayload);
   const [applyDetail, setApplyDetail] = useState(initialApplyDialogJob);
   const [resumesInJobby, setResumesInJobby] = useState<
     { id: string; name: string; create_date: string }[]
   >([]);
-  const [categoryOptions, setCategoryOptions] = useState<FilterOptionItem[]>([]);
-  const [workTypeOptions, setWorkTypeOptions] = useState<FilterOptionItem[]>([]);
-  const [workOptionOptions, setWorkOptionOptions] = useState<FilterOptionItem[]>(
+  const [categoryOptions, setCategoryOptions] = useState<FilterOptionItem[]>(
     [],
   );
+  const [workTypeOptions, setWorkTypeOptions] = useState<FilterOptionItem[]>(
+    [],
+  );
+  const [workOptionOptions, setWorkOptionOptions] = useState<
+    FilterOptionItem[]
+  >([]);
   const [placeOptions, setPlaceOptions] = useState<PlaceSearchItem[]>([]);
   const [placeInput, setPlaceInput] = useState("");
   const [selectedPlaceLabel, setSelectedPlaceLabel] = useState("Any Place");
-  const [selectedSkillItems, setSelectedSkillItems] = useState<SearchSuggestItem[]>(
-    [],
-  );
+  const [selectedSkillItems, setSelectedSkillItems] = useState<
+    SearchSuggestItem[]
+  >([]);
   const [savedJobIds, setSavedJobIds] = useState<Set<string>>(new Set());
   const [totalPages, setTotalPages] = useState(1);
   const [loadingJobs, setLoadingJobs] = useState(false);
@@ -169,13 +180,16 @@ export default function SearchJobPage() {
   const headerSkills = selectedSkillNames.slice(0, 4);
   const headerSkillsOverflow = Math.max(0, selectedSkillNames.length - 4);
 
-  const updatePayload = useCallback((partial: Partial<SearchJobPayload>) => {
-    setSearchPayload((prev) => ({
-      ...prev,
-      ...partial,
-      user_id: user?.id ?? prev.user_id,
-    }));
-  }, [setSearchPayload, user?.id]);
+  const updatePayload = useCallback(
+    (partial: Partial<SearchJobPayload>) => {
+      setSearchPayload((prev) => ({
+        ...prev,
+        ...partial,
+        user_id: user?.id ?? prev.user_id,
+      }));
+    },
+    [setSearchPayload, user?.id],
+  );
 
   useEffect(() => {
     setSearchPayload((prev) => ({
@@ -333,7 +347,8 @@ export default function SearchJobPage() {
 
     const loadJobDetail = async () => {
       try {
-        const response = await searchJobService.getSearchJobDetail(selectedJobId);
+        const response =
+          await searchJobService.getSearchJobDetail(selectedJobId);
         if (cancelled) return;
 
         setJobs((prev) =>
@@ -343,11 +358,13 @@ export default function SearchJobPage() {
                   ...job,
                   skills: response.data.skills.map((item) => item.name),
                   category:
-                    response.data.categories.map((item) => item.text_eng).join(", ") ||
-                    job.category,
+                    response.data.categories
+                      .map((item) => item.text_eng)
+                      .join(", ") || job.category,
                   workType:
-                    response.data.work_types.map((item) => item.text_eng).join(", ") ||
-                    job.workType,
+                    response.data.work_types
+                      .map((item) => item.text_eng)
+                      .join(", ") || job.workType,
                   workOption:
                     response.data.work_options
                       .map((item) => item.text_eng)
@@ -522,9 +539,13 @@ export default function SearchJobPage() {
           jobTitle: selectedJob.title,
         }),
       );
-      setApplyData(searchJobService.createApplyPayloadFromNeed(needResponse.data));
+      setApplyData(
+        searchJobService.createApplyPayloadFromNeed(needResponse.data),
+      );
       setResumesInJobby(
-        resumeResponse.data.map(searchJobService.mapSearchJobResumeToResumeListItem),
+        resumeResponse.data.map(
+          searchJobService.mapSearchJobResumeToResumeListItem,
+        ),
       );
       setApplyDialogKey((prev) => prev + 1);
       setApplyOpen(true);
@@ -569,7 +590,9 @@ export default function SearchJobPage() {
                     <ComboboxEmpty>No suggestions.</ComboboxEmpty>
                     <ComboboxList>
                       {(item: string) => {
-                        const option = skillSuggestions.find((s) => s.name === item);
+                        const option = skillSuggestions.find(
+                          (s) => s.name === item,
+                        );
                         const label =
                           option?.type === "job"
                             ? "Job"
@@ -580,7 +603,9 @@ export default function SearchJobPage() {
                           <ComboboxItem
                             key={`${option?.id ?? item}-${item}`}
                             value={item}
-                            onClick={() => updatePayload({ search_text: item, page: 0 })}
+                            onClick={() =>
+                              updatePayload({ search_text: item, page: 0 })
+                            }
                           >
                             <span>{item}</span>
                             <span
@@ -732,7 +757,10 @@ export default function SearchJobPage() {
                 )}
                 value={searchPayload.category.map((id) => String(id))}
                 onValueChange={(vals) =>
-                  updatePayload({ category: vals.map((value) => Number(value)), page: 0 })
+                  updatePayload({
+                    category: vals.map((value) => Number(value)),
+                    page: 0,
+                  })
                 }
                 placeholder="Any Category"
                 className="h-10 w-full border border-[#e5e5e5] bg-white px-4 pr-4 text-sm text-[#A1A1A1] shadow-[0_2px_10px_rgba(0,0,0,0.06)] outline-none **:data-[slot=input-group-button]:bg-none! **:data-[slot=input-group-button]:bg-transparent! **:data-[slot=input-group-button]:hover:bg-transparent! **:data-[slot=input-group-control]:border-0 **:data-[slot=input-group-control]:bg-transparent **:data-[slot=input-group-control]:shadow-none"
@@ -747,7 +775,8 @@ export default function SearchJobPage() {
                 items={[
                   "Any Place",
                   ...placeOptions.map(
-                    (option) => `${option.province_name}, ${option.district_name}`,
+                    (option) =>
+                      `${option.province_name}, ${option.district_name}`,
                   ),
                 ]}
               >
@@ -784,7 +813,10 @@ export default function SearchJobPage() {
                 )}
                 value={searchPayload.type.map((id) => String(id))}
                 onValueChange={(vals) =>
-                  updatePayload({ type: vals.map((value) => Number(value)), page: 0 })
+                  updatePayload({
+                    type: vals.map((value) => Number(value)),
+                    page: 0,
+                  })
                 }
                 placeholder="Any Work Type"
                 className="h-10 w-full border border-[#e5e5e5] bg-white px-4 pr-4 text-sm text-[#A1A1A1] shadow-[0_2px_10px_rgba(0,0,0,0.06)] outline-none **:data-[slot=input-group-button]:bg-none! **:data-[slot=input-group-button]:bg-transparent! **:data-[slot=input-group-button]:hover:bg-transparent! **:data-[slot=input-group-control]:border-0 **:data-[slot=input-group-control]:bg-transparent **:data-[slot=input-group-control]:shadow-none"
@@ -804,7 +836,10 @@ export default function SearchJobPage() {
                 )}
                 value={searchPayload.option.map((id) => String(id))}
                 onValueChange={(vals) =>
-                  updatePayload({ option: vals.map((value) => Number(value)), page: 0 })
+                  updatePayload({
+                    option: vals.map((value) => Number(value)),
+                    page: 0,
+                  })
                 }
                 placeholder="Any Work Option"
                 className="h-10 w-full border border-[#e5e5e5] bg-white px-4 pr-4 text-sm text-[#A1A1A1] shadow-[0_2px_10px_rgba(0,0,0,0.06)] outline-none **:data-[slot=input-group-button]:bg-none! **:data-[slot=input-group-button]:bg-transparent! **:data-[slot=input-group-button]:hover:bg-transparent! **:data-[slot=input-group-control]:border-0 **:data-[slot=input-group-control]:bg-transparent **:data-[slot=input-group-control]:shadow-none"
@@ -822,35 +857,40 @@ export default function SearchJobPage() {
                   {loadingJobs ? "Loading..." : `${jobs.length} Results`}
                 </span>
                 <div className="inline-flex overflow-hidden rounded-full border border-[#d7d7d7] bg-white text-sm">
-                  {(["relevance", "date", "unviewed"] as const).map((mode, index) => (
-                    <button
-                      key={mode}
-                      type="button"
-                      onClick={() =>
-                        updatePayload({
-                          sort_type: modeToSortType(mode),
-                          page: 0,
-                        })
-                      }
-                      className={cn(
-                        index < 2 && "border-r border-[#d7d7d7]",
-                        "px-4 py-2",
-                        filterMode === mode
-                          ? "bg-[linear-gradient(90deg,var(--color-main),var(--color-second))] text-white"
-                          : "bg-white text-slate-600",
-                      )}
-                    >
-                      {mode === "relevance"
-                        ? "Relevance"
-                        : mode === "date"
-                          ? "Date"
-                          : "No browsed yet"}
-                    </button>
-                  ))}
+                  {(["relevance", "date", "unviewed"] as const).map(
+                    (mode, index) => (
+                      <button
+                        key={mode}
+                        type="button"
+                        onClick={() =>
+                          updatePayload({
+                            sort_type: modeToSortType(mode),
+                            page: 0,
+                          })
+                        }
+                        className={cn(
+                          index < 2 && "border-r border-[#d7d7d7]",
+                          "px-4 py-2",
+                          filterMode === mode
+                            ? "bg-[linear-gradient(90deg,var(--color-main),var(--color-second))] text-white"
+                            : "bg-white text-slate-600",
+                        )}
+                      >
+                        {mode === "relevance"
+                          ? "Relevance"
+                          : mode === "date"
+                            ? "Date"
+                            : "No browsed yet"}
+                      </button>
+                    ),
+                  )}
                 </div>
               </div>
 
-              <div ref={jobListScrollRef} className="min-h-0 flex-1 overflow-y-auto">
+              <div
+                ref={jobListScrollRef}
+                className="min-h-0 flex-1 overflow-y-auto"
+              >
                 <div className="space-y-0">
                   {jobs.map((job) => {
                     const isSelected = selectedJob?.id === job.id;
@@ -894,8 +934,12 @@ export default function SearchJobPage() {
                               <div className="max-w-[320px] text-[15px] font-medium leading-snug text-slate-950">
                                 {job.title}
                               </div>
-                              <div className="mt-1 text-sm text-slate-600">{job.company}</div>
-                              <div className="text-sm text-slate-500">{job.location}</div>
+                              <div className="mt-1 text-sm text-slate-600">
+                                {job.company}
+                              </div>
+                              <div className="text-sm text-slate-500">
+                                {job.location}
+                              </div>
                               <div className="mt-2 text-xs text-slate-500">
                                 {viewed.has(job.id) ? "Viewed - " : ""}
                                 {job.meta}
@@ -912,7 +956,9 @@ export default function SearchJobPage() {
               <div className="relative -mt-px flex min-h-[52px] items-center border-t border-[#e5e5e5] bg-white py-2 text-sm">
                 <button
                   className="inline-flex items-center gap-1 rounded-full px-2 py-1 text-slate-600 hover:bg-slate-100 disabled:opacity-40"
-                  onClick={() => updatePayload({ page: Math.max(0, currentPage - 2) })}
+                  onClick={() =>
+                    updatePayload({ page: Math.max(0, currentPage - 2) })
+                  }
                   disabled={currentPage === 1}
                   type="button"
                 >
@@ -945,7 +991,9 @@ export default function SearchJobPage() {
                   <button
                     className="inline-flex items-center gap-1 rounded-full px-2 py-1 text-slate-600 hover:bg-slate-100 disabled:opacity-40"
                     onClick={() =>
-                      updatePayload({ page: Math.min(totalPages - 1, currentPage) })
+                      updatePayload({
+                        page: Math.min(totalPages - 1, currentPage),
+                      })
                     }
                     disabled={currentPage === totalPages}
                     type="button"
@@ -959,7 +1007,9 @@ export default function SearchJobPage() {
 
             <div className="h-full overflow-y-auto border-l border-[#e5e5e5] pl-4">
               {jobs.length === 0 || !selectedJob ? (
-                <div className="pt-6 text-sm text-slate-500">No jobs to display.</div>
+                <div className="pt-6 text-sm text-slate-500">
+                  No jobs to display.
+                </div>
               ) : (
                 <div className="pt-2">
                   <div className="flex items-start gap-3">
@@ -973,15 +1023,21 @@ export default function SearchJobPage() {
                       ) : null}
                     </div>
                     <div className="min-w-0">
-                      <div className="text-sm text-slate-500">{selectedJob.company}</div>
+                      <div className="text-sm text-slate-500">
+                        {selectedJob.company}
+                      </div>
                       <h2 className="text-[22px] font-semibold leading-tight text-slate-950">
                         {selectedJob.title}
                       </h2>
                       <p className="text-sm text-slate-500">
-                        {selectedJob.location} - {formatPostedLabel(selectedJob.postedAt)}
+                        {selectedJob.location} -{" "}
+                        {formatPostedLabel(selectedJob.postedAt)}
                       </p>
                     </div>
-                    <button className="ml-auto text-slate-700 hover:text-slate-950" type="button">
+                    <button
+                      className="ml-auto text-slate-700 hover:text-slate-950"
+                      type="button"
+                    >
                       <IoIosMore size={20} />
                     </button>
                   </div>
@@ -1051,7 +1107,8 @@ export default function SearchJobPage() {
                       Company Description
                     </p>
                     <p className="mt-2 text-sm leading-relaxed text-slate-500">
-                      {selectedJob.companyDescription || "No description available."}
+                      {selectedJob.companyDescription ||
+                        "No description available."}
                     </p>
                     {selectedJob.extraDescription ? (
                       <p className="mt-2 text-sm leading-relaxed text-slate-500">

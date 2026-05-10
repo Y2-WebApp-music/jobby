@@ -365,10 +365,7 @@ export const getResumeDetail = (resumeId: string) => {
   });
 };
 
-export const createUserResume = (
-  userId: string,
-  data: CreateResumePayload,
-) => {
+export const createUserResume = (userId: string, data: CreateResumePayload) => {
   return apiService.fetchData<CreateResumeResponse>({
     url: `${RESUME_ENDPOINT}/${encodeURIComponent(userId)}`,
     method: "post",
@@ -412,8 +409,9 @@ export const exportResume = async (
     blob: response.data,
     contentType: response.headers["content-type"] ?? "application/octet-stream",
     filename:
-      parseContentDispositionFilename(response.headers["content-disposition"]) ||
-      `resume-${resumeId}.pdf`,
+      parseContentDispositionFilename(
+        response.headers["content-disposition"],
+      ) || `resume-${resumeId}.pdf`,
   };
 };
 

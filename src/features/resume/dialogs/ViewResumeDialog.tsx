@@ -101,7 +101,9 @@ export function ViewResumeDialog({
                       className="mt-0 max-h-[calc(80vh-14rem)] space-y-6 overflow-y-auto"
                     >
                       <section>
-                        <div className="text-base font-medium">Personal Info</div>
+                        <div className="text-base font-medium">
+                          Personal Info
+                        </div>
                         <div className="mt-3 space-y-3">
                           <div className="space-y-1.5">
                             <span className="text-sm text-muted-foreground">
@@ -219,7 +221,9 @@ export function ViewResumeDialog({
                       className="mt-0 max-h-[calc(80vh-14rem)] space-y-6 overflow-y-auto"
                     >
                       <section>
-                        <div className="text-base font-medium">Work Experience</div>
+                        <div className="text-base font-medium">
+                          Work Experience
+                        </div>
                         <div className="mt-3 space-y-3">
                           {d.work_experience?.length
                             ? d.work_experience.map((exp, i) => (
@@ -296,7 +300,9 @@ export function ViewResumeDialog({
                       className="mt-0 max-h-[calc(80vh-14rem)] space-y-6 overflow-y-auto"
                     >
                       <section>
-                        <div className="text-base font-medium">Miscellaneous</div>
+                        <div className="text-base font-medium">
+                          Miscellaneous
+                        </div>
                         <div className="mt-3 space-y-4">
                           {d.miscellaneous?.length
                             ? d.miscellaneous.map((item, i) => (

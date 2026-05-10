@@ -221,15 +221,14 @@ export function BasicInfoTab({
                       className="w-(--radix-popover-trigger-width) p-0"
                       align="start"
                     >
-                      <Command
-                        value={selectedPhoneRegion?.label ?? "Select"}
-                      >
+                      <Command value={selectedPhoneRegion?.label ?? "Select"}>
                         <CommandInput placeholder="Search..." />
                         <CommandList>
                           <CommandEmpty>No option found.</CommandEmpty>
                           <CommandGroup>
                             {phoneRegionOptions.map((opt) => {
-                              const isSelected = opt.id === selectedPhoneRegion?.id;
+                              const isSelected =
+                                opt.id === selectedPhoneRegion?.id;
                               return (
                                 <CommandItem
                                   key={opt.id}
