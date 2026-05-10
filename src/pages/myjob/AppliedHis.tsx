@@ -1,26 +1,33 @@
-import { useEffect, useMemo, useRef, useState } from "react";
-import { useSearchParams } from "react-router-dom";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Card, CardContent } from "@/components/ui/card";
 import PageLayout from "@/components/layout/PageLayout";
-import { CgClose } from "react-icons/cg";
-import { IoIosArrowBack, IoIosArrowForward, IoIosMore } from "react-icons/io";
-import { useAuthStore } from "@/store/auth";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { ApplyDialog } from "@/features/searchJob/dialogs/ApplyDialog";
 import searchJobService from "@/services/searchJobService";
 import userService from "@/services/userService";
-import { ApplyDialog } from "@/features/searchJob/dialogs/ApplyDialog";
+import { useAuthStore } from "@/store/auth";
+import { pageSize, type Job } from "@/types/job";
 import {
   initialApplyDialogJob,
   initialApplyPayload,
   type ApplyPayload,
 } from "@/types/searchJob";
-import { pageSize, type Job, type JobStatus } from "@/types/job";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { CgClose } from "react-icons/cg";
+import { IoIosArrowBack, IoIosArrowForward, IoIosMore } from "react-icons/io";
+import { useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 
 const now = Date.now();
 
 type JobView = "saved" | "applied" | "archived";
+type JobStatus = "inreview" | "interview" | "reject" | "accept";
+const parseJobView = (rawJobView: string | null): JobView =>
+  rawJobView === "saved" ||
+  rawJobView === "applied" ||
+  rawJobView === "archived"
+    ? rawJobView
+    : "saved";
 
 const JOB_VIEW_TABS: Array<{ value: JobView; label: string }> = [
   { value: "saved", label: "Save" },
@@ -75,6 +82,11 @@ const STATUS_META: Record<
     bgClass: "bg-[#edfdf3]",
   },
 };
+const isJobStatus = (status: Job["status"]): status is JobStatus =>
+  status === "inreview" ||
+  status === "interview" ||
+  status === "reject" ||
+  status === "accept";
 
 const gradientOutlineChipClassName =
   "inline-flex items-center rounded-full border border-transparent px-3 text-xs text-primary-pink [background:linear-gradient(var(--color-background),var(--color-background))_padding-box,linear-gradient(90deg,var(--color-main),var(--color-second))_border-box]";
@@ -348,7 +360,7 @@ export default function MyJobsPage() {
   };
 
   const renderStatusPanel = (job: Job) => {
-    if (!job.status) return null;
+    if (!isJobStatus(job.status)) return null;
 
     const statusMeta = STATUS_META[job.status];
     const infoLabel =
@@ -401,18 +413,15 @@ export default function MyJobsPage() {
 
             <div className="flex flex-wrap items-center gap-2">
               {JOB_VIEW_TABS.map((tab) => (
-                <button
+                <Button
                   key={tab.value}
                   type="button"
+                  variant={jobView === tab.value ? "default" : "outline"}
                   onClick={() => handleJobViewChange(tab.value)}
-                  className={`inline-flex h-9 items-center rounded-full border px-4 text-sm transition ${
-                    jobView === tab.value
-                      ? "border-transparent bg-[linear-gradient(90deg,var(--color-main),var(--color-second))] text-white"
-                      : "border-[#dcdcdc] bg-white text-slate-500 hover:bg-slate-50"
-                  }`}
+                  className="inline-flex h-9 items-center rounded-full px-4 text-sm"
                 >
                   {tab.label}
-                </button>
+                </Button>
               ))}
             </div>
           </div>
