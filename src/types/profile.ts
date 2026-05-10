@@ -104,10 +104,10 @@ export const defaultProfileForm: ProfileFormValue = {
   moo: "ping",
   soi: "homyai",
   street: "food",
-  province: "monky",
-  district: "line",
-  subDistrict: "My made nate",
-  postalCode: "67",
+  province: "Bangkok",
+  district: "Huai Khwang",
+  subDistrict: "Bang Kapi",
+  postalCode: "10310",
   links: [{ id: 1, label: "linkedIn", url: "www.linkedin.com/*******" }],
 };
 

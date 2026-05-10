@@ -83,6 +83,10 @@ function isQuestionStepValid(
   for (const q of questions) {
     const a = answers.find((x) => x.id === q.id);
     if (!a) return false;
+    if (q.type === 1 && typeof a.value !== "number") return false;
+    if (q.type === 2 && (!Array.isArray(a.value) || a.value.length === 0)) {
+      return false;
+    }
     if (q.type === 3) {
       const text = (a.open_answer ?? "").trim();
       if (text === "") return false;

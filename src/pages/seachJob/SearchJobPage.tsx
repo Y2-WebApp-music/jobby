@@ -9,40 +9,40 @@ import {
   ComboboxItem,
   ComboboxList,
 } from "@/components/ui/combobox";
-import SkillinfoDialog from "@/features/profile/dialog/SkillinfoDialog";
-import { ApplyDialog } from "@/features/searchJob/dialogs/ApplyDialog";
-import type { Job } from "../../types/job";
-import {
-  categoryOptions,
-  pageSize,
-  placeOptions,
-  searchTypeOptions,
-  skillOptions,
-  useSearchJobState,
-  workOptionOptions,
-  workTypeOptions,
-} from "../../types/job";
 import {
   MultiSelect,
   type MultiSelectOption,
 } from "@/components/ui/multi-select";
+import SkillinfoDialog from "@/features/profile/dialog/SkillinfoDialog";
+import { ApplyDialog } from "@/features/searchJob/dialogs/ApplyDialog";
+import { cn } from "@/lib/utils";
+import searchJobService from "@/services/searchJobService";
+import { useAuthStore } from "@/store/auth";
 import type {
   FilterOptionItem,
-  SortTypeCode,
-  SearchSuggestItem,
   PlaceSearchItem,
   SearchJobPayload,
+  SearchJobResult,
+  SearchSuggestItem,
   SearchTypeCode,
+  SortTypeCode,
 } from "@/types/search-job";
 import {
   initialApplyDialogJob,
   initialApplyPayload,
   type ApplyPayload,
 } from "@/types/searchJob";
-import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  pageSize,
+  searchTypeOptions,
+  type Job,
+  useSearchJobState,
+} from "@/types/job";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { CgClose } from "react-icons/cg";
 import { HiOutlineSelector } from "react-icons/hi";
 import { IoIosArrowBack, IoIosArrowForward, IoIosMore } from "react-icons/io";
+import { toast } from "sonner";
 
 const sortTypeToMode = (sortType: SortTypeCode) => {
   if (sortType === 1) return "date";
@@ -58,7 +58,47 @@ const modeToSortType = (
   return 0;
 };
 
+const formatPostedLabel = (value: string) => {
+  const postedAt = new Date(value);
+  if (Number.isNaN(postedAt.getTime())) return "posted recently";
+
+  const diffMs = Date.now() - postedAt.getTime();
+  const diffDays = Math.max(0, Math.floor(diffMs / (1000 * 60 * 60 * 24)));
+
+  if (diffDays === 0) return "posted today";
+  if (diffDays === 1) return "posted 1 day ago";
+  if (diffDays < 7) return `posted ${diffDays} days ago`;
+
+  const weeks = Math.floor(diffDays / 7);
+  if (weeks === 1) return "posted 1 week ago";
+  return `posted ${weeks} weeks ago`;
+};
+
+const mapSearchResultToJob = (item: SearchJobResult): Job => ({
+  id: item.id,
+  nodeId: item.node_id,
+  title: item.name,
+  company: item.company.name,
+  companyId: item.company.id,
+  companyLogo: item.company.logo,
+  location: [item.district_name, item.province_name].filter(Boolean).join(", "),
+  provinceName: item.province_name,
+  districtName: item.district_name,
+  meta: `${item.match_skill_count} Skills Match - ${formatPostedLabel(item.created_at)}`,
+  skills: [],
+  category: "",
+  workType: "",
+  workOption: "",
+  postedAt: item.created_at,
+  aboutTitle: "About this job",
+  companyDescription: "",
+  extraDescription: "",
+  matchSkillCount: item.match_skill_count,
+  viewed: item.is_viewed,
+});
+
 export default function SearchJobPage() {
+  const user = useAuthStore((state) => state.user);
   const {
     jobs,
     setJobs,
@@ -68,6 +108,8 @@ export default function SearchJobPage() {
     setViewed,
     searchPayload,
     setSearchPayload,
+    skillSuggestions,
+    setSkillSuggestions,
     skillOpen,
     setSkillOpen,
     applyOpen,
@@ -78,241 +120,295 @@ export default function SearchJobPage() {
   } = useSearchJobState();
 
   const skillInfoRef = useRef<HTMLDivElement | null>(null);
+  const skillFilterRef = useRef<HTMLDivElement | null>(null);
   const jobListScrollRef = useRef<HTMLDivElement | null>(null);
+
   const [skillInfoOpen, setSkillInfoOpen] = useState(false);
   const [selectedSkillName, setSelectedSkillName] = useState<string | null>(
     null,
   );
   const [applyData, setApplyData] = useState<ApplyPayload>(initialApplyPayload);
+  const [applyDetail, setApplyDetail] = useState(initialApplyDialogJob);
+  const [resumesInJobby, setResumesInJobby] = useState<
+    { id: string; name: string; create_date: string }[]
+  >([]);
+  const [categoryOptions, setCategoryOptions] = useState<FilterOptionItem[]>(
+    [],
+  );
+  const [workTypeOptions, setWorkTypeOptions] = useState<FilterOptionItem[]>(
+    [],
+  );
+  const [workOptionOptions, setWorkOptionOptions] = useState<
+    FilterOptionItem[]
+  >([]);
+  const [placeOptions, setPlaceOptions] = useState<PlaceSearchItem[]>([]);
+  const [placeInput, setPlaceInput] = useState("");
+  const [selectedPlaceLabel, setSelectedPlaceLabel] = useState("Any Place");
+  const [selectedSkillItems, setSelectedSkillItems] = useState<
+    SearchSuggestItem[]
+  >([]);
+  const [savedJobIds, setSavedJobIds] = useState<Set<string>>(new Set());
+  const [totalPages, setTotalPages] = useState(1);
+  const [loadingJobs, setLoadingJobs] = useState(false);
+  const [loadingApply, setLoadingApply] = useState(false);
 
-  const query = searchPayload.search_text.trim().toLowerCase();
   const currentPage = searchPayload.page + 1;
   const filterMode = sortTypeToMode(searchPayload.sort_type);
-
   const selectedSkillIds = useMemo(
     () => new Set(searchPayload.skill),
     [searchPayload.skill],
   );
   const selectedSkillNames = useMemo(
     () =>
-      searchPayload.skill
-        .map(
-          (id: string) =>
-            skillOptions.find((item: SearchSuggestItem) => item.id === id)
-              ?.name,
-        )
-        .filter((name: string | undefined): name is string => Boolean(name)),
-    [searchPayload.skill],
+      selectedSkillItems
+        .filter((item) => selectedSkillIds.has(item.id))
+        .map((item) => item.name),
+    [selectedSkillIds, selectedSkillItems],
   );
-  const selectedCategorySet = useMemo(
-    () => new Set(searchPayload.category),
-    [searchPayload.category],
+  const selectedJob = useMemo(
+    () => jobs.find((job) => job.id === selectedJobId) ?? jobs[0] ?? null,
+    [jobs, selectedJobId],
   );
-  const selectedTypeSet = useMemo(
-    () => new Set(searchPayload.type),
-    [searchPayload.type],
+  const searchSuggestionNames = useMemo(
+    () => skillSuggestions.map((item) => item.name),
+    [skillSuggestions],
   );
-  const selectedOptionSet = useMemo(
-    () => new Set(searchPayload.option),
-    [searchPayload.option],
+  const skillOptionItems = useMemo(
+    () => skillSuggestions.filter((item) => item.type === "skill"),
+    [skillSuggestions],
   );
-
-  const categoryNameToId = useMemo(
-    () =>
-      new Map(
-        categoryOptions.map((option: FilterOptionItem) => [
-          option.text_eng,
-          option.id,
-        ]),
-      ),
-    [],
-  );
-  const workTypeNameToId = useMemo(
-    () =>
-      new Map(
-        workTypeOptions.map((option: FilterOptionItem) => [
-          option.text_eng,
-          option.id,
-        ]),
-      ),
-    [],
-  );
-  const workOptionNameToId = useMemo(
-    () =>
-      new Map(
-        workOptionOptions.map((option: FilterOptionItem) => [
-          option.text_eng,
-          option.id,
-        ]),
-      ),
-    [],
-  );
-
-  const selectedPlaceLabel = useMemo(() => {
-    const { province_id, district_id } = searchPayload.place;
-    if (!province_id || !district_id) return "Any Place";
-    const selected = placeOptions.find(
-      (option: PlaceSearchItem) =>
-        option.province_code === province_id &&
-        option.district_code === district_id,
-    );
-    if (!selected) return "Any Place";
-    return `${selected.province_name}, ${selected.district_name}`;
-  }, [searchPayload.place]);
-
-  const filteredJobs = jobs
-    .filter((job: Job) => {
-      const categoryId = categoryNameToId.get(job.category) ?? -1;
-      const workTypeId = workTypeNameToId.get(job.workType) ?? -1;
-      const workOptionId = workOptionNameToId.get(job.workOption) ?? -1;
-
-      const matchesCategory =
-        searchPayload.category.length === 0 ||
-        selectedCategorySet.has(categoryId);
-      const matchesPlace =
-        searchPayload.place.province_id === 0 ||
-        job.place.toUpperCase() ===
-          (placeOptions.find(
-            (option: PlaceSearchItem) =>
-              option.province_code === searchPayload.place.province_id,
-          )?.province_name ?? "");
-      const matchesWorkType =
-        searchPayload.type.length === 0 || selectedTypeSet.has(workTypeId);
-      const matchesWorkOption =
-        searchPayload.option.length === 0 ||
-        selectedOptionSet.has(workOptionId);
-
-      if (!query) {
-        return (
-          matchesCategory &&
-          matchesPlace &&
-          matchesWorkType &&
-          matchesWorkOption
-        );
-      }
-
-      const queryInJob = [job.title, job.company, job.location]
-        .join(" ")
-        .toLowerCase()
-        .includes(query);
-      const queryInSkill = job.skills.some((skill: string) =>
-        skill.toLowerCase().includes(query),
-      );
-
-      const matchesQuery =
-        searchPayload.search_type === 1
-          ? queryInSkill
-          : searchPayload.search_type === 2
-            ? queryInJob
-            : queryInJob || queryInSkill;
-
-      return (
-        matchesCategory &&
-        matchesPlace &&
-        matchesWorkType &&
-        matchesWorkOption &&
-        matchesQuery
-      );
-    })
-    .sort((a: Job, b: Job) => {
-      if (filterMode === "date") {
-        return new Date(b.postedAt).getTime() - new Date(a.postedAt).getTime();
-      }
-
-      if (filterMode === "unviewed") {
-        const aViewed = viewed.has(a.id) ? 1 : 0;
-        const bViewed = viewed.has(b.id) ? 1 : 0;
-        return aViewed - bViewed;
-      }
-
-      const score = (job: Job) => {
-        let points = 0;
-        const queryInJob = [job.title, job.company, job.location]
-          .join(" ")
-          .toLowerCase()
-          .includes(query);
-        const queryInSkill = job.skills.some((skill: string) =>
-          skill.toLowerCase().includes(query),
-        );
-
-        if (query) {
-          if (searchPayload.search_type === 1 && queryInSkill) points += 2;
-          if (searchPayload.search_type === 2 && queryInJob) points += 2;
-          if (searchPayload.search_type === 0) {
-            if (queryInJob) points += 2;
-            if (queryInSkill) points += 1;
-          }
-        }
-
-        const skillMatchCount = job.skills.filter((skill: string) =>
-          selectedSkillNames.includes(skill),
-        ).length;
-        points += skillMatchCount;
-        return points;
-      };
-
-      return score(b) - score(a);
-    })
-    .filter((job: Job) =>
-      filterMode === "unviewed" ? !viewed.has(job.id) : true,
-    );
-
-  const totalPages = Math.max(1, Math.ceil(filteredJobs.length / pageSize));
-  const safePage = Math.min(currentPage, totalPages);
-  const startIndex = (safePage - 1) * pageSize;
-  const pagedJobs = filteredJobs.slice(startIndex, startIndex + pageSize);
-  const selectedJob =
-    filteredJobs.find((job: Job) => job.id === selectedJobId) ??
-    filteredJobs[0] ??
-    null;
-  const applyDetail = useMemo(
-    () => ({
-      ...initialApplyDialogJob,
-      id: selectedJob ? String(selectedJob.id) : "",
-      company_name: selectedJob?.company ?? "",
-      job_title: selectedJob?.title ?? "",
-    }),
-    [selectedJob],
-  );
-
   const headerSkills = selectedSkillNames.slice(0, 4);
   const headerSkillsOverflow = Math.max(0, selectedSkillNames.length - 4);
 
-  useEffect(() => {
-    jobListScrollRef.current?.scrollTo({ top: 0 });
-  }, [safePage]);
-
-  useEffect(() => {
-    if (currentPage > totalPages) {
-      setSearchPayload((prev: SearchJobPayload) => ({
+  const updatePayload = useCallback(
+    (partial: Partial<SearchJobPayload>) => {
+      setSearchPayload((prev) => ({
         ...prev,
-        page: Math.max(0, totalPages - 1),
+        ...partial,
+        user_id: user?.id ?? prev.user_id,
       }));
-    }
-  }, [currentPage, setSearchPayload, totalPages]);
+    },
+    [setSearchPayload, user?.id],
+  );
 
   useEffect(() => {
-    if (filteredJobs.length === 0) {
-      setSelectedJobId(null);
-      return;
-    }
-
-    const exists = filteredJobs.some((job: Job) => job.id === selectedJobId);
-    if (!exists) {
-      setSelectedJobId(filteredJobs[0].id);
-    }
-  }, [filteredJobs, selectedJobId, setSelectedJobId]);
+    setSearchPayload((prev) => ({
+      ...prev,
+      user_id: user?.id ?? "",
+      limit: pageSize,
+    }));
+  }, [setSearchPayload, user?.id]);
 
   useEffect(() => {
     setMessageCount(100);
   }, [setMessageCount]);
 
-  const updatePayload = (partial: Partial<typeof searchPayload>) => {
-    setSearchPayload((prev: SearchJobPayload) => ({
-      ...prev,
-      ...partial,
-    }));
-  };
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadFilterOptions = async () => {
+      try {
+        const response = await searchJobService.getSearchFilterOptions();
+        if (cancelled) return;
+        setCategoryOptions(response.data.category);
+        setWorkTypeOptions(response.data.work_type);
+        setWorkOptionOptions(response.data.work_option);
+      } catch {
+        if (!cancelled) {
+          toast.error("Failed to load search filters");
+        }
+      }
+    };
+
+    void loadFilterOptions();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [updatePayload]);
+
+  useEffect(() => {
+    const searchText = searchPayload.search_text.trim();
+    if (searchText.length < 2) {
+      setSkillSuggestions([]);
+      return;
+    }
+
+    let cancelled = false;
+    const timeoutId = window.setTimeout(async () => {
+      try {
+        const response = await searchJobService.getSearchNameOptions({
+          search_text: searchText,
+        });
+        if (cancelled) return;
+        setSkillSuggestions(response.data.search_result);
+        setSelectedSkillItems((prev) => {
+          const merged = new Map(prev.map((item) => [item.id, item]));
+          response.data.search_result
+            .filter((item) => item.type === "skill")
+            .forEach((item) => merged.set(item.id, item));
+          return Array.from(merged.values());
+        });
+      } catch {
+        if (!cancelled) {
+          setSkillSuggestions([]);
+        }
+      }
+    }, 250);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timeoutId);
+    };
+  }, [searchPayload.search_text, setSkillSuggestions]);
+
+  useEffect(() => {
+    const searchText = placeInput.trim();
+    if (searchText.length < 2) {
+      setPlaceOptions([]);
+      return;
+    }
+
+    let cancelled = false;
+    const timeoutId = window.setTimeout(async () => {
+      try {
+        const response = await searchJobService.getSearchAddressOptions({
+          search_text: searchText,
+          limit: 100,
+        });
+        if (!cancelled) {
+          setPlaceOptions(response.data.search_result);
+        }
+      } catch {
+        if (!cancelled) {
+          setPlaceOptions([]);
+        }
+      }
+    }, 250);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timeoutId);
+    };
+  }, [placeInput]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadJobs = async () => {
+      setLoadingJobs(true);
+      try {
+        const response = await searchJobService.searchJobs({
+          ...searchPayload,
+          user_id: user?.id ?? "",
+          limit: pageSize,
+        });
+        if (cancelled) return;
+
+        const nextJobs = response.data.job_result.map(mapSearchResultToJob);
+        setJobs(nextJobs);
+        setViewed(
+          new Set(
+            response.data.job_result
+              .filter((item) => item.is_viewed)
+              .map((item) => item.id),
+          ),
+        );
+        setTotalPages(Math.max(1, response.data.total_page));
+        setSelectedJobId((prev) => {
+          if (prev && nextJobs.some((job) => job.id === prev)) return prev;
+          return nextJobs[0]?.id ?? null;
+        });
+      } catch {
+        if (!cancelled) {
+          setJobs([]);
+          setTotalPages(1);
+          setSelectedJobId(null);
+          toast.error("Failed to load jobs");
+        }
+      } finally {
+        if (!cancelled) {
+          setLoadingJobs(false);
+        }
+      }
+    };
+
+    void loadJobs();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [searchPayload, setJobs, setSelectedJobId, setViewed, user?.id]);
+
+  useEffect(() => {
+    if (!selectedJobId) return;
+
+    let cancelled = false;
+
+    const loadJobDetail = async () => {
+      try {
+        const response =
+          await searchJobService.getSearchJobDetail(selectedJobId);
+        if (cancelled) return;
+
+        setJobs((prev) =>
+          prev.map((job) =>
+            job.id === selectedJobId
+              ? {
+                  ...job,
+                  skills: response.data.skills.map((item) => item.name),
+                  category:
+                    response.data.categories
+                      .map((item) => item.text_eng)
+                      .join(", ") || job.category,
+                  workType:
+                    response.data.work_types
+                      .map((item) => item.text_eng)
+                      .join(", ") || job.workType,
+                  workOption:
+                    response.data.work_options
+                      .map((item) => item.text_eng)
+                      .join(", ") || job.workOption,
+                  companyDescription: response.data.description ?? "",
+                  extraDescription: response.data.description_rtf ?? "",
+                }
+              : job,
+          ),
+        );
+      } catch {
+        return;
+      }
+    };
+
+    void loadJobDetail();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedJobId, setJobs]);
+
+  useEffect(() => {
+    jobListScrollRef.current?.scrollTo({ top: 0 });
+  }, [currentPage]);
+
+  useEffect(() => {
+    if (!skillOpen) return;
+
+    const handlePointerDown = (event: MouseEvent | TouchEvent) => {
+      const target = event.target as Node | null;
+      if (!target) return;
+      if (skillFilterRef.current?.contains(target)) return;
+      setSkillOpen(false);
+    };
+
+    document.addEventListener("mousedown", handlePointerDown);
+    document.addEventListener("touchstart", handlePointerDown);
+
+    return () => {
+      document.removeEventListener("mousedown", handlePointerDown);
+      document.removeEventListener("touchstart", handlePointerDown);
+    };
+  }, [setSkillOpen, skillOpen]);
 
   useEffect(() => {
     const handler = () => updatePayload({ search_text: "", page: 0 });
@@ -320,40 +416,45 @@ export default function SearchJobPage() {
     return () => window.removeEventListener("combobox-clear", handler);
   }, [updatePayload]);
 
-  const toggleSkill = (skillId: string) => {
-    setSearchPayload((prev: SearchJobPayload) => {
-      const exists = prev.skill.includes(skillId);
+  const toggleSkill = (skill: SearchSuggestItem) => {
+    setSelectedSkillItems((prev) => {
+      if (prev.some((item) => item.id === skill.id)) return prev;
+      return [...prev, skill];
+    });
+    setSearchPayload((prev) => {
+      const exists = prev.skill.includes(skill.id);
       const nextSkills = exists
-        ? prev.skill.filter((item) => item !== skillId)
-        : [...prev.skill, skillId];
-      return { ...prev, skill: nextSkills, page: 0 };
+        ? prev.skill.filter((item) => item !== skill.id)
+        : [...prev.skill, skill.id];
+      return { ...prev, user_id: user?.id ?? "", skill: nextSkills, page: 0 };
     });
   };
 
-  const handleSelect = (id: number) => {
+  const handleSelect = async (id: string) => {
     setSelectedJobId(id);
-    setViewed((prev: Set<number>) => {
+    setViewed((prev) => {
       if (prev.has(id)) return prev;
       const next = new Set(prev);
       next.add(id);
       return next;
     });
+
+    if (!user?.id) return;
+
+    try {
+      await searchJobService.viewedJob(user.id, id);
+    } catch {
+      return;
+    }
   };
 
-  const handleDelete = (id: number) => {
-    setJobs((prev: Job[]) => {
+  const handleDelete = (id: string) => {
+    setJobs((prev) => {
       const nextJobs = prev.filter((job) => job.id !== id);
       if (selectedJobId === id) {
         setSelectedJobId(nextJobs[0]?.id ?? null);
       }
       return nextJobs;
-    });
-
-    setViewed((prev: Set<number>) => {
-      if (!prev.has(id)) return prev;
-      const next = new Set(prev);
-      next.delete(id);
-      return next;
     });
   };
 
@@ -369,6 +470,8 @@ export default function SearchJobPage() {
 
   const handlePlaceSelect = (label: string) => {
     if (label === "Any Place") {
+      setSelectedPlaceLabel("Any Place");
+      setPlaceInput("");
       updatePayload({
         place: { province_id: 0, district_id: 0 },
         page: 0,
@@ -377,11 +480,12 @@ export default function SearchJobPage() {
     }
 
     const selected = placeOptions.find(
-      (option: PlaceSearchItem) =>
-        `${option.province_name}, ${option.district_name}` === label,
+      (option) => `${option.province_name}, ${option.district_name}` === label,
     );
     if (!selected) return;
 
+    setSelectedPlaceLabel(label);
+    setPlaceInput("");
     updatePayload({
       place: {
         province_id: selected.province_code,
@@ -389,6 +493,75 @@ export default function SearchJobPage() {
       },
       page: 0,
     });
+  };
+
+  const handleToggleSave = async () => {
+    if (!user?.id || !selectedJob) {
+      toast.error("Please sign in before saving jobs");
+      return;
+    }
+
+    const isSaved = savedJobIds.has(selectedJob.id);
+    try {
+      if (isSaved) {
+        await searchJobService.unsaveJob(user.id, selectedJob.id);
+        setSavedJobIds((prev) => {
+          const next = new Set(prev);
+          next.delete(selectedJob.id);
+          return next;
+        });
+      } else {
+        await searchJobService.saveJob(user.id, selectedJob.id);
+        setSavedJobIds((prev) => new Set(prev).add(selectedJob.id));
+      }
+    } catch {
+      toast.error("Failed to update saved job");
+    }
+  };
+
+  const handleOpenApply = async () => {
+    if (!user?.id || !selectedJob) {
+      toast.error("Please sign in before applying");
+      return;
+    }
+
+    setLoadingApply(true);
+    try {
+      const [needResponse, resumeResponse] = await Promise.all([
+        searchJobService.getApplyNeed(user.id, selectedJob.id),
+        searchJobService.getUserResumesForSearchJob(user.id),
+      ]);
+
+      setApplyDetail(
+        searchJobService.mapApplyNeedToDialogJob(needResponse.data, {
+          jobId: selectedJob.id,
+          companyName: selectedJob.company,
+          jobTitle: selectedJob.title,
+        }),
+      );
+      setApplyData(
+        searchJobService.createApplyPayloadFromNeed(needResponse.data),
+      );
+      setResumesInJobby(
+        resumeResponse.data.map(
+          searchJobService.mapSearchJobResumeToResumeListItem,
+        ),
+      );
+      setApplyDialogKey((prev) => prev + 1);
+      setApplyOpen(true);
+    } catch {
+      toast.error("Failed to load apply information");
+    } finally {
+      setLoadingApply(false);
+    }
+  };
+
+  const handleSubmitApply = async () => {
+    if (!user?.id || !selectedJob) {
+      throw new Error("User is not signed in");
+    }
+
+    await searchJobService.applyJob(user.id, selectedJob.id, applyData);
   };
 
   return (
@@ -402,35 +575,33 @@ export default function SearchJobPage() {
 
             <div className="flex min-w-0 flex-1 flex-wrap items-center gap-3">
               <div className="flex min-w-[420px] flex-1 items-center gap-1 rounded-xl border border-[#d9d9d9] bg-white px-2 py-2 shadow-[0_2px_14px_rgba(0,0,0,0.09)]">
-                <Combobox
-                  items={skillOptions.map((o: SearchSuggestItem) => o.name)}
-                >
+                <Combobox items={searchSuggestionNames}>
                   <ComboboxInput
                     placeholder="Software Engineer"
                     value={searchPayload.search_text}
-                    onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                    onChange={(e) =>
                       updatePayload({ search_text: e.target.value, page: 0 })
                     }
-                    className="h-10 min-w-0 flex-1 bg-transparent px-1 border-0 text-xl focus-visible:ring-0 outline-none **:data-[slot=input-group-control]:border-0 **:data-[slot=input-group-control]:bg-transparent **:data-[slot=input-group-control]:shadow-none **:data-[slot=input-group-button]:bg-none! **:data-[slot=input-group-button]:bg-transparent! **:data-[slot=input-group-button]:hover:bg-transparent!"
+                    className="h-10 min-w-0 flex-1 border-0 bg-transparent px-1 text-xl outline-none focus-visible:ring-0 **:data-[slot=input-group-button]:bg-none! **:data-[slot=input-group-button]:bg-transparent! **:data-[slot=input-group-button]:hover:bg-transparent! **:data-[slot=input-group-control]:border-0 **:data-[slot=input-group-control]:bg-transparent **:data-[slot=input-group-control]:shadow-none"
                     showTrigger={false}
                     showClear
                   />
-                  <ComboboxContent className="mt-2 p-1 rounded-xl">
+                  <ComboboxContent className="mt-2 rounded-xl p-1">
                     <ComboboxEmpty>No suggestions.</ComboboxEmpty>
                     <ComboboxList>
                       {(item: string) => {
-                        const opt = skillOptions.find(
-                          (s: SearchSuggestItem) => s.name === item,
+                        const option = skillSuggestions.find(
+                          (s) => s.name === item,
                         );
                         const label =
-                          opt?.type === "job"
+                          option?.type === "job"
                             ? "Job"
-                            : opt?.type === "skill"
+                            : option?.type === "skill"
                               ? "Skill"
                               : "";
                         return (
                           <ComboboxItem
-                            key={item}
+                            key={`${option?.id ?? item}-${item}`}
                             value={item}
                             onClick={() =>
                               updatePayload({ search_text: item, page: 0 })
@@ -438,11 +609,12 @@ export default function SearchJobPage() {
                           >
                             <span>{item}</span>
                             <span
-                              className={`ml-auto mr-0 inline-flex border items-center font-medium rounded-full px-2 py-0.5 text-xs bg-transparent data-highlighted:bg-transparent ${
-                                opt?.type === "job"
-                                  ? "border-main text-main hover:text-main"
-                                  : "border-second text-second hover:text-second"
-                              }`}
+                              className={cn(
+                                "ml-auto mr-0 inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium",
+                                option?.type === "job"
+                                  ? "border-main text-main"
+                                  : "border-second text-second",
+                              )}
                               role="status"
                             >
                               {label}
@@ -458,39 +630,42 @@ export default function SearchJobPage() {
                     value={searchPayload.search_type}
                     onChange={(e) =>
                       updatePayload({
-                        search_type: Number(e.target.value) as 0 | 1 | 2,
+                        search_type: Number(e.target.value) as SearchTypeCode,
                         page: 0,
                       })
                     }
-                    className={`h-8 appearance-none rounded-xl border bg-white px-3 pr-7 text-xs outline-none ${
+                    className={cn(
+                      "h-8 appearance-none rounded-xl border bg-white px-3 pr-7 text-xs outline-none",
                       searchPayload.search_type === 1
                         ? "border-second text-second"
                         : searchPayload.search_type === 2
                           ? "border-main text-main"
-                          : "border-[#d7d7d7] text-[#A1A1A1]"
-                    }`}
-                  >
-                    {searchTypeOptions.map(
-                      (option: { label: string; value: SearchTypeCode }) => (
-                        <option key={option.value} value={option.value}>
-                          {option.label}
-                        </option>
-                      ),
+                          : "border-[#d7d7d7] text-[#A1A1A1]",
                     )}
+                  >
+                    {searchTypeOptions.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
                   </select>
                   <HiOutlineSelector
-                    className={`pointer-events-none absolute right-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 ${
+                    className={cn(
+                      "pointer-events-none absolute right-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2",
                       searchPayload.search_type === 1
                         ? "text-second"
                         : searchPayload.search_type === 2
                           ? "text-main"
-                          : "text-[#A1A1A1]"
-                    }`}
+                          : "text-[#A1A1A1]",
+                    )}
                   />
                 </div>
               </div>
 
-              <div className="relative flex min-w-0 flex-1 items-center gap-3 rounded-[18px] border border-[#d9d9d9] bg-white px-4 py-2 shadow-[0_2px_14px_rgba(0,0,0,0.09)]">
+              <div
+                ref={skillFilterRef}
+                className="relative flex min-w-0 flex-1 items-center gap-3 rounded-[18px] border border-[#d9d9d9] bg-white px-4 py-2 shadow-[0_2px_14px_rgba(0,0,0,0.09)]"
+              >
                 <button
                   type="button"
                   onClick={handleScrollToSkillInfo}
@@ -499,18 +674,15 @@ export default function SearchJobPage() {
                   Skill Use:
                 </button>
                 <div className="flex min-w-0 flex-1 items-center gap-2 overflow-hidden">
-                  {headerSkills.map((skillName: string) => {
-                    const skillItem = skillOptions.find(
-                      (item: SearchSuggestItem) => item.name === skillName,
+                  {headerSkills.map((skillName) => {
+                    const skillItem = selectedSkillItems.find(
+                      (item) => item.name === skillName,
                     );
                     return (
                       <button
                         key={skillName}
                         type="button"
-                        onClick={() => {
-                          if (!skillItem) return;
-                          toggleSkill(skillItem.id);
-                        }}
+                        onClick={() => skillItem && toggleSkill(skillItem)}
                         className="inline-flex h-7 items-center whitespace-nowrap rounded-full border border-transparent bg-[linear-gradient(90deg,var(--color-main),var(--color-second))] px-3 text-xs text-white"
                       >
                         {skillName}
@@ -525,7 +697,7 @@ export default function SearchJobPage() {
                 </div>
                 <button
                   type="button"
-                  onClick={() => setSkillOpen((v: boolean) => !v)}
+                  onClick={() => setSkillOpen((value) => !value)}
                   className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[#b3b3b3] hover:bg-slate-100"
                   aria-label="toggle skill list"
                 >
@@ -543,23 +715,30 @@ export default function SearchJobPage() {
                 {skillOpen ? (
                   <div className="absolute left-0 top-full z-20 mt-2 w-full rounded-2xl border border-[#e2e2e2] bg-white p-3 shadow-lg">
                     <div className="flex flex-wrap gap-2">
-                      {skillOptions.map((skill: SearchSuggestItem) => {
-                        const active = selectedSkillIds.has(skill.id);
-                        return (
-                          <button
-                            key={skill.id}
-                            type="button"
-                            onClick={() => toggleSkill(skill.id)}
-                            className={`h-8 rounded-full border px-3 text-xs ${
-                              active
-                                ? "border-transparent bg-[linear-gradient(90deg,var(--color-main),var(--color-second))] text-white"
-                                : "border-[#e2e2e2] bg-white text-[#666666]"
-                            }`}
-                          >
-                            {skill.name}
-                          </button>
-                        );
-                      })}
+                      {skillOptionItems.length > 0 ? (
+                        skillOptionItems.map((skill) => {
+                          const active = selectedSkillIds.has(skill.id);
+                          return (
+                            <button
+                              key={skill.id}
+                              type="button"
+                              onClick={() => toggleSkill(skill)}
+                              className={cn(
+                                "h-8 rounded-full border px-3 text-xs",
+                                active
+                                  ? "border-transparent bg-[linear-gradient(90deg,var(--color-main),var(--color-second))] text-white"
+                                  : "border-[#e2e2e2] bg-white text-[#666666]",
+                              )}
+                            >
+                              {skill.name}
+                            </button>
+                          );
+                        })
+                      ) : (
+                        <span className="text-sm text-slate-500">
+                          Type in the search box to load skill suggestions.
+                        </span>
+                      )}
                     </div>
                   </div>
                 ) : null}
@@ -571,17 +750,20 @@ export default function SearchJobPage() {
             <div className="relative">
               <MultiSelect
                 options={categoryOptions.map(
-                  (o: FilterOptionItem): MultiSelectOption => ({
-                    label: o.text_eng,
-                    value: String(o.id),
+                  (option): MultiSelectOption => ({
+                    label: option.text_eng,
+                    value: String(option.id),
                   }),
                 )}
-                value={searchPayload.category.map((id: number) => String(id))}
-                onValueChange={(vals: string[]) =>
-                  updatePayload({ category: vals.map((v) => Number(v)) })
+                value={searchPayload.category.map((id) => String(id))}
+                onValueChange={(vals) =>
+                  updatePayload({
+                    category: vals.map((value) => Number(value)),
+                    page: 0,
+                  })
                 }
                 placeholder="Any Category"
-                className="h-10 w-full border border-[#e5e5e5] bg-white px-4 pr-4 text-sm text-[#A1A1A1] shadow-[0_2px_10px_rgba(0,0,0,0.06)] outline-none **:data-[slot=input-group-control]:border-0 **:data-[slot=input-group-control]:bg-transparent **:data-[slot=input-group-control]:shadow-none **:data-[slot=input-group-button]:bg-none! **:data-[slot=input-group-button]:bg-transparent! **:data-[slot=input-group-button]:hover:bg-transparent!"
+                className="h-10 w-full border border-[#e5e5e5] bg-white px-4 pr-4 text-sm text-[#A1A1A1] shadow-[0_2px_10px_rgba(0,0,0,0.06)] outline-none **:data-[slot=input-group-button]:bg-none! **:data-[slot=input-group-button]:bg-transparent! **:data-[slot=input-group-button]:hover:bg-transparent! **:data-[slot=input-group-control]:border-0 **:data-[slot=input-group-control]:bg-transparent **:data-[slot=input-group-control]:shadow-none"
                 badgeClassName="bg-[#C1C1C1]/20 text-neutral-800"
                 maxWidth="max-w-full"
                 maxDisplay={2}
@@ -593,14 +775,16 @@ export default function SearchJobPage() {
                 items={[
                   "Any Place",
                   ...placeOptions.map(
-                    (option: PlaceSearchItem) =>
+                    (option) =>
                       `${option.province_name}, ${option.district_name}`,
                   ),
                 ]}
               >
                 <ComboboxInput
                   placeholder={selectedPlaceLabel}
-                  className="h-10 w-full rounded-xl border border-[#e5e5e5] bg-white px-4 pr-4 text-sm text-[#A1A1A1] shadow-[0_2px_10px_rgba(0,0,0,0.06)] outline-none **:data-[slot=input-group-control]:border-0 **:data-[slot=input-group-control]:bg-transparent **:data-[slot=input-group-control]:shadow-none **:data-[slot=input-group-button]:bg-none! **:data-[slot=input-group-button]:bg-transparent! **:data-[slot=input-group-button]:hover:bg-transparent!"
+                  value={placeInput}
+                  onChange={(e) => setPlaceInput(e.target.value)}
+                  className="h-10 w-full rounded-xl border border-[#e5e5e5] bg-white px-4 pr-4 text-sm text-[#A1A1A1] shadow-[0_2px_10px_rgba(0,0,0,0.06)] outline-none **:data-[slot=input-group-button]:bg-none! **:data-[slot=input-group-button]:bg-transparent! **:data-[slot=input-group-button]:hover:bg-transparent! **:data-[slot=input-group-control]:border-0 **:data-[slot=input-group-control]:bg-transparent **:data-[slot=input-group-control]:shadow-none"
                 />
                 <ComboboxContent>
                   <ComboboxEmpty>No place found.</ComboboxEmpty>
@@ -622,17 +806,20 @@ export default function SearchJobPage() {
             <div className="relative">
               <MultiSelect
                 options={workTypeOptions.map(
-                  (o: FilterOptionItem): MultiSelectOption => ({
-                    label: o.text_eng,
-                    value: String(o.id),
+                  (option): MultiSelectOption => ({
+                    label: option.text_eng,
+                    value: String(option.id),
                   }),
                 )}
-                value={searchPayload.type.map((id: number) => String(id))}
-                onValueChange={(vals: string[]) =>
-                  updatePayload({ type: vals.map((v) => Number(v)) })
+                value={searchPayload.type.map((id) => String(id))}
+                onValueChange={(vals) =>
+                  updatePayload({
+                    type: vals.map((value) => Number(value)),
+                    page: 0,
+                  })
                 }
                 placeholder="Any Work Type"
-                className="h-10 w-full border border-[#e5e5e5] bg-white px-4 pr-4 text-sm text-[#A1A1A1] shadow-[0_2px_10px_rgba(0,0,0,0.06)] outline-none **:data-[slot=input-group-control]:border-0 **:data-[slot=input-group-control]:bg-transparent **:data-[slot=input-group-control]:shadow-none **:data-[slot=input-group-button]:bg-none! **:data-[slot=input-group-button]:bg-transparent! **:data-[slot=input-group-button]:hover:bg-transparent!"
+                className="h-10 w-full border border-[#e5e5e5] bg-white px-4 pr-4 text-sm text-[#A1A1A1] shadow-[0_2px_10px_rgba(0,0,0,0.06)] outline-none **:data-[slot=input-group-button]:bg-none! **:data-[slot=input-group-button]:bg-transparent! **:data-[slot=input-group-button]:hover:bg-transparent! **:data-[slot=input-group-control]:border-0 **:data-[slot=input-group-control]:bg-transparent **:data-[slot=input-group-control]:shadow-none"
                 badgeClassName="bg-[#C1C1C1]/20 text-neutral-800"
                 maxWidth="max-w-full"
                 maxDisplay={2}
@@ -642,17 +829,20 @@ export default function SearchJobPage() {
             <div className="relative">
               <MultiSelect
                 options={workOptionOptions.map(
-                  (o: FilterOptionItem): MultiSelectOption => ({
-                    label: o.text_eng,
-                    value: String(o.id),
+                  (option): MultiSelectOption => ({
+                    label: option.text_eng,
+                    value: String(option.id),
                   }),
                 )}
-                value={searchPayload.option.map((id: number) => String(id))}
-                onValueChange={(vals: string[]) =>
-                  updatePayload({ option: vals.map((v) => Number(v)) })
+                value={searchPayload.option.map((id) => String(id))}
+                onValueChange={(vals) =>
+                  updatePayload({
+                    option: vals.map((value) => Number(value)),
+                    page: 0,
+                  })
                 }
                 placeholder="Any Work Option"
-                className="h-10 w-full border border-[#e5e5e5] bg-white px-4 pr-4 text-sm text-[#A1A1A1] shadow-[0_2px_10px_rgba(0,0,0,0.06)] outline-none **:data-[slot=input-group-control]:border-0 **:data-[slot=input-group-control]:bg-transparent **:data-[slot=input-group-control]:shadow-none **:data-[slot=input-group-button]:bg-none! **:data-[slot=input-group-button]:bg-transparent! **:data-[slot=input-group-button]:hover:bg-transparent!"
+                className="h-10 w-full border border-[#e5e5e5] bg-white px-4 pr-4 text-sm text-[#A1A1A1] shadow-[0_2px_10px_rgba(0,0,0,0.06)] outline-none **:data-[slot=input-group-button]:bg-none! **:data-[slot=input-group-button]:bg-transparent! **:data-[slot=input-group-button]:hover:bg-transparent! **:data-[slot=input-group-control]:border-0 **:data-[slot=input-group-control]:bg-transparent **:data-[slot=input-group-control]:shadow-none"
                 badgeClassName="bg-[#C1C1C1]/20 text-neutral-800"
                 maxWidth="max-w-full"
                 maxDisplay={2}
@@ -664,14 +854,11 @@ export default function SearchJobPage() {
             <div className="flex h-full min-h-0 flex-col border-r border-[#e5e5e5] pb-3 pr-0">
               <div className="flex items-center gap-3 py-4">
                 <span className="text-sm font-medium text-slate-950">
-                  {filteredJobs.length} Results
+                  {loadingJobs ? "Loading..." : `${jobs.length} Results`}
                 </span>
                 <div className="inline-flex overflow-hidden rounded-full border border-[#d7d7d7] bg-white text-sm">
                   {(["relevance", "date", "unviewed"] as const).map(
-                    (
-                      mode: "relevance" | "date" | "unviewed",
-                      index: number,
-                    ) => (
+                    (mode, index) => (
                       <button
                         key={mode}
                         type="button"
@@ -681,11 +868,13 @@ export default function SearchJobPage() {
                             page: 0,
                           })
                         }
-                        className={`${index < 2 ? "border-r border-[#d7d7d7]" : ""} px-4 py-2 ${
+                        className={cn(
+                          index < 2 && "border-r border-[#d7d7d7]",
+                          "px-4 py-2",
                           filterMode === mode
                             ? "bg-[linear-gradient(90deg,var(--color-main),var(--color-second))] text-white"
-                            : "bg-white text-slate-600"
-                        }`}
+                            : "bg-white text-slate-600",
+                        )}
                       >
                         {mode === "relevance"
                           ? "Relevance"
@@ -703,15 +892,16 @@ export default function SearchJobPage() {
                 className="min-h-0 flex-1 overflow-y-auto"
               >
                 <div className="space-y-0">
-                  {pagedJobs.map((job: Job) => {
+                  {jobs.map((job) => {
                     const isSelected = selectedJob?.id === job.id;
                     return (
                       <Card
                         key={job.id}
-                        onClick={() => handleSelect(job.id)}
-                        className={`group relative w-full cursor-pointer rounded-none border-x-0 border-b border-t-0 border-[#e5e5e5] bg-white transition ${
-                          isSelected ? "bg-[#fafafa]" : "hover:bg-[#fcfcfc]"
-                        }`}
+                        onClick={() => void handleSelect(job.id)}
+                        className={cn(
+                          "group relative w-full cursor-pointer rounded-none border-x-0 border-b border-t-0 border-[#e5e5e5] bg-white transition",
+                          isSelected ? "bg-[#fafafa]" : "hover:bg-[#fcfcfc]",
+                        )}
                       >
                         {isSelected ? (
                           <div className="absolute left-0 top-0 h-full w-1 bg-main" />
@@ -731,7 +921,15 @@ export default function SearchJobPage() {
 
                         <CardContent className="p-4 pl-4">
                           <div className="flex items-start gap-3">
-                            <div className="h-12 w-12 shrink-0 rounded-2xl bg-[#e6e6e6]" />
+                            <div className="h-12 w-12 shrink-0 overflow-hidden rounded-2xl bg-[#e6e6e6]">
+                              {job.companyLogo ? (
+                                <img
+                                  src={job.companyLogo}
+                                  alt={job.company}
+                                  className="h-full w-full object-cover"
+                                />
+                              ) : null}
+                            </div>
                             <div className="min-w-0 flex-1">
                               <div className="max-w-[320px] text-[15px] font-medium leading-snug text-slate-950">
                                 {job.title}
@@ -759,9 +957,9 @@ export default function SearchJobPage() {
                 <button
                   className="inline-flex items-center gap-1 rounded-full px-2 py-1 text-slate-600 hover:bg-slate-100 disabled:opacity-40"
                   onClick={() =>
-                    updatePayload({ page: Math.max(0, safePage - 2) })
+                    updatePayload({ page: Math.max(0, currentPage - 2) })
                   }
-                  disabled={safePage === 1}
+                  disabled={currentPage === 1}
                   type="button"
                 >
                   <IoIosArrowBack />
@@ -769,17 +967,18 @@ export default function SearchJobPage() {
                 </button>
 
                 <div className="absolute left-1/2 top-1/2 flex -translate-x-1/2 -translate-y-1/2 items-center gap-2">
-                  {Array.from({ length: totalPages }).map((_, idx: number) => {
+                  {Array.from({ length: totalPages }).map((_, idx) => {
                     const page = idx + 1;
                     return (
                       <button
                         key={page}
                         onClick={() => updatePayload({ page: page - 1 })}
-                        className={`h-8 w-8 rounded-lg text-sm ${
-                          page === safePage
+                        className={cn(
+                          "h-8 w-8 rounded-lg text-sm",
+                          page === currentPage
                             ? "bg-[linear-gradient(90deg,var(--color-main),var(--color-second))] text-white"
-                            : "text-slate-600 hover:bg-slate-100"
-                        }`}
+                            : "text-slate-600 hover:bg-slate-100",
+                        )}
                         type="button"
                       >
                         {page}
@@ -793,10 +992,10 @@ export default function SearchJobPage() {
                     className="inline-flex items-center gap-1 rounded-full px-2 py-1 text-slate-600 hover:bg-slate-100 disabled:opacity-40"
                     onClick={() =>
                       updatePayload({
-                        page: Math.min(totalPages - 1, safePage),
+                        page: Math.min(totalPages - 1, currentPage),
                       })
                     }
-                    disabled={safePage === totalPages}
+                    disabled={currentPage === totalPages}
                     type="button"
                   >
                     Next
@@ -807,14 +1006,22 @@ export default function SearchJobPage() {
             </div>
 
             <div className="h-full overflow-y-auto border-l border-[#e5e5e5] pl-4">
-              {filteredJobs.length === 0 || !selectedJob ? (
+              {jobs.length === 0 || !selectedJob ? (
                 <div className="pt-6 text-sm text-slate-500">
                   No jobs to display.
                 </div>
               ) : (
                 <div className="pt-2">
                   <div className="flex items-start gap-3">
-                    <div className="h-10 w-10 rounded-full bg-[#e0e0e0]" />
+                    <div className="h-10 w-10 overflow-hidden rounded-full bg-[#e0e0e0]">
+                      {selectedJob.companyLogo ? (
+                        <img
+                          src={selectedJob.companyLogo}
+                          alt={selectedJob.company}
+                          className="h-full w-full object-cover"
+                        />
+                      ) : null}
+                    </div>
                     <div className="min-w-0">
                       <div className="text-sm text-slate-500">
                         {selectedJob.company}
@@ -823,7 +1030,8 @@ export default function SearchJobPage() {
                         {selectedJob.title}
                       </h2>
                       <p className="text-sm text-slate-500">
-                        {selectedJob.location} - posted 1 week ago
+                        {selectedJob.location} -{" "}
+                        {formatPostedLabel(selectedJob.postedAt)}
                       </p>
                     </div>
                     <button
@@ -835,29 +1043,32 @@ export default function SearchJobPage() {
                   </div>
 
                   <div className="mt-3 flex gap-2">
-                    <span className="inline-flex h-7 items-center rounded-full bg-[#f1f1f1] px-3 text-xs text-slate-700">
-                      {selectedJob.workOption}
-                    </span>
-                    <span className="inline-flex h-7 items-center rounded-full bg-[#f1f1f1] px-3 text-xs text-slate-700">
-                      {selectedJob.workType}
-                    </span>
+                    {selectedJob.workOption ? (
+                      <span className="inline-flex h-7 items-center rounded-full bg-[#f1f1f1] px-3 text-xs text-slate-700">
+                        {selectedJob.workOption}
+                      </span>
+                    ) : null}
+                    {selectedJob.workType ? (
+                      <span className="inline-flex h-7 items-center rounded-full bg-[#f1f1f1] px-3 text-xs text-slate-700">
+                        {selectedJob.workType}
+                      </span>
+                    ) : null}
                   </div>
 
                   <div className="mt-4 flex items-center gap-3">
                     <Button
-                      onClick={() => {
-                        setApplyDialogKey((prev: number) => prev + 1);
-                        setApplyOpen(true);
-                      }}
+                      onClick={() => void handleOpenApply()}
+                      disabled={loadingApply}
                       className="h-10 rounded-full bg-[linear-gradient(90deg,var(--color-main),var(--color-second))] px-5 text-sm font-medium text-white shadow-none hover:opacity-90"
                     >
-                      Apply This Job
+                      {loadingApply ? "Loading..." : "Apply This Job"}
                     </Button>
                     <Button
                       variant="outline"
+                      onClick={() => void handleToggleSave()}
                       className="h-10 rounded-full border border-[#ff9ad3] px-5 text-sm text-[#ff5db1] hover:bg-[#fff4fa]"
                     >
-                      Save
+                      {savedJobIds.has(selectedJob.id) ? "Saved" : "Save"}
                     </Button>
                   </div>
 
@@ -866,18 +1077,23 @@ export default function SearchJobPage() {
                       Skill Use
                     </h3>
                     <div className="flex flex-wrap gap-2">
-                      {selectedJob.skills.map((skill: string) => (
-                        <Button
-                          key={skill}
-                          type="button"
-                          variant="outline_gradient"
-                          size="sm"
-                          onClick={() => handleOpenSkillInfo(skill)}
-                          // className="inline-flex h-8 items-center rounded-full border border-[#ff9ad3] bg-white px-3 text-xs text-[#ff5db1]"
-                        >
-                          {skill}
-                        </Button>
-                      ))}
+                      {selectedJob.skills.length > 0 ? (
+                        selectedJob.skills.map((skill) => (
+                          <Button
+                            key={skill}
+                            type="button"
+                            variant="outline_gradient"
+                            size="sm"
+                            onClick={() => handleOpenSkillInfo(skill)}
+                          >
+                            {skill}
+                          </Button>
+                        ))
+                      ) : (
+                        <span className="text-sm text-slate-500">
+                          No skill details provided for this job.
+                        </span>
+                      )}
                     </div>
                   </div>
 
@@ -891,11 +1107,14 @@ export default function SearchJobPage() {
                       Company Description
                     </p>
                     <p className="mt-2 text-sm leading-relaxed text-slate-500">
-                      {selectedJob.companyDescription}
+                      {selectedJob.companyDescription ||
+                        "No description available."}
                     </p>
-                    <p className="mt-2 text-sm leading-relaxed text-slate-500">
-                      {selectedJob.extraDescription}
-                    </p>
+                    {selectedJob.extraDescription ? (
+                      <p className="mt-2 text-sm leading-relaxed text-slate-500">
+                        {selectedJob.extraDescription}
+                      </p>
+                    ) : null}
                   </div>
                 </div>
               )}
@@ -915,6 +1134,8 @@ export default function SearchJobPage() {
         applyDetail={applyDetail}
         applyData={applyData}
         setApplyData={setApplyData}
+        resumesInJobby={resumesInJobby}
+        onApply={handleSubmitApply}
       />
     </PageLayout>
   );

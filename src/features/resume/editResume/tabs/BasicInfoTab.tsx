@@ -90,11 +90,18 @@ export function BasicInfoTab({
 }: BasicInfoTabProps) {
   const [regionOpen, setRegionOpen] = useState(false);
 
+  const phoneRegionOptions = usePropertiesStore.getPhoneRegionOptions();
   const provinceOptions = useAddressOptionStore.getProvinceOptions();
+  const provinceId = resume.data.address?.province_id ?? 0;
   const districtId = resume.data.address?.district_id ?? 0;
-  const districtOptions = useAddressOptionStore.getDistrictOptions();
+  const districtOptions = useAddressOptionStore.getDistrictOptions(provinceId);
   const subDistrictOptions =
     useAddressOptionStore.getSubDistrictOptions(districtId);
+  const selectedPhoneRegion = phoneRegionOptions.find(
+    (option) =>
+      option.id === Number(resume.data.phone_region || 0) ||
+      option.label === String(resume.data.phone_region || ""),
+  );
 
   const handleProvinceChange = (value: string) => {
     const id = value
@@ -206,12 +213,7 @@ export function BasicInfoTab({
                           !resume.data.phone_region && "text-muted-foreground",
                         )}
                       >
-                        {usePropertiesStore
-                          .getPhoneRegionOptions()
-                          .find(
-                            (o) =>
-                              o.id === Number(resume.data.phone_region || 0),
-                          )?.label ?? "Select"}
+                        {selectedPhoneRegion?.label ?? "Select"}
                         <ChevronDownIcon className="size-4 opacity-50" />
                       </Button>
                     </PopoverTrigger>
@@ -219,44 +221,31 @@ export function BasicInfoTab({
                       className="w-(--radix-popover-trigger-width) p-0"
                       align="start"
                     >
-                      <Command
-                        value={
-                          usePropertiesStore
-                            .getPhoneRegionOptions()
-                            .find(
-                              (o) =>
-                                o.id === Number(resume.data.phone_region ?? 0),
-                            )?.label ?? "Select"
-                        }
-                      >
+                      <Command value={selectedPhoneRegion?.label ?? "Select"}>
                         <CommandInput placeholder="Search..." />
                         <CommandList>
                           <CommandEmpty>No option found.</CommandEmpty>
                           <CommandGroup>
-                            {usePropertiesStore
-                              .getPhoneRegionOptions()
-                              .map((opt) => {
-                                const current = Number(
-                                  resume.data.phone_region ?? 0,
-                                );
-                                const isSelected = opt.id === current;
-                                return (
-                                  <CommandItem
-                                    key={opt.id}
-                                    value={opt.label}
-                                    checked={isSelected}
-                                    onSelect={() => {
-                                      updateData(
-                                        "phone_region",
-                                        isSelected ? 0 : Number(opt.id) || 0,
-                                      );
-                                      setRegionOpen(false);
-                                    }}
-                                  >
-                                    {opt.label}
-                                  </CommandItem>
-                                );
-                              })}
+                            {phoneRegionOptions.map((opt) => {
+                              const isSelected =
+                                opt.id === selectedPhoneRegion?.id;
+                              return (
+                                <CommandItem
+                                  key={opt.id}
+                                  value={opt.label}
+                                  checked={isSelected}
+                                  onSelect={() => {
+                                    updateData(
+                                      "phone_region",
+                                      isSelected ? 0 : Number(opt.id) || 0,
+                                    );
+                                    setRegionOpen(false);
+                                  }}
+                                >
+                                  {opt.label}
+                                </CommandItem>
+                              );
+                            })}
                           </CommandGroup>
                         </CommandList>
                       </Command>

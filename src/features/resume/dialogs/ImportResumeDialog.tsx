@@ -30,14 +30,16 @@ export function ImportResumeDialog({
 
   const filterAcceptedFiles = (files: FileList | null): File[] => {
     if (!files?.length) return [];
-    return Array.from(files).filter((file) => {
-      const ok =
-        file.type === "application/pdf" ||
-        file.type === "image/jpeg" ||
-        file.type === "image/jpg" ||
-        file.type === "image/png";
-      return ok;
-    });
+    return Array.from(files)
+      .filter((file) => {
+        const ok =
+          file.type === "application/pdf" ||
+          file.type === "image/jpeg" ||
+          file.type === "image/jpg" ||
+          file.type === "image/png";
+        return ok;
+      })
+      .slice(0, 1);
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -125,14 +127,13 @@ export function ImportResumeDialog({
               ref={inputRef}
               type="file"
               accept={ACCEPTED_TYPES}
-              multiple
               className="sr-only"
               onChange={handleInputChange}
               aria-label="Upload resume file"
             />
             <FaFileAlt className="size-8 text-muted-foreground" />
             <p className="text-center text-sm text-muted-foreground">
-              Drag and drop files here or upload a file (PDF, JPEG or PNG)
+              Drag and drop a file here or upload a file (PDF, JPEG or PNG)
             </p>
             <span className="font-semibold text-muted-foreground">Upload</span>
           </div>
