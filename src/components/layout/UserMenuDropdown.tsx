@@ -10,6 +10,9 @@ import { useAuthStore } from "@/store/auth";
 import { useNavigate } from "react-router-dom";
 import { BsFillBriefcaseFill, BsFillGearFill } from "react-icons/bs";
 import { MdBookmark } from "react-icons/md";
+import { clearAuthStore } from "@/services/authClient";
+import { authClient } from "@/services/authClient";
+import { useState } from "react";
 
 const menuItemClassName =
   "h-10 rounded-xl px-4 text-[16px] font-medium text-[#111111] focus:bg-[#f5f5f5] focus:text-[#111111]";
@@ -21,11 +24,28 @@ export default function UserMenuDropdown({
 }) {
   const navigate = useNavigate();
   const user = useAuthStore((state) => state.user);
-  const logout = useAuthStore((state) => state.logout);
 
   const displayName = user?.name?.trim() || "Username";
   const displayEmail = user?.email?.trim() || "email";
   const initials = displayName.slice(0, 1).toUpperCase();
+
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  const signOut = async () => {
+      try {
+        await authClient.signOut();
+        clearAuthStore();
+        window.location.replace("/");
+      } catch (err: any) {
+        // keep the user on the page and show an error / retry option
+        // eslint-disable-next-line no-console
+        console.error("Sign out failed", err);
+        setError(err?.message || "Sign out failed");
+      } finally {
+        setLoading(false);
+      }
+    };
 
   return (
     <DropdownMenu>
@@ -93,7 +113,7 @@ export default function UserMenuDropdown({
           <DropdownMenuItem
             className="h-10 justify-center rounded-xl px-4 text-[16px] font-medium text-[#ff2d2d] focus:bg-[#FFEAEB] focus:text-[#ff2d2d]"
             onSelect={() => {
-              logout();
+              signOut();
               navigate("/");
             }}
           >
