@@ -532,7 +532,9 @@ export default function CreateResumePage() {
                 onClick={() => setResume((prev) => ({ ...prev, color: idx }))}
                 className={`h-7 w-7 cursor-pointer rounded-full border-2 ${
                   idx === resume.color ? "border-neutral-900" : "border-white"
-                } ${resume_color_classes[idx]?.bg ?? "bg-neutral-200"}`}
+                }`}
+                style={{ backgroundColor: color.value }}
+                aria-label={`Select ${color.name} color`}
               />
             ))}
           </div>

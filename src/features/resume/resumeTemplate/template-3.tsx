@@ -1,4 +1,4 @@
-import { resume_color_classes } from "@/constants/color";
+import { resume_color } from "@/constants/color";
 import type { ResumeCreateProps } from "@/types/resumeType";
 import { formatDate } from "@/utils/formatDate";
 import React from "react";
@@ -21,8 +21,8 @@ const formatRange = (start?: Date | string, end?: Date | string) => {
 
 const Template3: React.FC<Props> = ({ resume }) => {
   const data = resume.data || ({} as ResumeCreateProps["data"]);
-  const accent =
-    resume_color_classes[resume.color ?? 0] ?? resume_color_classes[0];
+  const accentColor =
+    resume_color[resume.color ?? 0]?.value ?? resume_color[0].value;
   const fullName = [data.first_name, data.last_name].filter(Boolean).join(" ");
 
   const contacts = (data.contact || []).filter(
@@ -55,7 +55,8 @@ const Template3: React.FC<Props> = ({ resume }) => {
   return (
     <div className="w-[794px] min-h-[1123px] bg-white font-sans text-c-1f2933">
       <header
-        className={`border-b-[3px] ${accent.border} flex items-start justify-between gap-4 px-7 pb-[18px] pt-[26px]`}
+        className="flex items-start justify-between gap-4 border-b-[3px] px-7 pb-[18px] pt-[26px]"
+        style={{ borderBottomColor: accentColor }}
       >
         <div>
           <div className="text-[30px] font-semibold">
@@ -95,7 +96,7 @@ const Template3: React.FC<Props> = ({ resume }) => {
         <div>
           {experience.length > 0 && (
             <section className="mb-[18px]">
-              <div className={`text-[15px] font-semibold ${accent.text}`}>
+              <div className="text-[15px] font-semibold" style={{ color: accentColor }}>
                 Experience
               </div>
               {experience.map((e, idx) => (
@@ -129,7 +130,7 @@ const Template3: React.FC<Props> = ({ resume }) => {
 
           {projects.length > 0 && (
             <section className="mb-[18px]">
-              <div className={`text-[15px] font-semibold ${accent.text}`}>
+              <div className="text-[15px] font-semibold" style={{ color: accentColor }}>
                 Projects
               </div>
               {projects.map((p, idx) => (
@@ -165,7 +166,7 @@ const Template3: React.FC<Props> = ({ resume }) => {
         <div>
           {education.length > 0 && (
             <section className="mb-[18px]">
-              <div className={`text-[15px] font-semibold ${accent.text}`}>
+              <div className="text-[15px] font-semibold" style={{ color: accentColor }}>
                 Education
               </div>
               {education.map((e, idx) => (
@@ -187,7 +188,7 @@ const Template3: React.FC<Props> = ({ resume }) => {
 
           {skills.length > 0 && (
             <section className="mb-[18px]">
-              <div className={`text-[15px] font-semibold ${accent.text}`}>
+              <div className="text-[15px] font-semibold" style={{ color: accentColor }}>
                 Skills
               </div>
               <div className="mt-2 flex flex-wrap gap-2 text-[12px]">
@@ -205,7 +206,7 @@ const Template3: React.FC<Props> = ({ resume }) => {
 
           {achievements.length > 0 && (
             <section className="mb-[18px]">
-              <div className={`text-[15px] font-semibold ${accent.text}`}>
+              <div className="text-[15px] font-semibold" style={{ color: accentColor }}>
                 Achievements
               </div>
               {achievements.map((a, idx) => (
@@ -241,7 +242,7 @@ const Template3: React.FC<Props> = ({ resume }) => {
 
           {miscellaneous.length > 0 && (
             <section>
-              <div className={`text-[15px] font-semibold ${accent.text}`}>
+              <div className="text-[15px] font-semibold" style={{ color: accentColor }}>
                 Miscellaneous
               </div>
               {miscellaneous.map((item, idx) => (

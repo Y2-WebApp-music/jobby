@@ -1,23 +1,23 @@
 export const resume_color = [
   {
     name: "Blue",
-    value: "var(--color-c-214785)",
+    value: "#214785",
   },
   {
     name: "Red",
-    value: "var(--color-c-f45353)",
+    value: "#f45353",
   },
   {
     name: "Green",
-    value: "var(--color-c-42c64d)",
+    value: "#42c64d",
   },
   {
     name: "Pink",
-    value: "var(--color-c-e86df6)",
+    value: "#e86df6",
   },
   {
     name: "Orange",
-    value: "var(--color-c-fe8d36)",
+    value: "#fe8d36",
   },
 ];
 
