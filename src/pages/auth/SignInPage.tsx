@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import JobbyLogo from "@/assets/icons/JobbyLogologregis.svg?react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import {
   authClient,
   hydrateAuthStoreFromPayload,
@@ -9,12 +9,15 @@ import {
 } from "@/services/authClient";
 import { useState, type FormEvent } from "react";
 import { FcGoogle } from "react-icons/fc";
+import { IoMdEye, IoMdEyeOff } from "react-icons/io";
 
 export default function SignInPage() {
+  const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [name, setName] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [mode, setMode] = useState<"signin" | "signup">("signin");
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -31,7 +34,6 @@ export default function SignInPage() {
         newUserCallbackURL: callback,
       });
     } catch (err) {
-      // eslint-disable-next-line no-console
       console.error("Google sign-in failed", err);
       setErrorMsg("Google sign-in failed");
     } finally {
@@ -65,44 +67,7 @@ export default function SignInPage() {
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Sign in failed";
       setErrorMsg(message);
-      // eslint-disable-next-line no-console
       console.error("Email sign-in failed", err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const onEmailSignUp = async (e?: FormEvent) => {
-    e?.preventDefault();
-    setErrorMsg(null);
-
-    if (password !== confirmPassword) {
-      setErrorMsg("Passwords do not match");
-      return;
-    }
-
-    setLoading(true);
-    try {
-      const res = (await authClient.signUp.email({
-        name,
-        email,
-        password,
-      })) as { error?: { message?: string } };
-
-      if (res?.error) {
-        setErrorMsg(res.error?.message || "Sign up failed");
-      } else {
-        const hydrated = hydrateAuthStoreFromPayload(res);
-        if (!hydrated) {
-          await hydrateAuthStoreFromSession();
-        }
-        window.location.replace("/");
-      }
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "Sign up failed";
-      setErrorMsg(message);
-      // eslint-disable-next-line no-console
-      console.error("Email sign-up failed", err);
     } finally {
       setLoading(false);
     }
@@ -113,7 +78,8 @@ export default function SignInPage() {
       void onEmailSignIn(e);
       return;
     }
-    void onEmailSignUp(e);
+    e.preventDefault();
+    navigate("/register");
   };
 
   return (
@@ -167,17 +133,6 @@ export default function SignInPage() {
               </div>
 
               <form className="space-y-5" onSubmit={onSubmit}>
-                {mode === "signup" ? (
-                  <Input
-                    value={name}
-                    onChange={(event) => setName(event.target.value)}
-                    placeholder="Full name"
-                    autoComplete="name"
-                    disabled={loading}
-                    className="h-12 rounded-2xl border-[#dedede] bg-white px-4 text-[15px] shadow-none placeholder:text-[#b8b8b8]"
-                  />
-                ) : null}
-
                 <Input
                   type="email"
                   value={email}
@@ -188,28 +143,64 @@ export default function SignInPage() {
                   className="h-12 rounded-2xl border-[#dedede] bg-white px-4 text-[15px] shadow-none placeholder:text-[#b8b8b8]"
                 />
 
-                <Input
-                  type="password"
-                  value={password}
-                  onChange={(event) => setPassword(event.target.value)}
-                  placeholder="Password"
-                  autoComplete={
-                    mode === "signin" ? "current-password" : "new-password"
-                  }
-                  disabled={loading}
-                  className="h-12 rounded-2xl border-[#dedede] bg-white px-4 text-[15px] shadow-none placeholder:text-[#b8b8b8]"
-                />
+                <div className="relative">
+                  <Input
+                    type={showPassword ? "text" : "password"}
+                    value={password}
+                    onChange={(event) => setPassword(event.target.value)}
+                    placeholder="Password"
+                    autoComplete={
+                      mode === "signin" ? "current-password" : "new-password"
+                    }
+                    disabled={loading}
+                    className="h-12 rounded-2xl border-[#dedede] bg-white px-4 pr-12 text-[15px] shadow-none placeholder:text-[#b8b8b8]"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword((prev) => !prev)}
+                    aria-label={showPassword ? "Hide password" : "Show password"}
+                    className="absolute top-1/2 right-4 -translate-y-1/2 cursor-pointer text-[#9a9a9a] transition-colors hover:text-[#6f6f6f]"
+                  >
+                    {showPassword ? (
+                      <IoMdEyeOff className="size-5" />
+                    ) : (
+                      <IoMdEye className="size-5" />
+                    )}
+                  </button>
+                </div>
 
                 {mode === "signup" ? (
-                  <Input
-                    type="password"
-                    value={confirmPassword}
-                    onChange={(event) => setConfirmPassword(event.target.value)}
-                    placeholder="Confirm password"
-                    autoComplete="new-password"
-                    disabled={loading}
-                    className="h-12 rounded-2xl border-[#dedede] bg-white px-4 text-[15px] shadow-none placeholder:text-[#b8b8b8]"
-                  />
+                  <div className="relative">
+                    <Input
+                      type={showConfirmPassword ? "text" : "password"}
+                      value={confirmPassword}
+                      onChange={(event) =>
+                        setConfirmPassword(event.target.value)
+                      }
+                      placeholder="Confirm password"
+                      autoComplete="new-password"
+                      disabled={loading}
+                      className="h-12 rounded-2xl border-[#dedede] bg-white px-4 pr-12 text-[15px] shadow-none placeholder:text-[#b8b8b8]"
+                    />
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setShowConfirmPassword((prev) => !prev)
+                      }
+                      aria-label={
+                        showConfirmPassword
+                          ? "Hide confirm password"
+                          : "Show confirm password"
+                      }
+                      className="absolute top-1/2 right-4 -translate-y-1/2 cursor-pointer text-[#9a9a9a] transition-colors hover:text-[#6f6f6f]"
+                    >
+                      {showConfirmPassword ? (
+                        <IoMdEyeOff className="size-5" />
+                      ) : (
+                        <IoMdEye className="size-5" />
+                      )}
+                    </button>
+                  </div>
                 ) : null}
 
                 {mode === "signin" ? (
@@ -239,7 +230,7 @@ export default function SignInPage() {
                       ? "Please wait..."
                       : mode === "signin"
                         ? "Sign In"
-                        : "Sign Up"}
+                        : "Join"}
                   </Button>
                 </div>
 
