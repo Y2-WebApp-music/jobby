@@ -1,4 +1,4 @@
-import { resume_color_classes } from "@/constants/color";
+import { resume_color } from "@/constants/color";
 import type { ResumeCreateProps } from "@/types/resumeType";
 import { formatDate } from "@/utils/formatDate";
 import React from "react";
@@ -21,8 +21,8 @@ const formatRange = (start?: Date | string, end?: Date | string) => {
 
 const Template2: React.FC<Props> = ({ resume }) => {
   const data = resume.data || ({} as ResumeCreateProps["data"]);
-  const accent =
-    resume_color_classes[resume.color ?? 0] ?? resume_color_classes[0];
+  const accentColor =
+    resume_color[resume.color ?? 0]?.value ?? resume_color[0].value;
   const fullName = [data.first_name, data.last_name].filter(Boolean).join(" ");
 
   const contacts = (data.contact || []).filter(
@@ -61,7 +61,8 @@ const Template2: React.FC<Props> = ({ resume }) => {
   return (
     <div className="flex w-[794px] min-h-[1123px] flex-col bg-white font-sans text-c-1f2933">
       <header
-        className={`${accent.bg} flex items-center justify-between px-7 py-6 text-white`}
+        className="flex items-center justify-between px-7 py-6 text-white"
+        style={{ backgroundColor: accentColor }}
       >
         <div className="flex items-center gap-4">
           {data.logo && (
@@ -107,7 +108,7 @@ const Template2: React.FC<Props> = ({ resume }) => {
         <main className="px-7 pb-7 pt-[22px]">
           {experience.length > 0 && (
             <section className="mb-[18px]">
-              <div className={`text-[15px] font-semibold ${accent.text}`}>
+              <div className="text-[15px] font-semibold" style={{ color: accentColor }}>
                 Experience
               </div>
               {experience.map((e, idx) => (
@@ -141,7 +142,7 @@ const Template2: React.FC<Props> = ({ resume }) => {
 
           {projects.length > 0 && (
             <section className="mb-[18px]">
-              <div className={`text-[15px] font-semibold ${accent.text}`}>
+              <div className="text-[15px] font-semibold" style={{ color: accentColor }}>
                 Projects
               </div>
               {projects.map((p, idx) => (
@@ -175,7 +176,7 @@ const Template2: React.FC<Props> = ({ resume }) => {
 
           {achievements.length > 0 && (
             <section className="mb-[18px]">
-              <div className={`text-[15px] font-semibold ${accent.text}`}>
+              <div className="text-[15px] font-semibold" style={{ color: accentColor }}>
                 Achievements
               </div>
               {achievements.map((a, idx) => (
@@ -211,7 +212,7 @@ const Template2: React.FC<Props> = ({ resume }) => {
 
           {miscellaneous.length > 0 && (
             <section>
-              <div className={`text-[15px] font-semibold ${accent.text}`}>
+              <div className="text-[15px] font-semibold" style={{ color: accentColor }}>
                 Miscellaneous
               </div>
               {miscellaneous.map((item, idx) => (
@@ -230,7 +231,7 @@ const Template2: React.FC<Props> = ({ resume }) => {
         <aside className="border-l border-c-e0e0e0 pb-7 pl-[22px] pr-[22px] pt-[22px]">
           {education.length > 0 && (
             <section className="mb-4">
-              <div className={`text-[14px] font-semibold ${accent.text}`}>
+              <div className="text-[14px] font-semibold" style={{ color: accentColor }}>
                 Education
               </div>
               {education.map((e, idx) => (
@@ -252,14 +253,15 @@ const Template2: React.FC<Props> = ({ resume }) => {
 
           {skills.length > 0 && (
             <section className="mb-4">
-              <div className={`text-[14px] font-semibold ${accent.text}`}>
+              <div className="text-[14px] font-semibold" style={{ color: accentColor }}>
                 Skills
               </div>
               <div className="mt-2 flex flex-wrap gap-1.5 text-[12px]">
                 {skills.map((s, idx) => (
                   <span
                     key={`${s.name}-${idx}`}
-                    className={`rounded-md border px-[6px] py-[2px] ${accent.border}`}
+                    className="rounded-md border px-[6px] py-[2px]"
+                    style={{ borderColor: accentColor }}
                   >
                     {s.name}
                   </span>
