@@ -198,9 +198,9 @@ export const searchJobs = (payload: SearchJobPayload) => {
   });
 };
 
-export const getSearchJobDetail = (jobId: string) => {
+export const getSearchJobDetail = (jobId: string, user_id: string) => {
   return apiService.fetchData<SearchJobDetailResponse>({
-    url: `${SEARCH_JOB_ENDPOINT}/${encodeURIComponent(jobId)}`,
+    url: `${SEARCH_JOB_ENDPOINT}/${encodeURIComponent(jobId)}?user_id=${user_id}`,
     method: "get",
   });
 };

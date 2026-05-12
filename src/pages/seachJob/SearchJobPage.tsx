@@ -13,6 +13,12 @@ import {
   MultiSelect,
   type MultiSelectOption,
 } from "@/components/ui/multi-select";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+} from "@/components/ui/pagination";
 import SkillinfoDialog from "@/features/profile/dialog/SkillinfoDialog";
 import { ApplyDialog } from "@/features/searchJob/dialogs/ApplyDialog";
 import { cn } from "@/lib/utils";
@@ -93,7 +99,7 @@ const mapSearchResultToJob = (item: SearchJobResult): Job => ({
   aboutTitle: "About this job",
   companyDescription: "",
   extraDescription: "",
-  matchSkillCount: item.match_skill_count,
+  matchSkillCount: item.match_skill_count ?? 0,
   viewed: item.is_viewed,
 });
 
@@ -152,7 +158,7 @@ export default function SearchJobPage() {
   const [loadingJobs, setLoadingJobs] = useState(false);
   const [loadingApply, setLoadingApply] = useState(false);
 
-  const currentPage = searchPayload.page + 1;
+  const currentPage = searchPayload.page ? searchPayload.page + 1 : 1;
   const filterMode = sortTypeToMode(searchPayload.sort_type);
   const selectedSkillIds = useMemo(
     () => new Set(searchPayload.skill),
@@ -314,7 +320,7 @@ export default function SearchJobPage() {
               .map((item) => item.id),
           ),
         );
-        setTotalPages(Math.max(1, response.data.total_page));
+        setTotalPages(Math.max(1, response.data.total_page ?? 0));
         setSelectedJobId((prev) => {
           if (prev && nextJobs.some((job) => job.id === prev)) return prev;
           return nextJobs[0]?.id ?? null;
@@ -342,49 +348,9 @@ export default function SearchJobPage() {
 
   useEffect(() => {
     if (!selectedJobId) return;
+    if (!user?.id) return;
 
-    let cancelled = false;
-
-    const loadJobDetail = async () => {
-      try {
-        const response =
-          await searchJobService.getSearchJobDetail(selectedJobId);
-        if (cancelled) return;
-
-        setJobs((prev) =>
-          prev.map((job) =>
-            job.id === selectedJobId
-              ? {
-                  ...job,
-                  skills: response.data.skills.map((item) => item.name),
-                  category:
-                    response.data.categories
-                      .map((item) => item.text_eng)
-                      .join(", ") || job.category,
-                  workType:
-                    response.data.work_types
-                      .map((item) => item.text_eng)
-                      .join(", ") || job.workType,
-                  workOption:
-                    response.data.work_options
-                      .map((item) => item.text_eng)
-                      .join(", ") || job.workOption,
-                  companyDescription: response.data.description ?? "",
-                  extraDescription: response.data.description_rtf ?? "",
-                }
-              : job,
-          ),
-        );
-      } catch {
-        return;
-      }
-    };
-
-    void loadJobDetail();
-
-    return () => {
-      cancelled = true;
-    };
+    fetcJobDetail(selectedJobId);
   }, [selectedJobId, setJobs]);
 
   useEffect(() => {
@@ -430,7 +396,7 @@ export default function SearchJobPage() {
     });
   };
 
-  const handleSelect = async (id: string) => {
+  const fetcJobDetail = async (id: string) => {
     setSelectedJobId(id);
     setViewed((prev) => {
       if (prev.has(id)) return prev;
@@ -442,9 +408,9 @@ export default function SearchJobPage() {
     if (!user?.id) return;
 
     try {
-      await searchJobService.viewedJob(user.id, id);
-    } catch {
-      return;
+      await searchJobService.getSearchJobDetail(id, user.id);
+    } catch (e) {
+      console.log("e ", e);
     }
   };
 
@@ -627,7 +593,7 @@ export default function SearchJobPage() {
                 </Combobox>
                 <div className="relative shrink-0">
                   <select
-                    value={searchPayload.search_type}
+                    value={searchPayload.search_type ?? ""}
                     onChange={(e) =>
                       updatePayload({
                         search_type: Number(e.target.value) as SearchTypeCode,
@@ -644,7 +610,7 @@ export default function SearchJobPage() {
                     )}
                   >
                     {searchTypeOptions.map((option) => (
-                      <option key={option.value} value={option.value}>
+                      <option key={option.value} value={option.value ?? ""}>
                         {option.label}
                       </option>
                     ))}
@@ -664,6 +630,10 @@ export default function SearchJobPage() {
 
               <div
                 ref={skillFilterRef}
+                onClick={(event) => {
+                  if ((event.target as HTMLElement).closest("button")) return;
+                  setSkillOpen(true);
+                }}
                 className="relative flex min-w-0 flex-1 items-center gap-3 rounded-[18px] border border-[#d9d9d9] bg-white px-4 py-2 shadow-[0_2px_14px_rgba(0,0,0,0.09)]"
               >
                 <button
@@ -755,7 +725,7 @@ export default function SearchJobPage() {
                     value: String(option.id),
                   }),
                 )}
-                value={searchPayload.category.map((id) => String(id))}
+                value={searchPayload.category?.map((id) => String(id)) ?? []}
                 onValueChange={(vals) =>
                   updatePayload({
                     category: vals.map((value) => Number(value)),
@@ -811,7 +781,7 @@ export default function SearchJobPage() {
                     value: String(option.id),
                   }),
                 )}
-                value={searchPayload.type.map((id) => String(id))}
+                value={searchPayload.type?.map((id) => String(id)) ?? []}
                 onValueChange={(vals) =>
                   updatePayload({
                     type: vals.map((value) => Number(value)),
@@ -834,7 +804,7 @@ export default function SearchJobPage() {
                     value: String(option.id),
                   }),
                 )}
-                value={searchPayload.option.map((id) => String(id))}
+                value={searchPayload.option?.map((id) => String(id)) ?? []}
                 onValueChange={(vals) =>
                   updatePayload({
                     option: vals.map((value) => Number(value)),
@@ -897,7 +867,7 @@ export default function SearchJobPage() {
                     return (
                       <Card
                         key={job.id}
-                        onClick={() => void handleSelect(job.id)}
+                        onClick={() => setSelectedJobId(job.id)}
                         className={cn(
                           "group relative w-full cursor-pointer rounded-none border-x-0 border-b border-t-0 border-[#e5e5e5] bg-white transition",
                           isSelected ? "bg-[#fafafa]" : "hover:bg-[#fcfcfc]",
@@ -953,55 +923,121 @@ export default function SearchJobPage() {
                 </div>
               </div>
 
-              <div className="relative -mt-px flex min-h-[52px] items-center border-t border-[#e5e5e5] bg-white py-2 text-sm">
-                <button
-                  className="inline-flex items-center gap-1 rounded-full px-2 py-1 text-slate-600 hover:bg-slate-100 disabled:opacity-40"
-                  onClick={() =>
-                    updatePayload({ page: Math.max(0, currentPage - 2) })
-                  }
-                  disabled={currentPage === 1}
-                  type="button"
-                >
-                  <IoIosArrowBack />
-                  Previous
-                </button>
+              <div className="relative -mt-px flex min-h-[52px] items-center justify-center border-t border-[#e5e5e5] bg-white py-2 text-sm">
+                {(() => {
+                  const generatePageNumbers = () => {
+                    const pages: (
+                      | number
+                      | "ellipsis-start"
+                      | "ellipsis-end"
+                    )[] = [];
 
-                <div className="absolute left-1/2 top-1/2 flex -translate-x-1/2 -translate-y-1/2 items-center gap-2">
-                  {Array.from({ length: totalPages }).map((_, idx) => {
-                    const page = idx + 1;
-                    return (
-                      <button
-                        key={page}
-                        onClick={() => updatePayload({ page: page - 1 })}
-                        className={cn(
-                          "h-8 w-8 rounded-lg text-sm",
-                          page === currentPage
-                            ? "bg-[linear-gradient(90deg,var(--color-main),var(--color-second))] text-white"
-                            : "text-slate-600 hover:bg-slate-100",
-                        )}
-                        type="button"
-                      >
-                        {page}
-                      </button>
-                    );
-                  })}
-                </div>
+                    if (totalPages <= 3) {
+                      // Show all pages if 3 or fewer
+                      for (let i = 1; i <= totalPages; i++) {
+                        pages.push(i);
+                      }
+                    } else {
+                      // Always show first page
+                      pages.push(1);
 
-                <div className="ml-auto flex justify-end">
-                  <button
-                    className="inline-flex items-center gap-1 rounded-full px-2 py-1 text-slate-600 hover:bg-slate-100 disabled:opacity-40"
-                    onClick={() =>
-                      updatePayload({
-                        page: Math.min(totalPages - 1, currentPage),
-                      })
+                      // Determine which pages to show around current page
+                      const start = Math.max(2, currentPage - 1);
+                      const end = Math.min(totalPages - 1, currentPage + 1);
+
+                      // Add ellipsis if there's a gap after page 1
+                      if (start > 2) {
+                        pages.push("ellipsis-start");
+                      }
+
+                      // Add pages around current page
+                      for (let i = start; i <= end; i++) {
+                        pages.push(i);
+                      }
+
+                      // Add ellipsis if there's a gap before last page
+                      if (end < totalPages - 1) {
+                        pages.push("ellipsis-end");
+                      }
+
+                      // Always show last page
+                      pages.push(totalPages);
                     }
-                    disabled={currentPage === totalPages}
-                    type="button"
-                  >
-                    Next
-                    <IoIosArrowForward />
-                  </button>
-                </div>
+
+                    return pages;
+                  };
+
+                  return (
+                    <Pagination className="flex justify-center">
+                      <PaginationContent>
+                        <PaginationItem>
+                          <button
+                            onClick={() =>
+                              updatePayload({
+                                page: Math.max(0, currentPage - 2),
+                              })
+                            }
+                            disabled={currentPage === 1}
+                            className="inline-flex items-center gap-1 rounded-full px-2 py-1 text-slate-600 hover:bg-slate-100 disabled:opacity-40"
+                            type="button"
+                          >
+                            <IoIosArrowBack />
+                            Previous
+                          </button>
+                        </PaginationItem>
+
+                        {generatePageNumbers().map((page, idx) => {
+                          if (
+                            page === "ellipsis-start" ||
+                            page === "ellipsis-end"
+                          ) {
+                            return (
+                              <PaginationItem key={`${page}-${idx}`}>
+                                <PaginationEllipsis />
+                              </PaginationItem>
+                            );
+                          }
+
+                          const isActive = page === currentPage;
+                          return (
+                            <PaginationItem key={page}>
+                              <button
+                                onClick={() =>
+                                  updatePayload({ page: page - 1 })
+                                }
+                                className={cn(
+                                  "h-8 w-8 rounded-lg text-sm flex items-center justify-center",
+                                  isActive
+                                    ? "bg-[linear-gradient(90deg,var(--color-main),var(--color-second))] text-white"
+                                    : "text-slate-600 hover:bg-slate-100",
+                                )}
+                                type="button"
+                              >
+                                {page}
+                              </button>
+                            </PaginationItem>
+                          );
+                        })}
+
+                        <PaginationItem>
+                          <button
+                            onClick={() =>
+                              updatePayload({
+                                page: Math.min(totalPages - 1, currentPage),
+                              })
+                            }
+                            disabled={currentPage === totalPages}
+                            className="inline-flex items-center gap-1 rounded-full px-2 py-1 text-slate-600 hover:bg-slate-100 disabled:opacity-40"
+                            type="button"
+                          >
+                            Next
+                            <IoIosArrowForward />
+                          </button>
+                        </PaginationItem>
+                      </PaginationContent>
+                    </Pagination>
+                  );
+                })()}
               </div>
             </div>
 

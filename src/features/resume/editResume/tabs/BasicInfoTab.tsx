@@ -345,7 +345,7 @@ export function BasicInfoTab({
             <FieldLabel htmlFor="address-line">Address line</FieldLabel>
             <Input
               id="address-line"
-              placeholder="bangkok"
+              placeholder="address line"
               value={resume.data.address?.address_line || ""}
               onChange={(e) => updateAddress("address_line", e.target.value)}
             />
@@ -363,7 +363,7 @@ export function BasicInfoTab({
             <FieldLabel htmlFor="address-moo">moo</FieldLabel>
             <Input
               id="address-moo"
-              placeholder="Text Here"
+              placeholder="moo"
               value={resume.data.address?.moo || ""}
               onChange={(e) => updateAddress("moo", e.target.value)}
             />
@@ -372,7 +372,7 @@ export function BasicInfoTab({
             <FieldLabel htmlFor="address-soi">soi</FieldLabel>
             <Input
               id="address-soi"
-              placeholder="Text Here"
+              placeholder="soi"
               value={resume.data.address?.soi || ""}
               onChange={(e) => updateAddress("soi", e.target.value)}
             />
@@ -381,7 +381,7 @@ export function BasicInfoTab({
             <FieldLabel htmlFor="address-street">street</FieldLabel>
             <Input
               id="address-street"
-              placeholder="bangkok"
+              placeholder="street"
               value={resume.data.address?.street || ""}
               onChange={(e) => updateAddress("street", e.target.value)}
             />

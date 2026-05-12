@@ -1,6 +1,12 @@
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
-import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Command,
+  CommandEmpty,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
 import { Input } from "@/components/ui/input";
 import {
   Popover,
@@ -9,20 +15,17 @@ import {
 } from "@/components/ui/popover";
 import ExamDialog from "@/features/profile/dialog/ExamDialog";
 import { ImportResumeDialog } from "@/features/resume/dialogs/ImportResumeDialog";
+import utilityService from "@/services/utilityService";
 import { useAuthStore } from "@/store/auth";
 import { getSkillExam } from "@/types/skillExam";
 import { profileSkillCatalog } from "@/types/skill";
 import { format } from "date-fns";
-import { useMemo, useState } from "react";
-import { FcGoogle } from "react-icons/fc";
-import { IoMdEye, IoMdEyeOff } from "react-icons/io";
+import { useEffect, useMemo, useState } from "react";
 import { IoChevronDown } from "react-icons/io5";
 import { useNavigate } from "react-router-dom";
 
 type RegisterStep = 1 | 2 | 3 | 4;
 type RegisterFieldName =
-  | "email"
-  | "password"
   | "firstName"
   | "lastName"
   | "dateOfBirth"
@@ -37,7 +40,7 @@ const sanitizeLetters = (value: string) => value.replace(/[^\p{L}\s'-]/gu, "");
 
 const sanitizeDigits = (value: string) => value.replace(/\D/g, "");
 
-const registerRegionOptions = [
+const fallbackRegisterRegionOptions = [
   "Afghanistan",
   "Albania",
   "Algeria",
@@ -240,17 +243,17 @@ export default function Register() {
   const setUser = useAuthStore((state) => state.setUser);
   const setToken = useAuthStore((state) => state.setToken);
 
-  const [step, setStep] = useState<RegisterStep>(1);
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
-  const [acceptTerms, setAcceptTerms] = useState(false);
-  const [termsError, setTermsError] = useState("");
+  const [step, setStep] = useState<RegisterStep>(2);
   const [fieldErrors, setFieldErrors] = useState<RegisterFieldErrors>({});
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
+  const [registerRegionOptions, setRegisterRegionOptions] = useState<string[]>(
+    [],
+  );
+  const [loadingRegions, setLoadingRegions] = useState(true);
   const [region, setRegion] = useState("");
   const [regionOpen, setRegionOpen] = useState(false);
+  const [regionInput, setRegionInput] = useState("");
   const [tel, setTel] = useState("");
   const [dateOfBirth, setDateOfBirth] = useState<Date | undefined>(undefined);
   const [calendarOpen, setCalendarOpen] = useState(false);
@@ -260,6 +263,45 @@ export default function Register() {
   const [pendingExamSkillName, setPendingExamSkillName] = useState<
     string | null
   >(null);
+
+  useEffect(() => {
+    const fetchPhoneRegions = async () => {
+      setLoadingRegions(true);
+      try {
+        const response = await utilityService.getPhoneRegion();
+        const nextOptions = response.data
+          .map((item) => item.text_eng.trim())
+          .filter(Boolean);
+
+        setRegisterRegionOptions(
+          nextOptions.length > 0 ? nextOptions : fallbackRegisterRegionOptions,
+        );
+      } catch {
+        setRegisterRegionOptions(fallbackRegisterRegionOptions);
+      } finally {
+        setLoadingRegions(false);
+      }
+    };
+
+    void fetchPhoneRegions();
+  }, []);
+
+  const visibleRegionOptions = useMemo(
+    () =>
+      registerRegionOptions.length > 0
+        ? registerRegionOptions
+        : fallbackRegisterRegionOptions,
+    [registerRegionOptions],
+  );
+
+  const handleRegionSelect = (value: string) => {
+    setRegion(value);
+    setRegionInput("");
+    setRegionOpen(false);
+    if (fieldErrors.region) {
+      setFieldErrors((prev) => ({ ...prev, region: "" }));
+    }
+  };
 
   const matchedSkills = useMemo(() => {
     const keyword = skillQuery.trim().toLowerCase();
@@ -320,33 +362,12 @@ export default function Register() {
       name:
         [firstName.trim(), lastName.trim()].filter(Boolean).join(" ") ||
         "New Explorer",
-      email: email.trim() || "email",
+      email: "email",
       role: "jobseeker",
       permissions: [],
     });
     setToken("demo-register-token");
     navigate("/profile");
-  };
-
-  const handleJoinStep = () => {
-    const nextErrors: RegisterFieldErrors = {
-      email: email.trim() ? "" : "Please enter your email.",
-      password: password.trim() ? "" : "Please enter your password.",
-    };
-
-    setFieldErrors((prev) => ({ ...prev, ...nextErrors }));
-
-    if (nextErrors.email || nextErrors.password) {
-      return;
-    }
-
-    if (!acceptTerms) {
-      setTermsError("Please accept terms and condition before continuing.");
-      return;
-    }
-
-    setTermsError("");
-    setStep(2);
   };
 
   const handleProfileStepContinue = () => {
@@ -375,127 +396,6 @@ export default function Register() {
 
   return (
     <div className="w-full">
-      {step === 1 ? (
-        <div className="space-y-4">
-          <h1 className="text-center text-[18px] font-medium text-[#171717]">
-            Be New Explorer
-          </h1>
-
-          <div className="space-y-3">
-            <div className="space-y-1">
-              <label className="text-[14px] font-medium text-[#3b3b3b]">
-                Email
-              </label>
-              <Input
-                type="email"
-                placeholder="email"
-                value={email}
-                onChange={(event) => {
-                  setEmail(event.target.value);
-                  if (fieldErrors.email) {
-                    setFieldErrors((prev) => ({ ...prev, email: "" }));
-                  }
-                }}
-                className={inputClassName}
-              />
-              {fieldErrors.email ? (
-                <p className="text-[12px] font-medium text-[#ff4d4f]">
-                  {fieldErrors.email}
-                </p>
-              ) : null}
-            </div>
-
-            <div className="space-y-1">
-              <label className="text-[14px] font-medium text-[#3b3b3b]">
-                Password
-              </label>
-              <div className="relative">
-                <Input
-                  type={showPassword ? "text" : "password"}
-                  placeholder="password"
-                  value={password}
-                  onChange={(event) => {
-                    setPassword(event.target.value);
-                    if (fieldErrors.password) {
-                      setFieldErrors((prev) => ({ ...prev, password: "" }));
-                    }
-                  }}
-                  className={`${inputClassName} pr-10`}
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword((prev) => !prev)}
-                  aria-label={showPassword ? "Hide password" : "Show password"}
-                  className="absolute top-1/2 right-3 -translate-y-1/2 cursor-pointer text-[#9a9a9a] transition-colors hover:text-[#6f6f6f]"
-                >
-                  {showPassword ? (
-                    <IoMdEyeOff className="size-4" />
-                  ) : (
-                    <IoMdEye className="size-4" />
-                  )}
-                </button>
-              </div>
-              {fieldErrors.password ? (
-                <p className="text-[12px] font-medium text-[#ff4d4f]">
-                  {fieldErrors.password}
-                </p>
-              ) : null}
-            </div>
-          </div>
-
-          <div className="space-y-1.5">
-            <label className="flex cursor-pointer items-start gap-2 text-[14px] font-medium text-[#171717]">
-              <Checkbox
-                checked={acceptTerms}
-                onCheckedChange={(checked) => {
-                  const nextValue = Boolean(checked);
-                  setAcceptTerms(nextValue);
-                  if (nextValue) {
-                    setTermsError("");
-                  }
-                }}
-                className="mt-0.5"
-              />
-              <span>Accept terms and condition</span>
-            </label>
-            <p className="pl-6 text-[12px] text-[#b0b0b0]">
-              You agree to our Terms of Service and Privacy Policy.
-            </p>
-            {termsError ? (
-              <p className="pl-6 text-[12px] font-medium text-[#ff4d4f]">
-                {termsError}
-              </p>
-            ) : null}
-          </div>
-
-          <div className="flex justify-center">
-            <Button
-              type="button"
-              onClick={handleJoinStep}
-              className="h-10 min-w-[102px] rounded-full px-8 text-[15px] font-medium text-white"
-            >
-              Join
-            </Button>
-          </div>
-
-          <div className="flex items-center gap-3 text-[11px] text-[#7b7b7b]">
-            <div className="h-px flex-1 bg-[#cfcfcf]" />
-            <span>or</span>
-            <div className="h-px flex-1 bg-[#cfcfcf]" />
-          </div>
-
-          <div className="flex justify-center">
-            <button
-              type="button"
-              className="inline-flex h-10 cursor-pointer items-center gap-2 rounded-full border border-[#dadada] bg-white px-4 text-[14px] font-medium text-[#6f6f6f] transition-colors hover:bg-[#f8f8f8]"
-            >
-              <FcGoogle className="size-4" />
-              Continue with Google
-            </button>
-          </div>
-        </div>
-      ) : null}
-
       {step === 2 ? (
         <div className="space-y-5">
           <h1 className="text-center text-[18px] font-medium text-[#171717]">
@@ -545,7 +445,7 @@ export default function Register() {
               ) : null}
             </div>
 
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1.45fr)_minmax(0,0.75fr)]">
               <div className="space-y-1">
                 <label className="text-[14px] font-medium text-[#3b3b3b]">
                   Date of birth
@@ -597,42 +497,62 @@ export default function Register() {
 
               <div className="space-y-1">
                 <label className="text-[14px] font-medium text-[#3b3b3b]">
-                  Regions
+                  Region
                 </label>
-                <Popover open={regionOpen} onOpenChange={setRegionOpen}>
-                  <PopoverTrigger asChild>
-                    <button
-                      type="button"
-                      className="flex h-10 w-full cursor-pointer items-center justify-between rounded-lg border border-[#e6e6e6] bg-white px-4 text-left text-[13px] text-[#171717]"
-                    >
-                      <span className={region ? "" : "text-[#b8b8b8]"}>
-                        {region || "Select region"}
-                      </span>
-                      <IoChevronDown className="size-4 text-[#7d7d7d]" />
-                    </button>
-                  </PopoverTrigger>
-                  <PopoverContent
-                    align="start"
-                    className="w-(--radix-popover-trigger-width) rounded-xl border border-[#ececec] p-1"
-                  >
-                    <div className="max-h-72 space-y-1 overflow-y-auto">
-                      {registerRegionOptions.map((option) => (
-                        <button
-                          key={option}
-                          type="button"
-                          onClick={() => {
-                            setRegion(option);
-                            setFieldErrors((prev) => ({ ...prev, region: "" }));
-                            setRegionOpen(false);
-                          }}
-                          className="flex w-full cursor-pointer items-center rounded-lg px-3 py-2 text-left text-[13px] text-[#171717] transition-colors hover:bg-[#f7f7f7]"
+                <div className="relative">
+                  <Popover open={regionOpen} onOpenChange={setRegionOpen}>
+                    <PopoverTrigger asChild>
+                      <button
+                        type="button"
+                        className="flex h-10 w-full cursor-pointer items-center justify-between rounded-xl border border-[#e5e5e5] bg-white px-4 pr-4 text-left text-sm shadow-[0_2px_10px_rgba(0,0,0,0.06)] outline-none"
+                      >
+                        <span
+                          title={region || "Select region"}
+                          className={
+                            region
+                              ? "min-w-0 flex-1 truncate pr-2 font-medium text-[#171717]"
+                              : "min-w-0 flex-1 truncate pr-2 font-normal text-[#A1A1A1]"
+                          }
                         >
-                          {option}
-                        </button>
-                      ))}
-                    </div>
-                  </PopoverContent>
-                </Popover>
+                          {loadingRegions
+                            ? "Loading regions..."
+                            : region || "Select region"}
+                        </span>
+                        <IoChevronDown className="size-4 text-[#7d7d7d]" />
+                      </button>
+                    </PopoverTrigger>
+                    <PopoverContent
+                      align="start"
+                      className="w-(--radix-popover-trigger-width) rounded-xl border border-[#ececec] p-1"
+                    >
+                      <Command>
+                        <CommandInput
+                          placeholder="Search region..."
+                          value={regionInput}
+                          onValueChange={setRegionInput}
+                        />
+                        <CommandList>
+                          <CommandEmpty>
+                            {loadingRegions
+                              ? "Loading regions..."
+                              : "No region found."}
+                          </CommandEmpty>
+                          {visibleRegionOptions.map((item) => (
+                            <CommandItem
+                              key={item}
+                              value={item}
+                              checked={item === region}
+                              onSelect={() => handleRegionSelect(item)}
+                              className="text-[13px] text-[#171717]"
+                            >
+                              {item}
+                            </CommandItem>
+                          ))}
+                        </CommandList>
+                      </Command>
+                    </PopoverContent>
+                  </Popover>
+                </div>
                 {fieldErrors.region ? (
                   <p className="text-[12px] font-medium text-[#ff4d4f]">
                     {fieldErrors.region}

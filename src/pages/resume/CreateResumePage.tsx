@@ -1,7 +1,7 @@
 import PageLayout from "@/components/layout/PageLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { resume_color, resume_color_classes } from "@/constants/color";
+import { resume_color } from "@/constants/color";
 import FormInput from "@/features/resume/editResume/FormInput";
 import RenderResume from "@/features/resume/RenderResume";
 import Template1 from "@/features/resume/resumeTemplate/template-1";
@@ -11,6 +11,9 @@ import resumeService, {
   mapResumeDetailToResumeForm,
   type CreateResumePayload,
 } from "@/services/resumeService";
+import profileService, {
+  type UserProfileItem,
+} from "@/services/profileService";
 import utilityService from "@/services/utilityService";
 import { useAddressOptionStore } from "@/store/addressOption";
 import { useAuthStore } from "@/store/auth";
@@ -82,6 +85,55 @@ const mapSubDistrictOptions = (
     sub_district_eng: item.sub_district_name_en,
     district_id: item.district_id,
   }));
+
+const mapUserProfileToResumeFormData = (
+  profile: UserProfileItem,
+): ResumeCreateProps["data"] => ({
+  ...initialResume.data,
+  first_name: profile.first_name ?? "",
+  last_name: profile.last_name ?? "",
+  logo: profile.logo ?? "",
+  phone: profile.phone ?? "",
+  email: profile.email ?? "",
+  contact: (profile.contact ?? []).map((item) => ({
+    label: item.label ?? "",
+    link: item.link ?? "",
+  })),
+  skills: (profile.skills ?? []).map((item) => ({
+    id: item.id,
+    name: item.name,
+  })),
+  address: {
+    ...initialResume.data.address,
+    address_line: profile.address?.address_line ?? "",
+    no: profile.address?.no ?? "",
+    moo: profile.address?.moo ?? "",
+    soi: profile.address?.soi ?? "",
+    street: profile.address?.street ?? "",
+    sub_district:
+      profile.address?.sub_district_eng ??
+      profile.address?.sub_district_th ??
+      "",
+    sub_district_th: profile.address?.sub_district_th ?? "",
+    sub_district_eng: profile.address?.sub_district_eng ?? "",
+    district:
+      profile.address?.district_eng ?? profile.address?.district_th ?? "",
+    district_th: profile.address?.district_th ?? "",
+    district_eng: profile.address?.district_eng ?? "",
+    province:
+      profile.address?.province_eng ?? profile.address?.province_th ?? "",
+    province_th: profile.address?.province_th ?? "",
+    province_eng: profile.address?.province_eng ?? "",
+    country: profile.address?.country_eng ?? profile.address?.country_th ?? "",
+    country_th: profile.address?.country_th ?? DEFAULT_COUNTRY_TH,
+    country_eng: profile.address?.country_eng ?? DEFAULT_COUNTRY_ENG,
+    sub_district_id: profile.address?.sub_district_id ?? 0,
+    district_id: profile.address?.district_id ?? 0,
+    province_id: profile.address?.province_id ?? 0,
+    country_id: profile.address?.country_id ?? DEFAULT_COUNTRY_ID,
+    postal_code: profile.address?.postal_code ?? 0,
+  },
+});
 
 const toPhoneRegionLabel = (value: number | string) => {
   if (typeof value === "string") {
@@ -404,6 +456,39 @@ export default function CreateResumePage() {
   }, [resumeId]);
 
   useEffect(() => {
+    if (isEditMode || !user?.id) return;
+
+    let cancelled = false;
+
+    const loadUserProfile = async () => {
+      setLoadingResumeDetail(true);
+      try {
+        const response = await profileService.getUserProfile(user.id);
+        if (cancelled) return;
+
+        setResume((prev) => ({
+          ...prev,
+          data: mapUserProfileToResumeFormData(response.data),
+        }));
+      } catch {
+        if (!cancelled) {
+          toast.error("Failed to load profile data");
+        }
+      } finally {
+        if (!cancelled) {
+          setLoadingResumeDetail(false);
+        }
+      }
+    };
+
+    void loadUserProfile();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isEditMode, user?.id]);
+
+  useEffect(() => {
     if (usePropertiesStore.getPhoneRegionOptions().length === 0) {
       void fetchPhoneRegions();
     }
@@ -491,52 +576,54 @@ export default function CreateResumePage() {
           </div>
         </header>
 
-        <div className="mb-5 rounded-xl border border-neutral-200 bg-white p-4">
-          <label
-            htmlFor="resume-name"
-            className="mb-2 block text-sm font-medium text-foreground"
-          >
-            Resume Name
-          </label>
-          <Input
-            id="resume-name"
-            placeholder="Resume Name"
-            value={resume.name}
-            onChange={(e) =>
-              setResume((prev) => ({ ...prev, name: e.target.value }))
-            }
-          />
-        </div>
-
-        <div className="mb-5 flex items-center gap-6 rounded-xl border border-neutral-200 bg-neutral-50 p-4">
-          <div className="flex flex-1 gap-3">
-            {[1, 2, 3].map((id) => (
-              <button
-                key={id}
-                onClick={() => setResume((prev) => ({ ...prev, theme: id }))}
-                className={`h-[120px] w-[86px] cursor-pointer rounded-xl bg-neutral-200 ${
-                  id === resume.theme
-                    ? "border-2 border-c-ff7a00"
-                    : "border border-neutral-300"
-                }`}
-              />
-            ))}
+        <div className="flex gap-2 w-full">
+          <div className="grow mb-5 rounded-xl border border-neutral-200 bg-white p-4">
+            <label
+              htmlFor="resume-name"
+              className="mb-2 block text-sm font-medium text-foreground"
+            >
+              Resume Name
+            </label>
+            <Input
+              id="resume-name"
+              placeholder="Resume Name"
+              value={resume.name}
+              onChange={(e) =>
+                setResume((prev) => ({ ...prev, name: e.target.value }))
+              }
+            />
           </div>
 
-          <div className="h-20 w-px bg-neutral-300" />
+          <div className="grow mb-5 flex items-center gap-6 rounded-xl border border-neutral-200 bg-neutral-50 p-4">
+            <div className="flex flex-1 gap-3">
+              {[1, 2, 3].map((id) => (
+                <button
+                  key={id}
+                  onClick={() => setResume((prev) => ({ ...prev, theme: id }))}
+                  className={`h-[120px] w-[86px] cursor-pointer rounded-xl bg-neutral-200 ${
+                    id === resume.theme
+                      ? "border-2 border-c-ff7a00"
+                      : "border border-neutral-300"
+                  }`}
+                />
+              ))}
+            </div>
 
-          <div className="flex gap-2.5">
-            {resume_color.map((color, idx) => (
-              <button
-                key={color.value}
-                onClick={() => setResume((prev) => ({ ...prev, color: idx }))}
-                className={`h-7 w-7 cursor-pointer rounded-full border-2 ${
-                  idx === resume.color ? "border-neutral-900" : "border-white"
-                }`}
-                style={{ backgroundColor: color.value }}
-                aria-label={`Select ${color.name} color`}
-              />
-            ))}
+            <div className="h-20 w-px bg-neutral-300" />
+
+            <div className="flex gap-2.5">
+              {resume_color.map((color, idx) => (
+                <button
+                  key={color.value}
+                  onClick={() => setResume((prev) => ({ ...prev, color: idx }))}
+                  className={`h-7 w-7 cursor-pointer rounded-full border-2 ${
+                    idx === resume.color ? "border-neutral-900" : "border-white"
+                  }`}
+                  style={{ backgroundColor: color.value }}
+                  aria-label={`Select ${color.name} color`}
+                />
+              ))}
+            </div>
           </div>
         </div>
 

@@ -228,7 +228,7 @@ export function ApplyDialog({
         handleOpenChange(false);
         toast.success("Application submitted successfully");
         setApplyData(initialApplyPayload);
-      } catch (err) {
+      } catch {
         handleOpenChange(true);
         toast.error("Failed to submit application. Please try again.");
       } finally {

@@ -11,12 +11,12 @@ import {
 } from "@/services/socketService";
 import { useAuthStore } from "@/store/auth";
 import {
+  ArrowUp,
   Ellipsis,
+  FileText,
   Heart,
-  ImagePlus,
-  Paperclip,
-  Search,
-  SendHorizontal,
+  Image,
+  Pin,
   Trash2,
   X,
 } from "lucide-react";
@@ -85,7 +85,85 @@ type PendingImageDraft = {
   previewUrl: string;
 };
 
+type SocketClientLike = {
+  connected?: boolean;
+  emit: (
+    event: string,
+    payload?: unknown,
+    callback?: (ack?: { error?: string }) => void,
+  ) => void;
+  on: <T = unknown>(event: string, handler: (payload: T) => void) => void;
+  off: <T = unknown>(event: string, handler: (payload: T) => void) => void;
+  connect: () => void;
+};
+
 const MAX_IMAGE_ATTACHMENTS = 10;
+const escapeRegExp = (value: string) =>
+  value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+const getTypedSocket = (): SocketClientLike | null =>
+  getSocketClient() as SocketClientLike | null;
+
+const getDiscordTileClasses = (total: number, index: number): string => {
+  if (total === 1) return "col-span-6 row-span-6 aspect-[4/3]";
+  if (total === 2) return "col-span-3 row-span-3 aspect-square";
+  if (total === 3) {
+    return index === 0
+      ? "col-span-4 row-span-6 aspect-[4/5]"
+      : "col-span-2 row-span-3 aspect-square";
+  }
+  if (total === 4) return "col-span-3 row-span-3 aspect-square";
+  if (total === 5) {
+    return index < 2
+      ? "col-span-3 row-span-3 aspect-square"
+      : "col-span-2 row-span-3 aspect-square";
+  }
+  return "col-span-2 row-span-2 aspect-square";
+};
+
+const MessageImageGrid = ({ imageUrls }: { imageUrls: string[] }) => {
+  const total = imageUrls.length;
+  if (total === 0) return null;
+
+  return (
+    <div className="mb-2 grid max-w-xl grid-cols-6 gap-1 overflow-hidden rounded-xl border border-border bg-muted/20 p-1">
+      {imageUrls.map((imageUrl, index) => (
+        <div
+          key={`${imageUrl}-${index}`}
+          className={`${getDiscordTileClasses(total, index)} overflow-hidden rounded-md`}
+        >
+          <img
+            src={imageUrl}
+            alt={`Attachment ${index + 1}`}
+            className="h-full w-full object-cover"
+          />
+        </div>
+      ))}
+    </div>
+  );
+};
+
+const renderHighlightedText = (text: string, query: string) => {
+  const normalizedQuery = query.trim();
+  if (!normalizedQuery) return text;
+
+  const parts = text.split(
+    new RegExp(`(${escapeRegExp(normalizedQuery)})`, "gi"),
+  );
+
+  return parts.map((part, index) => {
+    const isMatch = part.toLowerCase() === normalizedQuery.toLowerCase();
+    if (!isMatch) return <span key={`${part}-${index}`}>{part}</span>;
+
+    return (
+      <mark
+        key={`${part}-${index}`}
+        className="rounded-sm bg-yellow-200/80 px-0.5 text-foreground"
+      >
+        {part}
+      </mark>
+    );
+  });
+};
 
 const formatTime = (value?: string | null) => {
   if (!value) return "";
@@ -103,7 +181,9 @@ const mapMessageFromApi = (
   index: number,
 ): ChatMessage => {
   const messageType = message.message_type ?? ChatMessageType.Text;
-  const parsedAttachment = parseAttachmentMessageData(message.message_data ?? "");
+  const parsedAttachment = parseAttachmentMessageData(
+    message.message_data ?? "",
+  );
   const attachmentUrls = (message.attachments ?? [])
     .map((item) => item.url ?? "")
     .filter(Boolean);
@@ -117,7 +197,8 @@ const mapMessageFromApi = (
       : undefined;
 
   const fileUrl =
-    messageType !== ChatMessageType.Text && messageType !== ChatMessageType.Image
+    messageType !== ChatMessageType.Text &&
+    messageType !== ChatMessageType.Image
       ? parsedAttachment?.url
       : undefined;
 
@@ -139,7 +220,8 @@ export default function MessagePage() {
   const authUser = useAuthStore((state) => state.user);
   const currentUserId = authUser?.id ?? "";
   const chatServiceBaseUrl = useMemo(() => {
-    const raw = import.meta.env.VITE_SOCKET_URL?.trim() || "http://localhost:3002";
+    const raw =
+      import.meta.env.VITE_SOCKET_URL?.trim() || "http://localhost:3002";
     return raw.replace(/\/$/, "");
   }, []);
 
@@ -148,14 +230,19 @@ export default function MessagePage() {
   const [selectedThreadId, setSelectedThreadId] = useState("");
   const [draft, setDraft] = useState("");
   const [pendingImages, setPendingImages] = useState<PendingImageDraft[]>([]);
-  const [pendingGenericFile, setPendingGenericFile] = useState<File | null>(null);
+  const [pendingGenericFile, setPendingGenericFile] = useState<File | null>(
+    null,
+  );
   const [attachmentUploading, setAttachmentUploading] = useState(false);
   const [socketConnected, setSocketConnected] = useState(false);
-  const [messagesByThread, setMessagesByThread] = useState<Record<string, ChatMessage[]>>({});
+  const [messagesByThread, setMessagesByThread] = useState<
+    Record<string, ChatMessage[]>
+  >({});
   const [likedMessageIds, setLikedMessageIds] = useState<string[]>([]);
 
   const selectedThreadIdRef = useRef(selectedThreadId);
   const pendingImagesRef = useRef(pendingImages);
+  const composerTextareaRef = useRef<HTMLTextAreaElement | null>(null);
   pendingImagesRef.current = pendingImages;
 
   useEffect(() => {
@@ -164,12 +251,18 @@ export default function MessagePage() {
 
   useEffect(() => {
     return () => {
-      pendingImagesRef.current.forEach((item) => URL.revokeObjectURL(item.previewUrl));
+      pendingImagesRef.current.forEach((item) =>
+        URL.revokeObjectURL(item.previewUrl),
+      );
     };
   }, []);
 
-  const selectedThread = threads.find((thread) => thread.id === selectedThreadId) ?? null;
-  const selectedMessages = selectedThread ? (messagesByThread[selectedThread.id] ?? []) : [];
+  const selectedThread =
+    threads.find((thread) => thread.id === selectedThreadId) ?? null;
+  const selectedMessages = useMemo(
+    () => (selectedThread ? (messagesByThread[selectedThread.id] ?? []) : []),
+    [messagesByThread, selectedThread],
+  );
 
   const visibleThreads = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -191,19 +284,21 @@ export default function MessagePage() {
       return {
         ...prev,
         [threadId]: existing.map((message) =>
-          message.serverId && ids.has(message.serverId) ? { ...message, read: true } : message,
+          message.serverId && ids.has(message.serverId)
+            ? { ...message, read: true }
+            : message,
         ),
       };
     });
 
-    const socket = getSocketClient();
+    const socket = getTypedSocket();
     if (socket?.connected) {
       socket.emit("mark_read", { otherUserId: threadId, messageIds });
     }
   };
 
   useEffect(() => {
-    const socket = getSocketClient();
+    const socket = getTypedSocket();
     if (!socket) return;
 
     const onConnect = () => {
@@ -221,19 +316,30 @@ export default function MessagePage() {
       const receiverId = String(payload.receive_user_id ?? "").trim();
       if (!senderId || !receiverId) return;
 
-      const incomingThreadId = senderId === currentUserId ? receiverId : senderId;
+      const incomingThreadId =
+        senderId === currentUserId ? receiverId : senderId;
       const isMine = senderId === currentUserId;
       const incomingList = messagesByThread[incomingThreadId] ?? [];
-      const mapped = mapMessageFromApi(payload, currentUserId, incomingList.length);
+      const mapped = mapMessageFromApi(
+        payload,
+        currentUserId,
+        incomingList.length,
+      );
 
       setMessagesByThread((prev) => {
         const existing = prev[incomingThreadId] ?? [];
-        if (payload.id && existing.some((message) => message.serverId === payload.id)) {
+        if (
+          payload.id &&
+          existing.some((message) => message.serverId === payload.id)
+        ) {
           return prev;
         }
         return {
           ...prev,
-          [incomingThreadId]: [...existing, { ...mapped, id: existing.length + 1 }],
+          [incomingThreadId]: [
+            ...existing,
+            { ...mapped, id: existing.length + 1 },
+          ],
         };
       });
 
@@ -244,7 +350,10 @@ export default function MessagePage() {
               const isActive = selectedThreadIdRef.current === incomingThreadId;
               return {
                 ...thread,
-                lastMessage: threadPreviewLabel(mapped.messageType, mapped.text),
+                lastMessage: threadPreviewLabel(
+                  mapped.messageType,
+                  mapped.text,
+                ),
                 lastAt: mapped.at,
                 unread: isActive || isMine ? thread.unread : thread.unread + 1,
               };
@@ -254,16 +363,26 @@ export default function MessagePage() {
                 id: incomingThreadId,
                 name: incomingThreadId,
                 role: "User",
-                lastMessage: threadPreviewLabel(mapped.messageType, mapped.text),
+                lastMessage: threadPreviewLabel(
+                  mapped.messageType,
+                  mapped.text,
+                ),
                 lastAt: mapped.at,
-                unread: isMine || selectedThreadIdRef.current === incomingThreadId ? 0 : 1,
+                unread:
+                  isMine || selectedThreadIdRef.current === incomingThreadId
+                    ? 0
+                    : 1,
                 online: false,
               },
               ...prev,
             ],
       );
 
-      if (!isMine && selectedThreadIdRef.current === incomingThreadId && payload.id) {
+      if (
+        !isMine &&
+        selectedThreadIdRef.current === incomingThreadId &&
+        payload.id
+      ) {
         markMessagesAsRead(incomingThreadId, [payload.id]);
       }
     };
@@ -275,7 +394,9 @@ export default function MessagePage() {
         const next: Record<string, ChatMessage[]> = {};
         for (const [threadId, messages] of Object.entries(prev)) {
           next[threadId] = messages.map((message) =>
-            message.serverId && ids.has(message.serverId) ? { ...message, read: true } : message,
+            message.serverId && ids.has(message.serverId)
+              ? { ...message, read: true }
+              : message,
           );
         }
         return next;
@@ -314,7 +435,7 @@ export default function MessagePage() {
   }, [currentUserId, messagesByThread]);
 
   useEffect(() => {
-    const socket = getSocketClient();
+    const socket = getTypedSocket();
     if (!socket?.connected || !selectedThreadId) return;
     socket.emit("join_conversation", { otherUserId: selectedThreadId });
   }, [selectedThreadId]);
@@ -330,7 +451,9 @@ export default function MessagePage() {
         userId: currentUserId,
         limit: "100",
       });
-      const response = await fetch(`${chatServiceBaseUrl}/chat/threads?${params.toString()}`);
+      const response = await fetch(
+        `${chatServiceBaseUrl}/chat/threads?${params.toString()}`,
+      );
       if (!response.ok) throw new Error("Failed to load threads");
       const data = (await response.json()) as ChatThreadApi[];
       const mapped = data.map((thread) => ({
@@ -358,15 +481,24 @@ export default function MessagePage() {
         otherUserId: threadId,
         limit: "100",
       });
-      const response = await fetch(`${chatServiceBaseUrl}/chat/conversation?${params.toString()}`);
+      const response = await fetch(
+        `${chatServiceBaseUrl}/chat/conversation?${params.toString()}`,
+      );
       if (!response.ok) throw new Error("Failed to load conversation");
-      const payload = (await response.json()) as { messages?: ConversationMessageApi[] };
+      const payload = (await response.json()) as {
+        messages?: ConversationMessageApi[];
+      };
       const list = [...(payload.messages ?? [])]
         .reverse()
-        .map((message, index) => mapMessageFromApi(message, currentUserId, index));
+        .map((message, index) =>
+          mapMessageFromApi(message, currentUserId, index),
+        );
       setMessagesByThread((prev) => ({ ...prev, [threadId]: list }));
     } catch {
-      setMessagesByThread((prev) => ({ ...prev, [threadId]: prev[threadId] ?? [] }));
+      setMessagesByThread((prev) => ({
+        ...prev,
+        [threadId]: prev[threadId] ?? [],
+      }));
     }
   };
 
@@ -382,7 +514,10 @@ export default function MessagePage() {
   useEffect(() => {
     if (!selectedThreadId) return;
     const unreadIncomingIds = selectedMessages
-      .filter((message) => message.from === "them" && !message.read && message.serverId)
+      .filter(
+        (message) =>
+          message.from === "them" && !message.read && message.serverId,
+      )
       .map((message) => message.serverId as string);
     if (!unreadIncomingIds.length) return;
     markMessagesAsRead(selectedThreadId, unreadIncomingIds);
@@ -394,7 +529,7 @@ export default function MessagePage() {
     onErrorMessage: string;
   }) => {
     if (!selectedThread || !currentUserId) return;
-    const socket = getSocketClient();
+    const socket = getTypedSocket();
     if (!socket?.connected) return;
 
     socket.emit(
@@ -406,7 +541,6 @@ export default function MessagePage() {
       },
       (ack?: { error?: string }) => {
         if (ack?.error) {
-          // eslint-disable-next-line no-console
           console.error(payload.onErrorMessage, ack.error);
         }
       },
@@ -426,7 +560,10 @@ export default function MessagePage() {
       const errText = await response.text();
       throw new Error(errText || "Upload failed");
     }
-    const data = (await response.json()) as { publicUrl: string; signedUrl?: string };
+    const data = (await response.json()) as {
+      publicUrl: string;
+      signedUrl?: string;
+    };
     const url = data.signedUrl || data.publicUrl;
     if (!url) throw new Error("No upload URL");
     return url;
@@ -507,14 +644,15 @@ export default function MessagePage() {
         removePendingImage(item.id);
       }
     } catch (error) {
-      // eslint-disable-next-line no-console
       console.error(error);
     } finally {
       setAttachmentUploading(false);
     }
   };
 
-  const handleGenericFileInput = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleGenericFileInput = (
+    event: React.ChangeEvent<HTMLInputElement>,
+  ) => {
     const file = event.target.files?.[0];
     event.target.value = "";
     if (!file) return;
@@ -527,7 +665,10 @@ export default function MessagePage() {
     setAttachmentUploading(true);
     try {
       const isImage = pendingGenericFile.type.startsWith("image/");
-      const url = await uploadChatAsset(pendingGenericFile, isImage ? "image" : "file");
+      const url = await uploadChatAsset(
+        pendingGenericFile,
+        isImage ? "image" : "file",
+      );
       const messageType = isImage
         ? ChatMessageType.Image
         : inferMessageTypeFromFile(pendingGenericFile);
@@ -539,7 +680,6 @@ export default function MessagePage() {
       });
       setPendingGenericFile(null);
     } catch (error) {
-      // eslint-disable-next-line no-console
       console.error(error);
     } finally {
       setAttachmentUploading(false);
@@ -570,262 +710,408 @@ export default function MessagePage() {
         return next;
       });
     } catch (error) {
-      // eslint-disable-next-line no-console
       console.error(error);
     }
   };
 
+  const handleSendComposer = async () => {
+    if (attachmentUploading) return;
+    if (pendingImages.length > 0) {
+      await handleSendImages();
+    }
+    if (pendingGenericFile) {
+      await handleSendGenericFile();
+    }
+    if (draft.trim()) {
+      handleSend();
+    }
+  };
+
+  const handleDraftChange = (value: string) => {
+    setDraft(value);
+    const textarea = composerTextareaRef.current;
+    if (!textarea) return;
+    textarea.style.height = "auto";
+    textarea.style.height = `${Math.min(textarea.scrollHeight, 176)}px`;
+  };
+
   return (
     <PageLayout>
-      <div className="h-[calc(100vh-56px)] overflow-hidden bg-background p-4">
-        <section className="h-full overflow-hidden rounded-xl border border-border bg-card">
-          <div className="flex h-full min-h-0">
-            <aside className="w-[340px] border-r border-border">
-              <div className="border-b border-border p-4">
-                <div className="flex items-center justify-between gap-2">
-                  <h1 className="text-xl font-semibold">Messages</h1>
-                  <span
-                    className={`rounded-full px-2 py-1 text-[10px] font-medium ${
-                      socketConnected ? "bg-emerald-100 text-emerald-700" : "bg-muted text-muted-foreground"
-                    }`}
-                  >
-                    {socketConnected ? "Live" : "Offline"}
-                  </span>
-                </div>
-                <div className="relative mt-3">
-                  <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-                  <Input
-                    value={query}
-                    onChange={(event) => setQuery(event.target.value)}
-                    placeholder="Search conversations"
-                    className="pl-9"
-                  />
-                </div>
-              </div>
+      <div className="w-full overflow-y-auto bg-background px-6 py-6">
+        <div className="w-full">
+          <div className="mb-4 mt-4 flex flex-col gap-3 sm:flex-row sm:items-center">
+            <h1 className="text-2xl font-medium">Message</h1>
+            <div className="w-full sm:max-w-72">
+              <Input
+                placeholder="Search"
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+              />
+            </div>
+            <span
+              className={`rounded-full px-2 py-1 text-[10px] font-medium ${
+                socketConnected
+                  ? "bg-emerald-100 text-emerald-700"
+                  : "bg-muted text-muted-foreground"
+              }`}
+            >
+              {socketConnected ? "Live" : "Offline"}
+            </span>
+          </div>
 
-              <div className="h-[calc(100%-90px)] overflow-y-auto">
-                {visibleThreads.map((thread) => (
-                  <button
-                    key={thread.id}
-                    type="button"
-                    onClick={() => {
-                      setSelectedThreadId(thread.id);
-                      setThreads((prev) =>
-                        prev.map((item) => (item.id === thread.id ? { ...item, unread: 0 } : item)),
-                      );
-                    }}
-                    className={`flex w-full items-center gap-3 border-b border-border px-4 py-3 text-left ${
-                      selectedThreadId === thread.id ? "bg-muted/50" : "hover:bg-muted/30"
-                    }`}
-                  >
-                    <div className="h-11 w-11 rounded-full bg-muted" />
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center justify-between gap-2">
-                        <p className="truncate text-sm font-medium">{thread.name}</p>
-                        <span className="text-xs text-muted-foreground">{thread.lastAt}</span>
-                      </div>
-                      <p className="truncate text-xs text-muted-foreground">{thread.lastMessage}</p>
+          <section className="h-[calc(100vh-190px)] min-h-140 overflow-hidden rounded-xl border border-border bg-card">
+            <div className="flex h-full min-h-0">
+              <aside className="w-[35%] min-w-75 border-r border-border">
+                <div className="h-full overflow-y-auto">
+                  {visibleThreads.length === 0 && (
+                    <div className="px-4 py-6 text-sm text-muted-foreground">
+                      No matching chats or messages.
                     </div>
-                    {thread.unread > 0 && (
-                      <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] text-white">
-                        {thread.unread > 99 ? "99+" : thread.unread}
-                      </span>
-                    )}
-                  </button>
-                ))}
-              </div>
-            </aside>
+                  )}
+                  {visibleThreads.map((thread) => {
+                    const isSelected = thread.id === selectedThreadId;
+                    const isUnread = thread.unread > 0;
 
-            <div className="flex min-h-0 flex-1 flex-col">
-              <div className="flex items-center justify-between border-b border-border px-4 py-3">
-                <div className="flex items-center gap-3">
-                  <div className="h-10 w-10 rounded-full bg-muted" />
-                  <div>
-                    <p className="text-base font-semibold">
-                      {selectedThread?.name ?? "Select conversation"}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {selectedThread?.role ?? "No active conversation"}
-                    </p>
-                  </div>
-                </div>
-                <Button variant="ghost" size="icon">
-                  <Ellipsis className="size-5" />
-                </Button>
-              </div>
-
-              <div className="min-h-0 flex-1 space-y-3 overflow-y-auto p-4">
-                {!selectedThread && (
-                  <p className="text-sm text-muted-foreground">Pick a conversation from the left.</p>
-                )}
-                {selectedMessages.map((message) => {
-                  const mine = message.from === "me";
-                  const likeKey = message.serverId ?? String(message.id);
-                  const liked = likedMessageIds.includes(likeKey);
-                  const fileLabel = message.fileName ?? "Download file";
-
-                  return (
-                    <div key={`${message.serverId ?? "local"}-${message.id}`} className={`flex ${mine ? "justify-end" : "justify-start"}`}>
+                    return (
                       <div
-                        className={`group relative max-w-[78%] rounded-2xl px-4 py-2 text-sm ${
-                          mine
-                            ? "rounded-br-md bg-[linear-gradient(90deg,var(--color-main),var(--color-second))] text-white"
-                            : "rounded-bl-md border border-border bg-white text-foreground"
+                        key={thread.id}
+                        className={`group/conv relative border-b border-border transition-colors ${
+                          isSelected
+                            ? "border-l-2 border-l-primary bg-muted/40"
+                            : "hover:bg-muted/20"
                         }`}
                       >
-                        <div className="absolute -top-3 right-2 hidden items-center gap-1 rounded-lg border border-border bg-white p-1 group-hover:flex">
-                          <button
-                            type="button"
-                            onClick={() =>
-                              setLikedMessageIds((prev) =>
-                                prev.includes(likeKey) ? prev.filter((id) => id !== likeKey) : [...prev, likeKey],
-                              )
-                            }
-                            className="rounded p-1 text-muted-foreground hover:bg-muted"
-                          >
-                            <Heart className={`size-3.5 ${liked ? "fill-red-500 text-red-500" : ""}`} />
-                          </button>
-                          {mine && (
-                            <button
-                              type="button"
-                              onClick={() => void handleDeleteMessage(message.serverId)}
-                              className="rounded p-1 text-muted-foreground hover:bg-muted"
-                            >
-                              <Trash2 className="size-3.5" />
-                            </button>
-                          )}
-                        </div>
-
-                        {message.imageUrls && message.imageUrls.length > 0 ? (
-                          <div className="mb-2 grid grid-cols-2 gap-1">
-                            {message.imageUrls.map((url, index) => (
-                              <img
-                                key={`${url}-${index}`}
-                                src={url}
-                                alt={`Attachment ${index + 1}`}
-                                className="max-h-56 rounded-lg object-cover"
-                              />
-                            ))}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedThreadId(thread.id);
+                            setThreads((prev) =>
+                              prev.map((item) =>
+                                item.id === thread.id
+                                  ? { ...item, unread: 0 }
+                                  : item,
+                              ),
+                            );
+                          }}
+                          className="w-full px-4 py-3 pr-10 text-left"
+                        >
+                          <div className="flex items-start gap-3">
+                            <div className="relative shrink-0">
+                              <div className="size-14 rounded-full bg-muted" />
+                              {isUnread && (
+                                <Pin className="absolute -right-1 -top-1 size-3.5 fill-primary text-primary" />
+                              )}
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-center justify-between gap-2">
+                                <p className="text-xl font-medium">
+                                  {renderHighlightedText(thread.name, query)}
+                                </p>
+                                <span className="shrink-0 text-sm text-muted-foreground">
+                                  {thread.lastAt}
+                                </span>
+                              </div>
+                              <p className="truncate text-base text-muted-foreground">
+                                {renderHighlightedText(
+                                  thread.lastMessage,
+                                  query,
+                                )}
+                              </p>
+                            </div>
                           </div>
-                        ) : null}
-
-                        {message.fileUrl ? (
-                          <a
-                            href={message.fileUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className={mine ? "underline text-white" : "underline"}
-                          >
-                            📎 {fileLabel}
-                          </a>
-                        ) : (
-                          <p className="whitespace-pre-wrap wrap-break-word">{message.text}</p>
+                        </button>
+                        {thread.unread > 0 && (
+                          <span className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full bg-primary px-1.5 py-0.5 text-[10px] text-primary-foreground">
+                            {thread.unread > 99 ? "99+" : thread.unread}
+                          </span>
                         )}
-                        <p className={`mt-1 text-right text-[10px] ${mine ? "text-white/80" : "text-muted-foreground"}`}>
-                          {message.at}
-                          {mine ? ` • ${message.read ? "Seen" : "Sent"}` : ""}
+                      </div>
+                    );
+                  })}
+                </div>
+              </aside>
+
+              <div className="flex min-h-0 flex-1 flex-col">
+                <div className="border-b border-border px-4 py-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                      <div className="size-12 rounded-full bg-muted" />
+                      <div>
+                        <h2 className="text-2xl font-medium">
+                          {selectedThread?.name ?? "Select conversation"}
+                        </h2>
+                        <p className="text-sm text-muted-foreground">
+                          {selectedThread?.role ?? "No active conversation"}
                         </p>
                       </div>
                     </div>
-                  );
-                })}
-              </div>
-
-              <div className="border-t border-border p-3">
-                <input
-                  id="jobby-chat-image-upload"
-                  type="file"
-                  accept="image/*"
-                  multiple
-                  className="hidden"
-                  onChange={handleImageInput}
-                  disabled={!selectedThread || !currentUserId || attachmentUploading}
-                />
-                <input
-                  id="jobby-chat-file-upload"
-                  type="file"
-                  className="hidden"
-                  onChange={handleGenericFileInput}
-                  disabled={!selectedThread || !currentUserId || attachmentUploading}
-                />
-
-                {pendingImages.length > 0 && (
-                  <div className="mb-2 flex flex-wrap gap-2 rounded-lg border border-border bg-muted/30 p-2">
-                    {pendingImages.map((item) => (
-                      <div key={item.id} className="relative">
-                        <img src={item.previewUrl} alt={item.file.name} className="h-14 w-14 rounded object-cover" />
-                        <button
-                          type="button"
-                          onClick={() => removePendingImage(item.id)}
-                          className="absolute -right-1 -top-1 rounded-full border border-border bg-white p-0.5"
-                        >
-                          <X className="size-3" />
-                        </button>
-                      </div>
-                    ))}
-                    <Button variant="outline" size="sm" onClick={() => void handleSendImages()} disabled={attachmentUploading}>
-                      Send images
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="text-muted-foreground"
+                    >
+                      <Ellipsis className="size-5" />
                     </Button>
                   </div>
-                )}
+                </div>
 
-                {pendingGenericFile && (
-                  <div className="mb-2 flex items-center justify-between rounded-lg border border-border bg-muted/30 p-2">
-                    <p className="truncate text-xs">📎 {pendingGenericFile.name}</p>
-                    <div className="flex gap-2">
-                      <Button variant="outline" size="sm" onClick={() => void handleSendGenericFile()} disabled={attachmentUploading}>
-                        Send file
-                      </Button>
-                      <Button variant="ghost" size="icon" onClick={() => setPendingGenericFile(null)}>
-                        <X className="size-4" />
-                      </Button>
-                    </div>
-                  </div>
-                )}
+                <div className="no-scrollbar min-h-0 flex-1 overflow-y-auto px-4 py-4">
+                  {!selectedThread && (
+                    <p className="text-sm text-muted-foreground">
+                      Pick a conversation from the left.
+                    </p>
+                  )}
+                  {selectedMessages.map((message) => {
+                    const mine = message.from === "me";
+                    const likeKey = message.serverId ?? String(message.id);
+                    const isMessageLiked = likedMessageIds.includes(likeKey);
+                    const fileLabel = message.fileName ?? "Download file";
 
-                <div className="flex items-center gap-2">
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => document.getElementById("jobby-chat-image-upload")?.click()}
-                    disabled={!selectedThread || !currentUserId || attachmentUploading}
-                  >
-                    <ImagePlus className="size-4" />
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => document.getElementById("jobby-chat-file-upload")?.click()}
-                    disabled={!selectedThread || !currentUserId || attachmentUploading}
-                  >
-                    <Paperclip className="size-4" />
-                  </Button>
-                  <Input
-                    value={draft}
-                    onChange={(event) => setDraft(event.target.value)}
-                    onKeyDown={(event) => {
-                      if (event.key === "Enter" && !event.shiftKey) {
-                        event.preventDefault();
-                        handleSend();
-                      }
-                    }}
-                    placeholder="Type your message..."
-                    disabled={!selectedThread || !currentUserId || attachmentUploading}
+                    return (
+                      <div key={likeKey} className="mb-5">
+                        <div className="group/message relative flex items-start gap-3 rounded-lg px-2 py-2 transition-colors hover:bg-muted/60">
+                          <div className="absolute right-2 top-0 z-10 flex -translate-y-1/2 items-center gap-1 rounded-xl border border-border bg-background p-1 opacity-0 shadow-sm transition-opacity duration-150 group-hover/message:opacity-100">
+                            <button
+                              type="button"
+                              aria-label={
+                                isMessageLiked
+                                  ? "Unlike message"
+                                  : "Like message"
+                              }
+                              onClick={() =>
+                                setLikedMessageIds((prev) =>
+                                  prev.includes(likeKey)
+                                    ? prev.filter((id) => id !== likeKey)
+                                    : [...prev, likeKey],
+                                )
+                              }
+                              className="rounded-md p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                            >
+                              <Heart
+                                className={`size-4 ${
+                                  isMessageLiked
+                                    ? "fill-red-500 text-red-500"
+                                    : "text-muted-foreground"
+                                }`}
+                              />
+                            </button>
+                            {mine && (
+                              <button
+                                type="button"
+                                aria-label="Delete message"
+                                onClick={() =>
+                                  void handleDeleteMessage(message.serverId)
+                                }
+                                className="rounded-md p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                              >
+                                <Trash2 className="size-4" />
+                              </button>
+                            )}
+                            <button
+                              type="button"
+                              aria-label="More message actions"
+                              disabled
+                              className="cursor-not-allowed rounded-md p-1 text-muted-foreground/50"
+                            >
+                              <Ellipsis className="size-4" />
+                            </button>
+                          </div>
+                          <div className="mt-1 size-10 shrink-0 rounded-full bg-muted" />
+                          <div className="min-w-0 flex-1">
+                            <div className="mb-1 flex items-center gap-2">
+                              <p className="text-xl font-medium">
+                                {mine ? "You" : selectedThread?.name}
+                              </p>
+                              <span className="text-xs text-muted-foreground">
+                                {message.at}
+                              </span>
+                            </div>
+
+                            <MessageImageGrid
+                              imageUrls={message.imageUrls ?? []}
+                            />
+
+                            {message.fileUrl ? (
+                              <a
+                                href={message.fileUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="underline"
+                              >
+                                📎 {fileLabel}
+                              </a>
+                            ) : (
+                              <p className="max-w-full whitespace-pre-wrap wrap-anywhere text-lg leading-7 text-foreground">
+                                {renderHighlightedText(message.text, query)}
+                              </p>
+                            )}
+                            {mine && (
+                              <p className="mt-1 text-right text-[10px] text-muted-foreground">
+                                {message.read ? "Seen" : "Sent"}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                <div className="border-t border-border px-4 py-3">
+                  <input
+                    id="jobby-chat-image-upload"
+                    type="file"
+                    multiple
+                    accept="image/*"
+                    className="hidden"
+                    onChange={handleImageInput}
+                    disabled={
+                      !selectedThread || !currentUserId || attachmentUploading
+                    }
                   />
-                  <Button
-                    onClick={handleSend}
-                    disabled={!selectedThread || !currentUserId || attachmentUploading || !draft.trim()}
-                  >
-                    <SendHorizontal className="size-4" />
-                    Send
-                  </Button>
+                  <input
+                    id="jobby-chat-file-upload"
+                    type="file"
+                    className="hidden"
+                    onChange={handleGenericFileInput}
+                    disabled={
+                      !selectedThread || !currentUserId || attachmentUploading
+                    }
+                  />
+                  {pendingImages.length > 0 && (
+                    <div className="mb-3 rounded-xl bg-muted/40 p-2">
+                      <div className="mb-2 flex items-center justify-between">
+                        <p className="text-xs text-muted-foreground">
+                          {pendingImages.length}/{MAX_IMAGE_ATTACHMENTS} photos
+                          selected
+                        </p>
+                      </div>
+                      <div className="grid grid-cols-5 gap-2">
+                        {pendingImages.map((item, index) => (
+                          <div key={item.id} className="relative">
+                            <img
+                              src={item.previewUrl}
+                              alt={`Pending upload ${index + 1}`}
+                              className="h-20 w-full rounded-lg border border-border object-cover"
+                            />
+                            <button
+                              type="button"
+                              aria-label={`Remove selected image ${index + 1}`}
+                              onClick={() => removePendingImage(item.id)}
+                              className="absolute -right-2 -top-2 rounded-full border border-border bg-background p-1 text-foreground"
+                            >
+                              <X className="size-3" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {pendingGenericFile && (
+                    <div className="mb-3 flex items-center justify-between rounded-xl bg-muted/40 px-3 py-2">
+                      <p className="truncate text-xs">
+                        📎 {pendingGenericFile.name}
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => setPendingGenericFile(null)}
+                        className="rounded-full border border-border bg-background p-1 text-foreground"
+                      >
+                        <X className="size-3" />
+                      </button>
+                    </div>
+                  )}
+                  <div className="flex items-end gap-2">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="text-muted-foreground"
+                      onClick={() =>
+                        document
+                          .getElementById("jobby-chat-image-upload")
+                          ?.click()
+                      }
+                      disabled={
+                        !selectedThread || !currentUserId || attachmentUploading
+                      }
+                    >
+                      <Image className="size-5" />
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="text-muted-foreground"
+                      onClick={() =>
+                        document
+                          .getElementById("jobby-chat-file-upload")
+                          ?.click()
+                      }
+                      disabled={
+                        !selectedThread || !currentUserId || attachmentUploading
+                      }
+                    >
+                      <FileText className="size-5" />
+                    </Button>
+                    <div className="flex-1">
+                      <textarea
+                        ref={composerTextareaRef}
+                        rows={1}
+                        placeholder="Aa"
+                        value={draft}
+                        onChange={(event) =>
+                          handleDraftChange(event.target.value)
+                        }
+                        onKeyDown={(event) => {
+                          if (
+                            event.key !== "Enter" ||
+                            event.shiftKey ||
+                            event.nativeEvent.isComposing
+                          ) {
+                            return;
+                          }
+                          event.preventDefault();
+                          void handleSendComposer();
+                        }}
+                        disabled={
+                          !selectedThread ||
+                          !currentUserId ||
+                          attachmentUploading
+                        }
+                        className="border-input focus-visible:border-ring focus-visible:ring-ring/50 mb-[-1.5%] min-h-10 max-h-44 w-full resize-none rounded-3xl border bg-transparent px-4 py-2 leading-6 outline-none transition-[color,box-shadow] focus-visible:ring-[3px]"
+                      />
+                    </div>
+                    <Button
+                      type="button"
+                      variant={
+                        draft.trim() ||
+                        pendingImages.length ||
+                        pendingGenericFile
+                          ? "default"
+                          : "ghost"
+                      }
+                      className={
+                        draft.trim() ||
+                        pendingImages.length ||
+                        pendingGenericFile
+                          ? "gap-1 px-4"
+                          : "gap-1 text-muted-foreground"
+                      }
+                      onClick={() => void handleSendComposer()}
+                      disabled={
+                        !selectedThread || !currentUserId || attachmentUploading
+                      }
+                    >
+                      <ArrowUp className="size-4" />
+                      send
+                    </Button>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
-        </section>
+          </section>
+        </div>
       </div>
     </PageLayout>
   );

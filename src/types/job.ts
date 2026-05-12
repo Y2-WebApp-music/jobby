@@ -46,12 +46,12 @@ export const pageSize = 10;
 export const buildInitialSearchPayload = (): SearchJobPayload => ({
   user_id: "",
   search_text: "",
-  search_type: 0,
+  search_type: null,
   skill: [],
   category: [],
   place: {
-    province_id: 0,
-    district_id: 0,
+    province_id: null,
+    district_id: null,
   },
   type: [],
   option: [],

@@ -83,6 +83,7 @@ function DialogContent({
   variant,
   ...props
 }: DialogContentProps) {
+  void showCloseButton;
   const renderIcon = () => {
     const iconClass =
       "w-8 h-8 text-black animate-in fade-in zoom-in duration-300";
