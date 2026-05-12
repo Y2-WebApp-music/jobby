@@ -25,7 +25,12 @@ import { IoChevronDown } from "react-icons/io5";
 import { useNavigate } from "react-router-dom";
 
 type RegisterStep = 1 | 2 | 3 | 4;
-type RegisterFieldName = "firstName" | "lastName" | "dateOfBirth" | "region" | "tel";
+type RegisterFieldName =
+  | "firstName"
+  | "lastName"
+  | "dateOfBirth"
+  | "region"
+  | "tel";
 type RegisterFieldErrors = Partial<Record<RegisterFieldName, string>>;
 
 const inputClassName =

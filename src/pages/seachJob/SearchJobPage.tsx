@@ -351,7 +351,6 @@ export default function SearchJobPage() {
     if (!user?.id) return;
 
     fetcJobDetail(selectedJobId);
-  
   }, [selectedJobId, setJobs]);
 
   useEffect(() => {
@@ -410,8 +409,8 @@ export default function SearchJobPage() {
 
     try {
       await searchJobService.getSearchJobDetail(id, user.id);
-    } catch (e){
-      console.log('e ',e)
+    } catch (e) {
+      console.log("e ", e);
     }
   };
 
@@ -629,14 +628,14 @@ export default function SearchJobPage() {
                 </div>
               </div>
 
-                <div
-                  ref={skillFilterRef}
-                  onClick={(event) => {
-                    if ((event.target as HTMLElement).closest("button")) return;
-                    setSkillOpen(true);
-                  }}
-                  className="relative flex min-w-0 flex-1 items-center gap-3 rounded-[18px] border border-[#d9d9d9] bg-white px-4 py-2 shadow-[0_2px_14px_rgba(0,0,0,0.09)]"
-                >
+              <div
+                ref={skillFilterRef}
+                onClick={(event) => {
+                  if ((event.target as HTMLElement).closest("button")) return;
+                  setSkillOpen(true);
+                }}
+                className="relative flex min-w-0 flex-1 items-center gap-3 rounded-[18px] border border-[#d9d9d9] bg-white px-4 py-2 shadow-[0_2px_14px_rgba(0,0,0,0.09)]"
+              >
                 <button
                   type="button"
                   onClick={handleScrollToSkillInfo}
@@ -927,8 +926,12 @@ export default function SearchJobPage() {
               <div className="relative -mt-px flex min-h-[52px] items-center justify-center border-t border-[#e5e5e5] bg-white py-2 text-sm">
                 {(() => {
                   const generatePageNumbers = () => {
-                    const pages: (number | "ellipsis-start" | "ellipsis-end")[] = [];
-                    
+                    const pages: (
+                      | number
+                      | "ellipsis-start"
+                      | "ellipsis-end"
+                    )[] = [];
+
                     if (totalPages <= 3) {
                       // Show all pages if 3 or fewer
                       for (let i = 1; i <= totalPages; i++) {
@@ -937,40 +940,42 @@ export default function SearchJobPage() {
                     } else {
                       // Always show first page
                       pages.push(1);
-                      
+
                       // Determine which pages to show around current page
                       const start = Math.max(2, currentPage - 1);
                       const end = Math.min(totalPages - 1, currentPage + 1);
-                      
+
                       // Add ellipsis if there's a gap after page 1
                       if (start > 2) {
                         pages.push("ellipsis-start");
                       }
-                      
+
                       // Add pages around current page
                       for (let i = start; i <= end; i++) {
                         pages.push(i);
                       }
-                      
+
                       // Add ellipsis if there's a gap before last page
                       if (end < totalPages - 1) {
                         pages.push("ellipsis-end");
                       }
-                      
+
                       // Always show last page
                       pages.push(totalPages);
                     }
-                    
+
                     return pages;
                   };
-                  
+
                   return (
                     <Pagination className="flex justify-center">
                       <PaginationContent>
                         <PaginationItem>
                           <button
                             onClick={() =>
-                              updatePayload({ page: Math.max(0, currentPage - 2) })
+                              updatePayload({
+                                page: Math.max(0, currentPage - 2),
+                              })
                             }
                             disabled={currentPage === 1}
                             className="inline-flex items-center gap-1 rounded-full px-2 py-1 text-slate-600 hover:bg-slate-100 disabled:opacity-40"
@@ -980,21 +985,26 @@ export default function SearchJobPage() {
                             Previous
                           </button>
                         </PaginationItem>
-                        
+
                         {generatePageNumbers().map((page, idx) => {
-                          if (page === "ellipsis-start" || page === "ellipsis-end") {
+                          if (
+                            page === "ellipsis-start" ||
+                            page === "ellipsis-end"
+                          ) {
                             return (
                               <PaginationItem key={`${page}-${idx}`}>
                                 <PaginationEllipsis />
                               </PaginationItem>
                             );
                           }
-                          
+
                           const isActive = page === currentPage;
                           return (
                             <PaginationItem key={page}>
                               <button
-                                onClick={() => updatePayload({ page: page - 1 })}
+                                onClick={() =>
+                                  updatePayload({ page: page - 1 })
+                                }
                                 className={cn(
                                   "h-8 w-8 rounded-lg text-sm flex items-center justify-center",
                                   isActive
@@ -1008,7 +1018,7 @@ export default function SearchJobPage() {
                             </PaginationItem>
                           );
                         })}
-                        
+
                         <PaginationItem>
                           <button
                             onClick={() =>

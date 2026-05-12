@@ -24,7 +24,9 @@ import Thumbnail from "@/assets/Thumbnail.svg";
 import { Button } from "@/components/ui/button";
 import type { ApplicationItem } from "@/types/profile";
 import PageLayout from "@/components/layout/PageLayout";
-import profileService, { type UserProfileItem } from "@/services/profileService";
+import profileService, {
+  type UserProfileItem,
+} from "@/services/profileService";
 import { useAuthStore } from "@/store/auth";
 import { toast } from "sonner";
 
@@ -125,10 +127,8 @@ const mapUserProfileToProfileForm = (
   moo: profile.address?.moo ?? "",
   soi: profile.address?.soi ?? "",
   street: profile.address?.street ?? "",
-  province:
-    profile.address?.province_eng ?? profile.address?.province_th ?? "",
-  district:
-    profile.address?.district_eng ?? profile.address?.district_th ?? "",
+  province: profile.address?.province_eng ?? profile.address?.province_th ?? "",
+  district: profile.address?.district_eng ?? profile.address?.district_th ?? "",
   subDistrict:
     profile.address?.sub_district_eng ?? profile.address?.sub_district_th ?? "",
   postalCode: profile.address?.postal_code
@@ -446,9 +446,7 @@ export default function Profile() {
         setUserSkills(
           Array.from(
             new Set(
-              (profile.skills ?? [])
-                .map((skill) => skill.name)
-                .filter(Boolean),
+              (profile.skills ?? []).map((skill) => skill.name).filter(Boolean),
             ),
           ),
         );

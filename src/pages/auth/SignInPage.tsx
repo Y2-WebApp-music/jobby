@@ -85,7 +85,7 @@ export default function SignInPage() {
     setLoading(true);
     try {
       const res = (await authClient.signUp.email({
-        name:'',
+        name: "",
         email,
         password,
       })) as { error?: { message?: string } };
@@ -192,7 +192,9 @@ export default function SignInPage() {
                   <button
                     type="button"
                     onClick={() => setShowPassword((prev) => !prev)}
-                    aria-label={showPassword ? "Hide password" : "Show password"}
+                    aria-label={
+                      showPassword ? "Hide password" : "Show password"
+                    }
                     className="absolute top-1/2 right-4 -translate-y-1/2 cursor-pointer text-[#9a9a9a] transition-colors hover:text-[#6f6f6f]"
                   >
                     {showPassword ? (
@@ -218,9 +220,7 @@ export default function SignInPage() {
                     />
                     <button
                       type="button"
-                      onClick={() =>
-                        setShowConfirmPassword((prev) => !prev)
-                      }
+                      onClick={() => setShowConfirmPassword((prev) => !prev)}
                       aria-label={
                         showConfirmPassword
                           ? "Hide confirm password"
