@@ -93,7 +93,7 @@ const mapSearchResultToJob = (item: SearchJobResult): Job => ({
   aboutTitle: "About this job",
   companyDescription: "",
   extraDescription: "",
-  matchSkillCount: item.match_skill_count,
+  matchSkillCount: item.match_skill_count ?? 0,
   viewed: item.is_viewed,
 });
 
@@ -152,7 +152,7 @@ export default function SearchJobPage() {
   const [loadingJobs, setLoadingJobs] = useState(false);
   const [loadingApply, setLoadingApply] = useState(false);
 
-  const currentPage = searchPayload.page + 1;
+  const currentPage = searchPayload.page ? searchPayload.page + 1 : 1;
   const filterMode = sortTypeToMode(searchPayload.sort_type);
   const selectedSkillIds = useMemo(
     () => new Set(searchPayload.skill),
@@ -314,7 +314,7 @@ export default function SearchJobPage() {
               .map((item) => item.id),
           ),
         );
-        setTotalPages(Math.max(1, response.data.total_page));
+        setTotalPages(Math.max(1, response.data.total_page ?? 0));
         setSelectedJobId((prev) => {
           if (prev && nextJobs.some((job) => job.id === prev)) return prev;
           return nextJobs[0]?.id ?? null;
@@ -342,49 +342,10 @@ export default function SearchJobPage() {
 
   useEffect(() => {
     if (!selectedJobId) return;
+    if (!user?.id) return;
 
-    let cancelled = false;
-
-    const loadJobDetail = async () => {
-      try {
-        const response =
-          await searchJobService.getSearchJobDetail(selectedJobId);
-        if (cancelled) return;
-
-        setJobs((prev) =>
-          prev.map((job) =>
-            job.id === selectedJobId
-              ? {
-                  ...job,
-                  skills: response.data.skills.map((item) => item.name),
-                  category:
-                    response.data.categories
-                      .map((item) => item.text_eng)
-                      .join(", ") || job.category,
-                  workType:
-                    response.data.work_types
-                      .map((item) => item.text_eng)
-                      .join(", ") || job.workType,
-                  workOption:
-                    response.data.work_options
-                      .map((item) => item.text_eng)
-                      .join(", ") || job.workOption,
-                  companyDescription: response.data.description ?? "",
-                  extraDescription: response.data.description_rtf ?? "",
-                }
-              : job,
-          ),
-        );
-      } catch {
-        return;
-      }
-    };
-
-    void loadJobDetail();
-
-    return () => {
-      cancelled = true;
-    };
+    fetcJobDetail(selectedJobId);
+  
   }, [selectedJobId, setJobs]);
 
   useEffect(() => {
@@ -430,7 +391,7 @@ export default function SearchJobPage() {
     });
   };
 
-  const handleSelect = async (id: string) => {
+  const fetcJobDetail = async (id: string) => {
     setSelectedJobId(id);
     setViewed((prev) => {
       if (prev.has(id)) return prev;
@@ -442,9 +403,9 @@ export default function SearchJobPage() {
     if (!user?.id) return;
 
     try {
-      await searchJobService.viewedJob(user.id, id);
-    } catch {
-      return;
+      await searchJobService.getSearchJobDetail(id, user.id);
+    } catch (e){
+      console.log('e ',e)
     }
   };
 
@@ -627,7 +588,7 @@ export default function SearchJobPage() {
                 </Combobox>
                 <div className="relative shrink-0">
                   <select
-                    value={searchPayload.search_type}
+                    value={searchPayload.search_type ?? ""}
                     onChange={(e) =>
                       updatePayload({
                         search_type: Number(e.target.value) as SearchTypeCode,
@@ -644,7 +605,7 @@ export default function SearchJobPage() {
                     )}
                   >
                     {searchTypeOptions.map((option) => (
-                      <option key={option.value} value={option.value}>
+                      <option key={option.value} value={option.value ?? ""}>
                         {option.label}
                       </option>
                     ))}
@@ -755,7 +716,7 @@ export default function SearchJobPage() {
                     value: String(option.id),
                   }),
                 )}
-                value={searchPayload.category.map((id) => String(id))}
+                value={searchPayload.category?.map((id) => String(id)) ?? []}
                 onValueChange={(vals) =>
                   updatePayload({
                     category: vals.map((value) => Number(value)),
@@ -811,7 +772,7 @@ export default function SearchJobPage() {
                     value: String(option.id),
                   }),
                 )}
-                value={searchPayload.type.map((id) => String(id))}
+                value={searchPayload.type?.map((id) => String(id)) ?? []}
                 onValueChange={(vals) =>
                   updatePayload({
                     type: vals.map((value) => Number(value)),
@@ -834,7 +795,7 @@ export default function SearchJobPage() {
                     value: String(option.id),
                   }),
                 )}
-                value={searchPayload.option.map((id) => String(id))}
+                value={searchPayload.option?.map((id) => String(id)) ?? []}
                 onValueChange={(vals) =>
                   updatePayload({
                     option: vals.map((value) => Number(value)),
@@ -897,7 +858,7 @@ export default function SearchJobPage() {
                     return (
                       <Card
                         key={job.id}
-                        onClick={() => void handleSelect(job.id)}
+                        onClick={() => setSelectedJobId(job.id)}
                         className={cn(
                           "group relative w-full cursor-pointer rounded-none border-x-0 border-b border-t-0 border-[#e5e5e5] bg-white transition",
                           isSelected ? "bg-[#fafafa]" : "hover:bg-[#fcfcfc]",
