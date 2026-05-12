@@ -85,9 +85,23 @@ type PendingImageDraft = {
   previewUrl: string;
 };
 
+type SocketClientLike = {
+  connected?: boolean;
+  emit: (
+    event: string,
+    payload?: unknown,
+    callback?: (ack?: { error?: string }) => void,
+  ) => void;
+  on: <T = unknown>(event: string, handler: (payload: T) => void) => void;
+  off: <T = unknown>(event: string, handler: (payload: T) => void) => void;
+  connect: () => void;
+};
+
 const MAX_IMAGE_ATTACHMENTS = 10;
 const escapeRegExp = (value: string) =>
   value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+const getTypedSocket = (): SocketClientLike | null =>
+  getSocketClient() as SocketClientLike | null;
 
 const getDiscordTileClasses = (total: number, index: number): string => {
   if (total === 1) return "col-span-6 row-span-6 aspect-[4/3]";
@@ -245,9 +259,10 @@ export default function MessagePage() {
 
   const selectedThread =
     threads.find((thread) => thread.id === selectedThreadId) ?? null;
-  const selectedMessages = selectedThread
-    ? (messagesByThread[selectedThread.id] ?? [])
-    : [];
+  const selectedMessages = useMemo(
+    () => (selectedThread ? (messagesByThread[selectedThread.id] ?? []) : []),
+    [messagesByThread, selectedThread],
+  );
 
   const visibleThreads = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -276,14 +291,14 @@ export default function MessagePage() {
       };
     });
 
-    const socket = getSocketClient() as any;
+    const socket = getTypedSocket();
     if (socket?.connected) {
       socket.emit("mark_read", { otherUserId: threadId, messageIds });
     }
   };
 
   useEffect(() => {
-    const socket = getSocketClient() as any;
+    const socket = getTypedSocket();
     if (!socket) return;
 
     const onConnect = () => {
@@ -420,7 +435,7 @@ export default function MessagePage() {
   }, [currentUserId, messagesByThread]);
 
   useEffect(() => {
-    const socket = getSocketClient() as any;
+    const socket = getTypedSocket();
     if (!socket?.connected || !selectedThreadId) return;
     socket.emit("join_conversation", { otherUserId: selectedThreadId });
   }, [selectedThreadId]);
@@ -514,7 +529,7 @@ export default function MessagePage() {
     onErrorMessage: string;
   }) => {
     if (!selectedThread || !currentUserId) return;
-    const socket = getSocketClient() as any;
+    const socket = getTypedSocket();
     if (!socket?.connected) return;
 
     socket.emit(
@@ -526,7 +541,6 @@ export default function MessagePage() {
       },
       (ack?: { error?: string }) => {
         if (ack?.error) {
-          // eslint-disable-next-line no-console
           console.error(payload.onErrorMessage, ack.error);
         }
       },
@@ -630,7 +644,6 @@ export default function MessagePage() {
         removePendingImage(item.id);
       }
     } catch (error) {
-      // eslint-disable-next-line no-console
       console.error(error);
     } finally {
       setAttachmentUploading(false);
@@ -667,7 +680,6 @@ export default function MessagePage() {
       });
       setPendingGenericFile(null);
     } catch (error) {
-      // eslint-disable-next-line no-console
       console.error(error);
     } finally {
       setAttachmentUploading(false);
@@ -698,7 +710,6 @@ export default function MessagePage() {
         return next;
       });
     } catch (error) {
-      // eslint-disable-next-line no-console
       console.error(error);
     }
   };

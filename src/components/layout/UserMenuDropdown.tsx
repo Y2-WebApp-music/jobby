@@ -32,9 +32,8 @@ export default function UserMenuDropdown({
       await authClient.signOut();
       clearAuthStore();
       window.location.replace("/");
-    } catch (err: any) {
+    } catch (err: unknown) {
       // keep the user on the page and show an error / retry option
-      // eslint-disable-next-line no-console
       console.error("Sign out failed", err);
     }
   };

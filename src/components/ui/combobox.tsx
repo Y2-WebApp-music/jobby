@@ -37,14 +37,18 @@ function ComboboxTrigger({
 }
 
 function ComboboxClear({ className, ...props }: ComboboxPrimitive.Clear.Props) {
-  const handleClick = (e: any) => {
+  const clearProps = props as {
+    onClick?: (event: React.MouseEvent<HTMLButtonElement>) => void;
+  };
+
+  const handleClick = (event: React.MouseEvent<HTMLButtonElement>) => {
     try {
       window.dispatchEvent(new CustomEvent("combobox-clear"));
     } catch {
       /* ignore */
     }
-    if (props && typeof (props as any).onClick === "function") {
-      (props as any).onClick(e);
+    if (typeof clearProps.onClick === "function") {
+      clearProps.onClick(event);
     }
   };
 

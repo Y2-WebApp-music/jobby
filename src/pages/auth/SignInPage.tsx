@@ -31,7 +31,6 @@ export default function SignInPage() {
         newUserCallbackURL: callback,
       });
     } catch (err) {
-      // eslint-disable-next-line no-console
       console.error("Google sign-in failed", err);
       setErrorMsg("Google sign-in failed");
     } finally {
@@ -65,7 +64,6 @@ export default function SignInPage() {
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Sign in failed";
       setErrorMsg(message);
-      // eslint-disable-next-line no-console
       console.error("Email sign-in failed", err);
     } finally {
       setLoading(false);
@@ -101,7 +99,6 @@ export default function SignInPage() {
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Sign up failed";
       setErrorMsg(message);
-      // eslint-disable-next-line no-console
       console.error("Email sign-up failed", err);
     } finally {
       setLoading(false);
