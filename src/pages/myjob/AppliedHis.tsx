@@ -175,12 +175,7 @@ export default function MyJobsPage() {
   const jobListRef = useRef<HTMLDivElement | null>(null);
 
   const rawJobView = searchParams.get("view");
-  const jobView: JobView =
-    rawJobView === "saved" ||
-    rawJobView === "applied" ||
-    rawJobView === "archived"
-      ? rawJobView
-      : "saved";
+  const jobView: JobView = parseJobView(rawJobView);
 
   const selectedJob = useMemo(
     () => jobs.find((job) => job.id === selectedJobId) ?? jobs[0] ?? null,

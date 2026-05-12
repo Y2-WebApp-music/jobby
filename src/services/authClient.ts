@@ -2,7 +2,9 @@ import { createAuthClient } from "better-auth/client";
 import { useAuthStore } from "@/store/auth";
 
 const raw = import.meta.env.VITE_BETTER_AUTH_URL ?? "";
-const proxyTarget = (import.meta.env.VITE_BETTER_AUTH_PROXY_TARGET ?? "").trim();
+const proxyTarget = (
+  import.meta.env.VITE_BETTER_AUTH_PROXY_TARGET ?? ""
+).trim();
 const normalizedProxyTarget = proxyTarget.replace(/\/+$/, "");
 const baseURL = raw.startsWith("/")
   ? normalizedProxyTarget

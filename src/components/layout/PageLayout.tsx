@@ -61,14 +61,13 @@ export default function PageLayout({
   const navigate = useNavigate();
   const location = useLocation();
   const user = useAuthStore((state) => state.user);
-  const forceGuestNav = useAuthStore((state) => state.forceGuestNav);
 
   const isSignedIn =
     navView === "guest"
       ? false
       : navView === "auto"
-        ? user !== null && !forceGuestNav
-        : !forceGuestNav;
+        ? user !== null
+        : true;
   const renderNavLink = (item: NavItem) => {
     const active = getNavItemActiveState(location.pathname, item);
 

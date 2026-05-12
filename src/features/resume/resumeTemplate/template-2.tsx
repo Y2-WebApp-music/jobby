@@ -108,7 +108,10 @@ const Template2: React.FC<Props> = ({ resume }) => {
         <main className="px-7 pb-7 pt-[22px]">
           {experience.length > 0 && (
             <section className="mb-[18px]">
-              <div className="text-[15px] font-semibold" style={{ color: accentColor }}>
+              <div
+                className="text-[15px] font-semibold"
+                style={{ color: accentColor }}
+              >
                 Experience
               </div>
               {experience.map((e, idx) => (
@@ -142,7 +145,10 @@ const Template2: React.FC<Props> = ({ resume }) => {
 
           {projects.length > 0 && (
             <section className="mb-[18px]">
-              <div className="text-[15px] font-semibold" style={{ color: accentColor }}>
+              <div
+                className="text-[15px] font-semibold"
+                style={{ color: accentColor }}
+              >
                 Projects
               </div>
               {projects.map((p, idx) => (
@@ -176,7 +182,10 @@ const Template2: React.FC<Props> = ({ resume }) => {
 
           {achievements.length > 0 && (
             <section className="mb-[18px]">
-              <div className="text-[15px] font-semibold" style={{ color: accentColor }}>
+              <div
+                className="text-[15px] font-semibold"
+                style={{ color: accentColor }}
+              >
                 Achievements
               </div>
               {achievements.map((a, idx) => (
@@ -212,7 +221,10 @@ const Template2: React.FC<Props> = ({ resume }) => {
 
           {miscellaneous.length > 0 && (
             <section>
-              <div className="text-[15px] font-semibold" style={{ color: accentColor }}>
+              <div
+                className="text-[15px] font-semibold"
+                style={{ color: accentColor }}
+              >
                 Miscellaneous
               </div>
               {miscellaneous.map((item, idx) => (
@@ -231,7 +243,10 @@ const Template2: React.FC<Props> = ({ resume }) => {
         <aside className="border-l border-c-e0e0e0 pb-7 pl-[22px] pr-[22px] pt-[22px]">
           {education.length > 0 && (
             <section className="mb-4">
-              <div className="text-[14px] font-semibold" style={{ color: accentColor }}>
+              <div
+                className="text-[14px] font-semibold"
+                style={{ color: accentColor }}
+              >
                 Education
               </div>
               {education.map((e, idx) => (
@@ -253,7 +268,10 @@ const Template2: React.FC<Props> = ({ resume }) => {
 
           {skills.length > 0 && (
             <section className="mb-4">
-              <div className="text-[14px] font-semibold" style={{ color: accentColor }}>
+              <div
+                className="text-[14px] font-semibold"
+                style={{ color: accentColor }}
+              >
                 Skills
               </div>
               <div className="mt-2 flex flex-wrap gap-1.5 text-[12px]">
