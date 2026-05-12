@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { RiPencilFill } from "react-icons/ri";
 import { CgClose } from "react-icons/cg";
 import ImageEditor from "../../features/profile/dialog/ImageEditorModel";
@@ -14,7 +14,6 @@ import WorkexpDialog, {
 } from "../../features/profile/dialog/WorkexpDialog";
 import AddskillDialog from "../../features/profile/dialog/AddskillDialog";
 import SkillinfoDialog from "../../features/profile/dialog/SkillinfoDialog";
-// import UserskillDialog from "../../features/profile/dialog/UserskillDialog";
 import AchievementDialog, {
   type AchievementItem,
 } from "../../features/profile/dialog/AchievementDialog";
@@ -23,16 +22,11 @@ import ProjectDialog, {
 } from "../../features/profile/dialog/ProjectDialog";
 import Thumbnail from "@/assets/Thumbnail.svg";
 import { Button } from "@/components/ui/button";
-import {
-  defaultAboutText,
-  defaultAchievements,
-  defaultApplications,
-  defaultEducation,
-  defaultProfileForm,
-  defaultProjects,
-  defaultWorkExperience,
-} from "@/types/profile";
+import type { ApplicationItem } from "@/types/profile";
 import PageLayout from "@/components/layout/PageLayout";
+import profileService, { type UserProfileItem } from "@/services/profileService";
+import { useAuthStore } from "@/store/auth";
+import { toast } from "sonner";
 
 const MAX_IMAGE_SIZE_BYTES = 15 * 1024 * 1024;
 
@@ -56,6 +50,177 @@ const OverlayDialogID = {
 type DialogId = (typeof DialogID)[keyof typeof DialogID];
 type OverlayDialogId = (typeof OverlayDialogID)[keyof typeof OverlayDialogID];
 
+const createEmptyProfileForm = (): ProfileFormValue => ({
+  firstName: "",
+  lastName: "",
+  region: "THA",
+  tel: "",
+  email: "",
+  addressLine: "",
+  addressNo: "",
+  moo: "",
+  soi: "",
+  street: "",
+  province: "",
+  district: "",
+  subDistrict: "",
+  postalCode: "",
+  links: [],
+});
+
+const formatDisplayDate = (value: string) => {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleDateString("en-GB", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
+};
+
+const formatDateRange = (startDate: string, endDate: string) => {
+  const start = formatDisplayDate(startDate);
+  const end = formatDisplayDate(endDate);
+
+  if (!start && !end) return "";
+  return `${start || "-"} - ${end || "Present"}`;
+};
+
+const toNumericId = (value: string, fallback: number) => {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : fallback;
+};
+
+const normalizePhone = (value: string) => value.replace(/\D/g, "");
+
+const inferRegionCode = (profile: UserProfileItem) => {
+  const country =
+    `${profile.address?.country_eng ?? ""} ${profile.address?.country_th ?? ""}`.toLowerCase();
+  const phone = normalizePhone(profile.phone ?? "");
+
+  if (phone.startsWith("81") || country.includes("japan")) return "JPN";
+  if (phone.startsWith("86") || country.includes("china")) return "CHN";
+  if (
+    phone.startsWith("44") ||
+    country.includes("united kingdom") ||
+    country.includes("england")
+  ) {
+    return "GBR";
+  }
+
+  return "THA";
+};
+
+const mapUserProfileToProfileForm = (
+  profile: UserProfileItem,
+): ProfileFormValue => ({
+  firstName: profile.first_name ?? "",
+  lastName: profile.last_name ?? "",
+  region: inferRegionCode(profile),
+  tel: normalizePhone(profile.phone ?? ""),
+  email: profile.email ?? "",
+  addressLine: profile.address?.address_line ?? "",
+  addressNo: profile.address?.no ?? "",
+  moo: profile.address?.moo ?? "",
+  soi: profile.address?.soi ?? "",
+  street: profile.address?.street ?? "",
+  province:
+    profile.address?.province_eng ?? profile.address?.province_th ?? "",
+  district:
+    profile.address?.district_eng ?? profile.address?.district_th ?? "",
+  subDistrict:
+    profile.address?.sub_district_eng ?? profile.address?.sub_district_th ?? "",
+  postalCode: profile.address?.postal_code
+    ? String(profile.address.postal_code)
+    : "",
+  links: (profile.contact ?? []).map((item, index) => ({
+    id: index + 1,
+    label: item.label ?? "",
+    url: item.link ?? "",
+  })),
+});
+
+const mapEducationItems = (
+  items: UserProfileItem["education"] = [],
+): EducationItem[] =>
+  items.map((item, index) => ({
+    id: toNumericId(item.id, index + 1),
+    school: item.school_name ?? "",
+    degree: item.degree ?? "",
+    fieldOfStudy: item.field_of_study ?? "",
+    startDate: item.start_date ?? "",
+    endDate: item.end_date ?? "",
+    gpax: item.gpax ?? "",
+    date: formatDateRange(item.start_date, item.end_date),
+  }));
+
+const mapWorkExperienceItems = (
+  items: UserProfileItem["work_experience"] = [],
+): WorkExperienceItem[] =>
+  items.map((item, index) => ({
+    id: toNumericId(item.id, index + 1),
+    position: item.position ?? "",
+    company: item.company_name ?? "",
+    workType: item.work_type ?? "",
+    skills: (item.skills ?? []).map((skill) => skill.name).filter(Boolean),
+    startDate: item.start_date ?? "",
+    endDate: item.end_date ?? "",
+    isFinished: Boolean(item.end_date),
+    date: formatDateRange(item.start_date, item.end_date),
+  }));
+
+const mapProjectItems = (
+  items: UserProfileItem["projects"] = [],
+): ProjectItem[] =>
+  items.map((item, index) => ({
+    id: toNumericId(item.id, index + 1),
+    name: item.name ?? "",
+    description: item.description ?? "",
+    skills: (item.skills ?? []).map((skill) => skill.name).filter(Boolean),
+    startDate: item.start_date ?? "",
+    endDate: item.end_date ?? "",
+    images: (item.images ?? []).map((image) => image.image).filter(Boolean),
+    date: formatDateRange(item.start_date, item.end_date),
+  }));
+
+const mapAchievementItems = (
+  items: UserProfileItem["achievement"] = [],
+): AchievementItem[] =>
+  items.map((item, index) => ({
+    id: toNumericId(item.id, index + 1),
+    name: item.name ?? "",
+    from: item.project_name ?? "",
+    description: item.description ?? "",
+    skills: (item.skills ?? []).map((skill) => skill.name).filter(Boolean),
+    images: (item.images ?? []).map((image) => image.image).filter(Boolean),
+    date: formatDisplayDate(item.date),
+  }));
+
+const mapApplications = (
+  items: Awaited<ReturnType<typeof profileService.getDynamicInfo>>["data"],
+): ApplicationItem[] =>
+  items.map((item, index) => ({
+    id: toNumericId(item.job_id, index + 1),
+    title: item.name ?? "",
+    company: item.company_name ?? "",
+    note: item.applied_date
+      ? `Applied ${formatDisplayDate(item.applied_date)}`
+      : "Applied recently",
+  }));
+
+const buildLocationLabel = (profileForm: ProfileFormValue) => {
+  const location = [
+    profileForm.subDistrict,
+    profileForm.district,
+    profileForm.province,
+  ]
+    .filter(Boolean)
+    .join(", ");
+
+  return location || "Bangkok, Thailand";
+};
+
 function SectionHeader({
   title,
   onEdit,
@@ -65,13 +230,13 @@ function SectionHeader({
 }) {
   return (
     <div className="flex items-center justify-between">
-      <h3 className="text-sm font-semibold text-slate-900 break-words">
+      <h3 className="break-words text-sm font-semibold text-slate-900">
         {title}
       </h3>
       <button
         type="button"
         onClick={onEdit}
-        className="w-7 h-7 rounded-full bg-slate-100 text-slate-500 hover:bg-slate-200"
+        className="h-7 w-7 rounded-full bg-slate-100 text-slate-500 hover:bg-slate-200"
         aria-label={`Edit ${title}`}
       >
         <RiPencilFill className="mx-auto h-4 w-4" />
@@ -103,15 +268,15 @@ function CardItem({
     >
       <div className="h-11 w-11 shrink-0 rounded-full bg-slate-200" />
       <div className="min-w-0">
-        <div className="text-sm font-semibold text-slate-900 break-words">
+        <div className="break-words text-sm font-semibold text-slate-900">
           {title}
         </div>
         <div
-          className={`text-xs text-slate-600 break-words ${subtitleClassName}`}
+          className={`break-words text-xs text-slate-600 ${subtitleClassName}`}
         >
           {subtitle}
         </div>
-        <div className="text-xs text-slate-500 break-words">{meta}</div>
+        <div className="break-words text-xs text-slate-500">{meta}</div>
       </div>
     </button>
   );
@@ -119,11 +284,15 @@ function CardItem({
 
 function SkillApplicationSection({
   skills,
+  applications,
+  isLoadingApplications = false,
   onNewSkill,
   onOpenSkillInfo,
   onShowMore,
 }: {
   skills: string[];
+  applications: ApplicationItem[];
+  isLoadingApplications?: boolean;
   onNewSkill: () => void;
   onOpenSkillInfo: (skill: string) => void;
   onShowMore?: () => void;
@@ -132,7 +301,7 @@ function SkillApplicationSection({
     <div className="space-y-6">
       <div className="rounded-2xl border border-slate-100 bg-white p-4">
         <div className="flex items-center justify-between">
-          <h3 className="text-sm font-semibold text-slate-900 break-words">
+          <h3 className="break-words text-sm font-semibold text-slate-900">
             Your Skill
           </h3>
           <Button
@@ -159,7 +328,7 @@ function SkillApplicationSection({
           <button
             type="button"
             onClick={onShowMore}
-            className="mt-3 block mx-auto text-xs text-main"
+            className="mx-auto mt-3 block text-xs text-main"
           >
             Show more
           </button>
@@ -167,35 +336,45 @@ function SkillApplicationSection({
       </div>
 
       <div className="rounded-2xl border border-slate-100 bg-white p-4">
-        <h3 className="text-sm font-semibold text-slate-900 break-words">
+        <h3 className="break-words text-sm font-semibold text-slate-900">
           Your Application
         </h3>
         <div className="mt-3 space-y-3">
-          {defaultApplications.map((app) => (
-            <div
-              key={app.id}
-              className="flex gap-3 rounded-xl border border-slate-100 bg-white p-3"
-            >
-              <div className="h-12 w-12 rounded-2xl bg-slate-300" />
-              <div>
-                <div className="text-sm font-semibold text-slate-900 break-words">
-                  {app.title}
-                </div>
-                <div className="text-xs text-slate-600">{app.company}</div>
-                <div className="text-xs text-slate-500 break-words">
-                  {app.note}
+          {isLoadingApplications ? (
+            <div className="rounded-xl border border-slate-100 bg-slate-50 p-3 text-sm text-slate-500">
+              Loading applications...
+            </div>
+          ) : applications.length > 0 ? (
+            applications.map((app) => (
+              <div
+                key={app.id}
+                className="flex gap-3 rounded-xl border border-slate-100 bg-white p-3"
+              >
+                <div className="h-12 w-12 rounded-2xl bg-slate-300" />
+                <div>
+                  <div className="break-words text-sm font-semibold text-slate-900">
+                    {app.title}
+                  </div>
+                  <div className="text-xs text-slate-600">{app.company}</div>
+                  <div className="break-words text-xs text-slate-500">
+                    {app.note}
+                  </div>
                 </div>
               </div>
+            ))
+          ) : (
+            <div className="rounded-xl border border-slate-100 bg-slate-50 p-3 text-sm text-slate-500">
+              No applications yet.
             </div>
-          ))}
+          )}
         </div>
       </div>
     </div>
   );
 }
 
-// คอมบาย
 export default function Profile() {
+  const user = useAuthStore((state) => state.user);
   const [profileUrl, setProfileUrl] = useState<string | null>(null);
   const [bannerUrl, setBannerUrl] = useState<string>(Thumbnail);
   const [openDialog, setOpenDialog] = useState<DialogId | null>(null);
@@ -215,26 +394,83 @@ export default function Profile() {
   const [projectEditingId, setProjectEditingId] = useState<number | null>(null);
   const [previewProjectId, setPreviewProjectId] = useState<number | null>(null);
   const [projectDirectEditMode, setProjectDirectEditMode] = useState(false);
-  const [aboutText, setAboutText] = useState(defaultAboutText);
-  const [education, setEducation] = useState<EducationItem[]>(defaultEducation);
+  const [aboutText, setAboutText] = useState("");
+  const [education, setEducation] = useState<EducationItem[]>([]);
   const [workExperience, setWorkExperience] = useState<WorkExperienceItem[]>(
-    defaultWorkExperience,
+    [],
   );
-  const [achievements, setAchievements] =
-    useState<AchievementItem[]>(defaultAchievements);
-  const [projects, setProjects] = useState<ProjectItem[]>(defaultProjects);
-  const [profileForm, setProfileForm] =
-    useState<ProfileFormValue>(defaultProfileForm);
+  const [achievements, setAchievements] = useState<AchievementItem[]>([]);
+  const [projects, setProjects] = useState<ProjectItem[]>([]);
+  const [profileForm, setProfileForm] = useState<ProfileFormValue>(
+    createEmptyProfileForm(),
+  );
   const [userSkills, setUserSkills] = useState<string[]>([]);
+  const [applications, setApplications] = useState<ApplicationItem[]>([]);
+  const [isLoadingProfile, setIsLoadingProfile] = useState(false);
   const [editingTarget, setEditingTarget] = useState<
     "profile" | "banner" | null
   >(null);
   const [editingImage, setEditingImage] = useState<string | null>(null);
   const projectImageListRef = useRef<HTMLDivElement | null>(null);
   const achievementImageListRef = useRef<HTMLDivElement | null>(null);
-  // จนถึงนี้
 
   const isDefaultBanner = bannerUrl === Thumbnail;
+  const locationLabel = buildLocationLabel(profileForm);
+
+  useEffect(() => {
+    if (!user?.id) return;
+
+    let cancelled = false;
+
+    const loadProfile = async () => {
+      setIsLoadingProfile(true);
+
+      const [profileResult, dynamicInfoResult] = await Promise.allSettled([
+        profileService.getUserProfile(user.id),
+        profileService.getDynamicInfo(user.id),
+      ]);
+
+      if (cancelled) return;
+
+      if (profileResult.status === "fulfilled") {
+        const profile = profileResult.value.data;
+
+        setProfileUrl(profile.logo || null);
+        setBannerUrl(profile.banner || Thumbnail);
+        setProfileForm(mapUserProfileToProfileForm(profile));
+        setAboutText(profile.about ?? "");
+        setEducation(mapEducationItems(profile.education));
+        setWorkExperience(mapWorkExperienceItems(profile.work_experience));
+        setAchievements(mapAchievementItems(profile.achievement));
+        setProjects(mapProjectItems(profile.projects));
+        setUserSkills(
+          Array.from(
+            new Set(
+              (profile.skills ?? [])
+                .map((skill) => skill.name)
+                .filter(Boolean),
+            ),
+          ),
+        );
+      } else {
+        toast.error("Failed to load profile data");
+      }
+
+      if (dynamicInfoResult.status === "fulfilled") {
+        setApplications(mapApplications(dynamicInfoResult.value.data));
+      } else {
+        setApplications([]);
+      }
+
+      setIsLoadingProfile(false);
+    };
+
+    void loadProfile();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.id]);
 
   const handleSelectImage = (file: File, target: "profile" | "banner") => {
     if (file.size > MAX_IMAGE_SIZE_BYTES) {
@@ -270,6 +506,7 @@ export default function Profile() {
     setPreviewProjectId(projectId);
     setOpenDialog(DialogID.PROJECT_PREVIEW);
   };
+
   const handleOpenAchievementPreview = (achievementId: number) => {
     setPreviewAchievementId(achievementId);
     setOpenDialog(DialogID.ACHIEVEMENT_PREVIEW);
@@ -281,6 +518,7 @@ export default function Profile() {
     const amount = direction === "left" ? -260 : 260;
     el.scrollBy({ left: amount, behavior: "smooth" });
   };
+
   const handleScrollAchievementImages = (direction: "left" | "right") => {
     const el = achievementImageListRef.current;
     if (!el) return;
@@ -292,6 +530,7 @@ export default function Profile() {
     projects.find((item) => item.id === previewProjectId) ?? null;
   const previewAchievement =
     achievements.find((item) => item.id === previewAchievementId) ?? null;
+
   const handleAddProfileSkill = (skill: string) => {
     if (!skill) return;
     setUserSkills((prev) => (prev.includes(skill) ? prev : [...prev, skill]));
@@ -309,7 +548,7 @@ export default function Profile() {
   return (
     <PageLayout>
       <div className="min-h-screen">
-        <div className="relative mt-6 mx-4 w-auto overflow-hidden rounded-[20px] bg-slate-100 aspect-[1411/275] sm:mx-6 sm:mt-8">
+        <div className="relative mx-4 mt-6 aspect-[1411/275] w-auto overflow-hidden rounded-[20px] bg-slate-100 sm:mx-6 sm:mt-8">
           <input
             id="banner-upload"
             type="file"
@@ -330,9 +569,7 @@ export default function Profile() {
 
           <label
             htmlFor="banner-upload"
-            className="absolute inset-0 flex cursor-pointer items-center justify-center
-                    bg-black/50 text-sm font-medium text-white opacity-0
-                    transition-opacity hover:opacity-100"
+            className="absolute inset-0 flex cursor-pointer items-center justify-center bg-black/50 text-sm font-medium text-white opacity-0 transition-opacity hover:opacity-100"
           >
             Upload Banner
           </label>
@@ -387,15 +624,10 @@ export default function Profile() {
                 {profileForm.addressLine ||
                   "Current Education/Current Position"}{" "}
                 <span className="text-slate-400">
-                  (
-                  {profileForm.addressNo ||
-                    "Current Education/Current Position"}
-                  )
+                  ({profileForm.addressNo || "No address number"})
                 </span>
               </p>
-              <p className="text-sm text-slate-500">
-                {profileForm.region || "Bangkok, Thailand"}
-              </p>
+              <p className="text-sm text-slate-500">{locationLabel}</p>
               <div className="mt-3 flex flex-wrap gap-2 text-xs text-slate-600">
                 {[
                   profileForm.email,
@@ -403,14 +635,16 @@ export default function Profile() {
                   ...profileForm.links
                     .map((link) => link.label || link.url)
                     .filter(Boolean),
-                ].map((item) => (
-                  <span
-                    key={item}
-                    className="rounded-full border border-slate-200 bg-white px-3 py-1"
-                  >
-                    {item}
-                  </span>
-                ))}
+                ]
+                  .filter(Boolean)
+                  .map((item) => (
+                    <span
+                      key={item}
+                      className="rounded-full border border-slate-200 bg-white px-3 py-1"
+                    >
+                      {item}
+                    </span>
+                  ))}
               </div>
             </div>
             <Button
@@ -429,13 +663,17 @@ export default function Profile() {
                   onEdit={() => setOpenDialog(DialogID.ABOUT)}
                 />
                 <p className="mt-3 whitespace-pre-line break-all text-sm leading-relaxed text-slate-600">
-                  {aboutText || "No about information yet."}
+                  {isLoadingProfile
+                    ? "Loading profile..."
+                    : aboutText || "No about information yet."}
                 </p>
               </div>
 
               <div className="lg:hidden">
                 <SkillApplicationSection
                   skills={userSkills}
+                  applications={applications}
+                  isLoadingApplications={isLoadingProfile}
                   onNewSkill={() => setOpenDialog(DialogID.SKILL_ADD)}
                   onOpenSkillInfo={handleOpenSkillInfo}
                 />
@@ -552,6 +790,8 @@ export default function Profile() {
               <div className="hidden lg:block">
                 <SkillApplicationSection
                   skills={userSkills}
+                  applications={applications}
+                  isLoadingApplications={isLoadingProfile}
                   onNewSkill={() => setOpenDialog(DialogID.SKILL_ADD)}
                   onOpenSkillInfo={handleOpenSkillInfo}
                 />

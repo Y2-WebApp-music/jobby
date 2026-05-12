@@ -13,6 +13,12 @@ import {
   MultiSelect,
   type MultiSelectOption,
 } from "@/components/ui/multi-select";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+} from "@/components/ui/pagination";
 import SkillinfoDialog from "@/features/profile/dialog/SkillinfoDialog";
 import { ApplyDialog } from "@/features/searchJob/dialogs/ApplyDialog";
 import { cn } from "@/lib/utils";
@@ -623,10 +629,14 @@ export default function SearchJobPage() {
                 </div>
               </div>
 
-              <div
-                ref={skillFilterRef}
-                className="relative flex min-w-0 flex-1 items-center gap-3 rounded-[18px] border border-[#d9d9d9] bg-white px-4 py-2 shadow-[0_2px_14px_rgba(0,0,0,0.09)]"
-              >
+                <div
+                  ref={skillFilterRef}
+                  onClick={(event) => {
+                    if ((event.target as HTMLElement).closest("button")) return;
+                    setSkillOpen(true);
+                  }}
+                  className="relative flex min-w-0 flex-1 items-center gap-3 rounded-[18px] border border-[#d9d9d9] bg-white px-4 py-2 shadow-[0_2px_14px_rgba(0,0,0,0.09)]"
+                >
                 <button
                   type="button"
                   onClick={handleScrollToSkillInfo}
@@ -914,55 +924,110 @@ export default function SearchJobPage() {
                 </div>
               </div>
 
-              <div className="relative -mt-px flex min-h-[52px] items-center border-t border-[#e5e5e5] bg-white py-2 text-sm">
-                <button
-                  className="inline-flex items-center gap-1 rounded-full px-2 py-1 text-slate-600 hover:bg-slate-100 disabled:opacity-40"
-                  onClick={() =>
-                    updatePayload({ page: Math.max(0, currentPage - 2) })
-                  }
-                  disabled={currentPage === 1}
-                  type="button"
-                >
-                  <IoIosArrowBack />
-                  Previous
-                </button>
-
-                <div className="absolute left-1/2 top-1/2 flex -translate-x-1/2 -translate-y-1/2 items-center gap-2">
-                  {Array.from({ length: totalPages }).map((_, idx) => {
-                    const page = idx + 1;
-                    return (
-                      <button
-                        key={page}
-                        onClick={() => updatePayload({ page: page - 1 })}
-                        className={cn(
-                          "h-8 w-8 rounded-lg text-sm",
-                          page === currentPage
-                            ? "bg-[linear-gradient(90deg,var(--color-main),var(--color-second))] text-white"
-                            : "text-slate-600 hover:bg-slate-100",
-                        )}
-                        type="button"
-                      >
-                        {page}
-                      </button>
-                    );
-                  })}
-                </div>
-
-                <div className="ml-auto flex justify-end">
-                  <button
-                    className="inline-flex items-center gap-1 rounded-full px-2 py-1 text-slate-600 hover:bg-slate-100 disabled:opacity-40"
-                    onClick={() =>
-                      updatePayload({
-                        page: Math.min(totalPages - 1, currentPage),
-                      })
+              <div className="relative -mt-px flex min-h-[52px] items-center justify-center border-t border-[#e5e5e5] bg-white py-2 text-sm">
+                {(() => {
+                  const generatePageNumbers = () => {
+                    const pages: (number | "ellipsis-start" | "ellipsis-end")[] = [];
+                    
+                    if (totalPages <= 3) {
+                      // Show all pages if 3 or fewer
+                      for (let i = 1; i <= totalPages; i++) {
+                        pages.push(i);
+                      }
+                    } else {
+                      // Always show first page
+                      pages.push(1);
+                      
+                      // Determine which pages to show around current page
+                      const start = Math.max(2, currentPage - 1);
+                      const end = Math.min(totalPages - 1, currentPage + 1);
+                      
+                      // Add ellipsis if there's a gap after page 1
+                      if (start > 2) {
+                        pages.push("ellipsis-start");
+                      }
+                      
+                      // Add pages around current page
+                      for (let i = start; i <= end; i++) {
+                        pages.push(i);
+                      }
+                      
+                      // Add ellipsis if there's a gap before last page
+                      if (end < totalPages - 1) {
+                        pages.push("ellipsis-end");
+                      }
+                      
+                      // Always show last page
+                      pages.push(totalPages);
                     }
-                    disabled={currentPage === totalPages}
-                    type="button"
-                  >
-                    Next
-                    <IoIosArrowForward />
-                  </button>
-                </div>
+                    
+                    return pages;
+                  };
+                  
+                  return (
+                    <Pagination className="flex justify-center">
+                      <PaginationContent>
+                        <PaginationItem>
+                          <button
+                            onClick={() =>
+                              updatePayload({ page: Math.max(0, currentPage - 2) })
+                            }
+                            disabled={currentPage === 1}
+                            className="inline-flex items-center gap-1 rounded-full px-2 py-1 text-slate-600 hover:bg-slate-100 disabled:opacity-40"
+                            type="button"
+                          >
+                            <IoIosArrowBack />
+                            Previous
+                          </button>
+                        </PaginationItem>
+                        
+                        {generatePageNumbers().map((page, idx) => {
+                          if (page === "ellipsis-start" || page === "ellipsis-end") {
+                            return (
+                              <PaginationItem key={`${page}-${idx}`}>
+                                <PaginationEllipsis />
+                              </PaginationItem>
+                            );
+                          }
+                          
+                          const isActive = page === currentPage;
+                          return (
+                            <PaginationItem key={page}>
+                              <button
+                                onClick={() => updatePayload({ page: page - 1 })}
+                                className={cn(
+                                  "h-8 w-8 rounded-lg text-sm flex items-center justify-center",
+                                  isActive
+                                    ? "bg-[linear-gradient(90deg,var(--color-main),var(--color-second))] text-white"
+                                    : "text-slate-600 hover:bg-slate-100",
+                                )}
+                                type="button"
+                              >
+                                {page}
+                              </button>
+                            </PaginationItem>
+                          );
+                        })}
+                        
+                        <PaginationItem>
+                          <button
+                            onClick={() =>
+                              updatePayload({
+                                page: Math.min(totalPages - 1, currentPage),
+                              })
+                            }
+                            disabled={currentPage === totalPages}
+                            className="inline-flex items-center gap-1 rounded-full px-2 py-1 text-slate-600 hover:bg-slate-100 disabled:opacity-40"
+                            type="button"
+                          >
+                            Next
+                            <IoIosArrowForward />
+                          </button>
+                        </PaginationItem>
+                      </PaginationContent>
+                    </Pagination>
+                  );
+                })()}
               </div>
             </div>
 
