@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import JobbyLogo from "@/assets/icons/JobbyLogologregis.svg?react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import {
   authClient,
   hydrateAuthStoreFromPayload,
@@ -12,7 +12,6 @@ import { FcGoogle } from "react-icons/fc";
 import { IoMdEye, IoMdEyeOff } from "react-icons/io";
 
 export default function SignInPage() {
-  const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -73,13 +72,48 @@ export default function SignInPage() {
     }
   };
 
-  const onSubmit = (e: FormEvent) => {
-    if (mode === "signin") {
-      void onEmailSignIn(e);
+  const onEmailSignUp = async (e?: FormEvent) => {
+    console.log("onEmailSignUp");
+    e?.preventDefault();
+    setErrorMsg(null);
+
+    if (password !== confirmPassword) {
+      setErrorMsg("Passwords do not match");
       return;
     }
-    e.preventDefault();
-    navigate("/register");
+
+    setLoading(true);
+    try {
+      const res = (await authClient.signUp.email({
+        name:'',
+        email,
+        password,
+      })) as { error?: { message?: string } };
+
+      if (res?.error) {
+        setErrorMsg(res.error?.message || "Sign up failed");
+      } else {
+        const hydrated = hydrateAuthStoreFromPayload(res);
+        if (!hydrated) {
+          await hydrateAuthStoreFromSession();
+        }
+        window.location.replace("/register");
+      }
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Sign up failed";
+      setErrorMsg(message);
+      console.error("Email sign-up failed", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const onSubmit = (e: FormEvent) => {
+    if (mode === "signin") {
+      onEmailSignIn(e);
+    } else if (mode === "signup") {
+      onEmailSignUp(e);
+    }
   };
 
   return (
