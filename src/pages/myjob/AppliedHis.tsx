@@ -94,7 +94,7 @@ const gradientOutlineChipClassName =
 const searchInputClassName =
   "h-10 max-w-[220px] rounded-full border border-[#e5e5e5] bg-white px-4 text-sm shadow-[0_2px_10px_rgba(0,0,0,0.06)]";
 
-const mapStatus = (status: number): JobStatus | undefined => {
+const mapStatus = (status: number | null): JobStatus | undefined => {
   if (status === 1) return "inreview";
   if (status === 2) return "interview";
   if (status === 3) return "reject";
@@ -146,7 +146,7 @@ const mapResultToJob = (
     aboutTitle: "About this job",
     companyDescription: "",
     extraDescription: "",
-    matchSkillCount: item.match_skill_count,
+    matchSkillCount: item.match_skill_count ?? 0,
     viewed: item.is_viewed,
     saved: view === "saved",
     applied: view === "applied",
@@ -175,12 +175,7 @@ export default function MyJobsPage() {
   const jobListRef = useRef<HTMLDivElement | null>(null);
 
   const rawJobView = searchParams.get("view");
-  const jobView: JobView =
-    rawJobView === "saved" ||
-    rawJobView === "applied" ||
-    rawJobView === "archived"
-      ? rawJobView
-      : "saved";
+  const jobView: JobView = parseJobView(rawJobView);
 
   const selectedJob = useMemo(
     () => jobs.find((job) => job.id === selectedJobId) ?? jobs[0] ?? null,
@@ -196,14 +191,16 @@ export default function MyJobsPage() {
   }, [currentPage]);
 
   useEffect(() => {
-    if (!selectedJobId) return;
+    if (!selectedJobId || !user?.id) return;
 
     let cancelled = false;
 
     const loadJobDetail = async () => {
       try {
-        const response =
-          await searchJobService.getSearchJobDetail(selectedJobId);
+        const response = await searchJobService.getSearchJobDetail(
+          selectedJobId,
+          user.id,
+        );
         if (cancelled) return;
         setJobs((prev) =>
           prev.map((job) =>
@@ -236,7 +233,7 @@ export default function MyJobsPage() {
     return () => {
       cancelled = true;
     };
-  }, [selectedJobId]);
+  }, [selectedJobId, user?.id]);
 
   useEffect(() => {
     if (!user?.id) return;
@@ -276,7 +273,7 @@ export default function MyJobsPage() {
           mapResultToJob(item, jobView),
         );
         setJobs(nextJobs);
-        setTotalPages(Math.max(1, response.data.total_page));
+        setTotalPages(Math.max(1, response.data.total_page ?? 1));
         setSelectedJobId((prev) => {
           if (prev && nextJobs.some((job) => job.id === prev)) return prev;
           return nextJobs[0]?.id ?? null;

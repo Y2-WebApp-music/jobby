@@ -85,9 +85,23 @@ type PendingImageDraft = {
   previewUrl: string;
 };
 
+type SocketClientLike = {
+  connected?: boolean;
+  emit: (
+    event: string,
+    payload?: unknown,
+    callback?: (ack?: { error?: string }) => void,
+  ) => void;
+  on: <T = unknown>(event: string, handler: (payload: T) => void) => void;
+  off: <T = unknown>(event: string, handler: (payload: T) => void) => void;
+  connect: () => void;
+};
+
 const MAX_IMAGE_ATTACHMENTS = 10;
 const escapeRegExp = (value: string) =>
   value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+const getTypedSocket = (): SocketClientLike | null =>
+  getSocketClient() as SocketClientLike | null;
 
 const getDiscordTileClasses = (total: number, index: number): string => {
   if (total === 1) return "col-span-6 row-span-6 aspect-[4/3]";
@@ -106,11 +120,7 @@ const getDiscordTileClasses = (total: number, index: number): string => {
   return "col-span-2 row-span-2 aspect-square";
 };
 
-const MessageImageGrid = ({
-  imageUrls,
-}: {
-  imageUrls: string[];
-}) => {
+const MessageImageGrid = ({ imageUrls }: { imageUrls: string[] }) => {
   const total = imageUrls.length;
   if (total === 0) return null;
 
@@ -171,7 +181,9 @@ const mapMessageFromApi = (
   index: number,
 ): ChatMessage => {
   const messageType = message.message_type ?? ChatMessageType.Text;
-  const parsedAttachment = parseAttachmentMessageData(message.message_data ?? "");
+  const parsedAttachment = parseAttachmentMessageData(
+    message.message_data ?? "",
+  );
   const attachmentUrls = (message.attachments ?? [])
     .map((item) => item.url ?? "")
     .filter(Boolean);
@@ -185,7 +197,8 @@ const mapMessageFromApi = (
       : undefined;
 
   const fileUrl =
-    messageType !== ChatMessageType.Text && messageType !== ChatMessageType.Image
+    messageType !== ChatMessageType.Text &&
+    messageType !== ChatMessageType.Image
       ? parsedAttachment?.url
       : undefined;
 
@@ -207,7 +220,8 @@ export default function MessagePage() {
   const authUser = useAuthStore((state) => state.user);
   const currentUserId = authUser?.id ?? "";
   const chatServiceBaseUrl = useMemo(() => {
-    const raw = import.meta.env.VITE_SOCKET_URL?.trim() || "http://localhost:3002";
+    const raw =
+      import.meta.env.VITE_SOCKET_URL?.trim() || "http://localhost:3002";
     return raw.replace(/\/$/, "");
   }, []);
 
@@ -216,10 +230,14 @@ export default function MessagePage() {
   const [selectedThreadId, setSelectedThreadId] = useState("");
   const [draft, setDraft] = useState("");
   const [pendingImages, setPendingImages] = useState<PendingImageDraft[]>([]);
-  const [pendingGenericFile, setPendingGenericFile] = useState<File | null>(null);
+  const [pendingGenericFile, setPendingGenericFile] = useState<File | null>(
+    null,
+  );
   const [attachmentUploading, setAttachmentUploading] = useState(false);
   const [socketConnected, setSocketConnected] = useState(false);
-  const [messagesByThread, setMessagesByThread] = useState<Record<string, ChatMessage[]>>({});
+  const [messagesByThread, setMessagesByThread] = useState<
+    Record<string, ChatMessage[]>
+  >({});
   const [likedMessageIds, setLikedMessageIds] = useState<string[]>([]);
 
   const selectedThreadIdRef = useRef(selectedThreadId);
@@ -233,12 +251,18 @@ export default function MessagePage() {
 
   useEffect(() => {
     return () => {
-      pendingImagesRef.current.forEach((item) => URL.revokeObjectURL(item.previewUrl));
+      pendingImagesRef.current.forEach((item) =>
+        URL.revokeObjectURL(item.previewUrl),
+      );
     };
   }, []);
 
-  const selectedThread = threads.find((thread) => thread.id === selectedThreadId) ?? null;
-  const selectedMessages = selectedThread ? (messagesByThread[selectedThread.id] ?? []) : [];
+  const selectedThread =
+    threads.find((thread) => thread.id === selectedThreadId) ?? null;
+  const selectedMessages = useMemo(
+    () => (selectedThread ? (messagesByThread[selectedThread.id] ?? []) : []),
+    [messagesByThread, selectedThread],
+  );
 
   const visibleThreads = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -260,19 +284,21 @@ export default function MessagePage() {
       return {
         ...prev,
         [threadId]: existing.map((message) =>
-          message.serverId && ids.has(message.serverId) ? { ...message, read: true } : message,
+          message.serverId && ids.has(message.serverId)
+            ? { ...message, read: true }
+            : message,
         ),
       };
     });
 
-    const socket = getSocketClient() as any;
+    const socket = getTypedSocket();
     if (socket?.connected) {
       socket.emit("mark_read", { otherUserId: threadId, messageIds });
     }
   };
 
   useEffect(() => {
-    const socket = getSocketClient() as any;
+    const socket = getTypedSocket();
     if (!socket) return;
 
     const onConnect = () => {
@@ -290,19 +316,30 @@ export default function MessagePage() {
       const receiverId = String(payload.receive_user_id ?? "").trim();
       if (!senderId || !receiverId) return;
 
-      const incomingThreadId = senderId === currentUserId ? receiverId : senderId;
+      const incomingThreadId =
+        senderId === currentUserId ? receiverId : senderId;
       const isMine = senderId === currentUserId;
       const incomingList = messagesByThread[incomingThreadId] ?? [];
-      const mapped = mapMessageFromApi(payload, currentUserId, incomingList.length);
+      const mapped = mapMessageFromApi(
+        payload,
+        currentUserId,
+        incomingList.length,
+      );
 
       setMessagesByThread((prev) => {
         const existing = prev[incomingThreadId] ?? [];
-        if (payload.id && existing.some((message) => message.serverId === payload.id)) {
+        if (
+          payload.id &&
+          existing.some((message) => message.serverId === payload.id)
+        ) {
           return prev;
         }
         return {
           ...prev,
-          [incomingThreadId]: [...existing, { ...mapped, id: existing.length + 1 }],
+          [incomingThreadId]: [
+            ...existing,
+            { ...mapped, id: existing.length + 1 },
+          ],
         };
       });
 
@@ -313,7 +350,10 @@ export default function MessagePage() {
               const isActive = selectedThreadIdRef.current === incomingThreadId;
               return {
                 ...thread,
-                lastMessage: threadPreviewLabel(mapped.messageType, mapped.text),
+                lastMessage: threadPreviewLabel(
+                  mapped.messageType,
+                  mapped.text,
+                ),
                 lastAt: mapped.at,
                 unread: isActive || isMine ? thread.unread : thread.unread + 1,
               };
@@ -323,16 +363,26 @@ export default function MessagePage() {
                 id: incomingThreadId,
                 name: incomingThreadId,
                 role: "User",
-                lastMessage: threadPreviewLabel(mapped.messageType, mapped.text),
+                lastMessage: threadPreviewLabel(
+                  mapped.messageType,
+                  mapped.text,
+                ),
                 lastAt: mapped.at,
-                unread: isMine || selectedThreadIdRef.current === incomingThreadId ? 0 : 1,
+                unread:
+                  isMine || selectedThreadIdRef.current === incomingThreadId
+                    ? 0
+                    : 1,
                 online: false,
               },
               ...prev,
             ],
       );
 
-      if (!isMine && selectedThreadIdRef.current === incomingThreadId && payload.id) {
+      if (
+        !isMine &&
+        selectedThreadIdRef.current === incomingThreadId &&
+        payload.id
+      ) {
         markMessagesAsRead(incomingThreadId, [payload.id]);
       }
     };
@@ -344,7 +394,9 @@ export default function MessagePage() {
         const next: Record<string, ChatMessage[]> = {};
         for (const [threadId, messages] of Object.entries(prev)) {
           next[threadId] = messages.map((message) =>
-            message.serverId && ids.has(message.serverId) ? { ...message, read: true } : message,
+            message.serverId && ids.has(message.serverId)
+              ? { ...message, read: true }
+              : message,
           );
         }
         return next;
@@ -383,7 +435,7 @@ export default function MessagePage() {
   }, [currentUserId, messagesByThread]);
 
   useEffect(() => {
-    const socket = getSocketClient() as any;
+    const socket = getTypedSocket();
     if (!socket?.connected || !selectedThreadId) return;
     socket.emit("join_conversation", { otherUserId: selectedThreadId });
   }, [selectedThreadId]);
@@ -399,7 +451,9 @@ export default function MessagePage() {
         userId: currentUserId,
         limit: "100",
       });
-      const response = await fetch(`${chatServiceBaseUrl}/chat/threads?${params.toString()}`);
+      const response = await fetch(
+        `${chatServiceBaseUrl}/chat/threads?${params.toString()}`,
+      );
       if (!response.ok) throw new Error("Failed to load threads");
       const data = (await response.json()) as ChatThreadApi[];
       const mapped = data.map((thread) => ({
@@ -427,15 +481,24 @@ export default function MessagePage() {
         otherUserId: threadId,
         limit: "100",
       });
-      const response = await fetch(`${chatServiceBaseUrl}/chat/conversation?${params.toString()}`);
+      const response = await fetch(
+        `${chatServiceBaseUrl}/chat/conversation?${params.toString()}`,
+      );
       if (!response.ok) throw new Error("Failed to load conversation");
-      const payload = (await response.json()) as { messages?: ConversationMessageApi[] };
+      const payload = (await response.json()) as {
+        messages?: ConversationMessageApi[];
+      };
       const list = [...(payload.messages ?? [])]
         .reverse()
-        .map((message, index) => mapMessageFromApi(message, currentUserId, index));
+        .map((message, index) =>
+          mapMessageFromApi(message, currentUserId, index),
+        );
       setMessagesByThread((prev) => ({ ...prev, [threadId]: list }));
     } catch {
-      setMessagesByThread((prev) => ({ ...prev, [threadId]: prev[threadId] ?? [] }));
+      setMessagesByThread((prev) => ({
+        ...prev,
+        [threadId]: prev[threadId] ?? [],
+      }));
     }
   };
 
@@ -451,7 +514,10 @@ export default function MessagePage() {
   useEffect(() => {
     if (!selectedThreadId) return;
     const unreadIncomingIds = selectedMessages
-      .filter((message) => message.from === "them" && !message.read && message.serverId)
+      .filter(
+        (message) =>
+          message.from === "them" && !message.read && message.serverId,
+      )
       .map((message) => message.serverId as string);
     if (!unreadIncomingIds.length) return;
     markMessagesAsRead(selectedThreadId, unreadIncomingIds);
@@ -463,7 +529,7 @@ export default function MessagePage() {
     onErrorMessage: string;
   }) => {
     if (!selectedThread || !currentUserId) return;
-    const socket = getSocketClient() as any;
+    const socket = getTypedSocket();
     if (!socket?.connected) return;
 
     socket.emit(
@@ -475,7 +541,6 @@ export default function MessagePage() {
       },
       (ack?: { error?: string }) => {
         if (ack?.error) {
-          // eslint-disable-next-line no-console
           console.error(payload.onErrorMessage, ack.error);
         }
       },
@@ -495,7 +560,10 @@ export default function MessagePage() {
       const errText = await response.text();
       throw new Error(errText || "Upload failed");
     }
-    const data = (await response.json()) as { publicUrl: string; signedUrl?: string };
+    const data = (await response.json()) as {
+      publicUrl: string;
+      signedUrl?: string;
+    };
     const url = data.signedUrl || data.publicUrl;
     if (!url) throw new Error("No upload URL");
     return url;
@@ -576,14 +644,15 @@ export default function MessagePage() {
         removePendingImage(item.id);
       }
     } catch (error) {
-      // eslint-disable-next-line no-console
       console.error(error);
     } finally {
       setAttachmentUploading(false);
     }
   };
 
-  const handleGenericFileInput = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleGenericFileInput = (
+    event: React.ChangeEvent<HTMLInputElement>,
+  ) => {
     const file = event.target.files?.[0];
     event.target.value = "";
     if (!file) return;
@@ -596,7 +665,10 @@ export default function MessagePage() {
     setAttachmentUploading(true);
     try {
       const isImage = pendingGenericFile.type.startsWith("image/");
-      const url = await uploadChatAsset(pendingGenericFile, isImage ? "image" : "file");
+      const url = await uploadChatAsset(
+        pendingGenericFile,
+        isImage ? "image" : "file",
+      );
       const messageType = isImage
         ? ChatMessageType.Image
         : inferMessageTypeFromFile(pendingGenericFile);
@@ -608,7 +680,6 @@ export default function MessagePage() {
       });
       setPendingGenericFile(null);
     } catch (error) {
-      // eslint-disable-next-line no-console
       console.error(error);
     } finally {
       setAttachmentUploading(false);
@@ -639,7 +710,6 @@ export default function MessagePage() {
         return next;
       });
     } catch (error) {
-      // eslint-disable-next-line no-console
       console.error(error);
     }
   };
@@ -717,7 +787,9 @@ export default function MessagePage() {
                             setSelectedThreadId(thread.id);
                             setThreads((prev) =>
                               prev.map((item) =>
-                                item.id === thread.id ? { ...item, unread: 0 } : item,
+                                item.id === thread.id
+                                  ? { ...item, unread: 0 }
+                                  : item,
                               ),
                             );
                           }}
@@ -740,7 +812,10 @@ export default function MessagePage() {
                                 </span>
                               </div>
                               <p className="truncate text-base text-muted-foreground">
-                                {renderHighlightedText(thread.lastMessage, query)}
+                                {renderHighlightedText(
+                                  thread.lastMessage,
+                                  query,
+                                )}
                               </p>
                             </div>
                           </div>
@@ -799,7 +874,9 @@ export default function MessagePage() {
                             <button
                               type="button"
                               aria-label={
-                                isMessageLiked ? "Unlike message" : "Like message"
+                                isMessageLiked
+                                  ? "Unlike message"
+                                  : "Like message"
                               }
                               onClick={() =>
                                 setLikedMessageIds((prev) =>
@@ -822,7 +899,9 @@ export default function MessagePage() {
                               <button
                                 type="button"
                                 aria-label="Delete message"
-                                onClick={() => void handleDeleteMessage(message.serverId)}
+                                onClick={() =>
+                                  void handleDeleteMessage(message.serverId)
+                                }
                                 className="rounded-md p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
                               >
                                 <Trash2 className="size-4" />
@@ -848,7 +927,9 @@ export default function MessagePage() {
                               </span>
                             </div>
 
-                            <MessageImageGrid imageUrls={message.imageUrls ?? []} />
+                            <MessageImageGrid
+                              imageUrls={message.imageUrls ?? []}
+                            />
 
                             {message.fileUrl ? (
                               <a
@@ -884,20 +965,25 @@ export default function MessagePage() {
                     accept="image/*"
                     className="hidden"
                     onChange={handleImageInput}
-                    disabled={!selectedThread || !currentUserId || attachmentUploading}
+                    disabled={
+                      !selectedThread || !currentUserId || attachmentUploading
+                    }
                   />
                   <input
                     id="jobby-chat-file-upload"
                     type="file"
                     className="hidden"
                     onChange={handleGenericFileInput}
-                    disabled={!selectedThread || !currentUserId || attachmentUploading}
+                    disabled={
+                      !selectedThread || !currentUserId || attachmentUploading
+                    }
                   />
                   {pendingImages.length > 0 && (
                     <div className="mb-3 rounded-xl bg-muted/40 p-2">
                       <div className="mb-2 flex items-center justify-between">
                         <p className="text-xs text-muted-foreground">
-                          {pendingImages.length}/{MAX_IMAGE_ATTACHMENTS} photos selected
+                          {pendingImages.length}/{MAX_IMAGE_ATTACHMENTS} photos
+                          selected
                         </p>
                       </div>
                       <div className="grid grid-cols-5 gap-2">
@@ -923,7 +1009,9 @@ export default function MessagePage() {
                   )}
                   {pendingGenericFile && (
                     <div className="mb-3 flex items-center justify-between rounded-xl bg-muted/40 px-3 py-2">
-                      <p className="truncate text-xs">📎 {pendingGenericFile.name}</p>
+                      <p className="truncate text-xs">
+                        📎 {pendingGenericFile.name}
+                      </p>
                       <button
                         type="button"
                         onClick={() => setPendingGenericFile(null)}
@@ -940,9 +1028,13 @@ export default function MessagePage() {
                       size="icon"
                       className="text-muted-foreground"
                       onClick={() =>
-                        document.getElementById("jobby-chat-image-upload")?.click()
+                        document
+                          .getElementById("jobby-chat-image-upload")
+                          ?.click()
                       }
-                      disabled={!selectedThread || !currentUserId || attachmentUploading}
+                      disabled={
+                        !selectedThread || !currentUserId || attachmentUploading
+                      }
                     >
                       <Image className="size-5" />
                     </Button>
@@ -952,9 +1044,13 @@ export default function MessagePage() {
                       size="icon"
                       className="text-muted-foreground"
                       onClick={() =>
-                        document.getElementById("jobby-chat-file-upload")?.click()
+                        document
+                          .getElementById("jobby-chat-file-upload")
+                          ?.click()
                       }
-                      disabled={!selectedThread || !currentUserId || attachmentUploading}
+                      disabled={
+                        !selectedThread || !currentUserId || attachmentUploading
+                      }
                     >
                       <FileText className="size-5" />
                     </Button>
@@ -964,7 +1060,9 @@ export default function MessagePage() {
                         rows={1}
                         placeholder="Aa"
                         value={draft}
-                        onChange={(event) => handleDraftChange(event.target.value)}
+                        onChange={(event) =>
+                          handleDraftChange(event.target.value)
+                        }
                         onKeyDown={(event) => {
                           if (
                             event.key !== "Enter" ||
@@ -976,24 +1074,34 @@ export default function MessagePage() {
                           event.preventDefault();
                           void handleSendComposer();
                         }}
-                        disabled={!selectedThread || !currentUserId || attachmentUploading}
+                        disabled={
+                          !selectedThread ||
+                          !currentUserId ||
+                          attachmentUploading
+                        }
                         className="border-input focus-visible:border-ring focus-visible:ring-ring/50 mb-[-1.5%] min-h-10 max-h-44 w-full resize-none rounded-3xl border bg-transparent px-4 py-2 leading-6 outline-none transition-[color,box-shadow] focus-visible:ring-[3px]"
                       />
                     </div>
                     <Button
                       type="button"
                       variant={
-                        draft.trim() || pendingImages.length || pendingGenericFile
+                        draft.trim() ||
+                        pendingImages.length ||
+                        pendingGenericFile
                           ? "default"
                           : "ghost"
                       }
                       className={
-                        draft.trim() || pendingImages.length || pendingGenericFile
+                        draft.trim() ||
+                        pendingImages.length ||
+                        pendingGenericFile
                           ? "gap-1 px-4"
                           : "gap-1 text-muted-foreground"
                       }
                       onClick={() => void handleSendComposer()}
-                      disabled={!selectedThread || !currentUserId || attachmentUploading}
+                      disabled={
+                        !selectedThread || !currentUserId || attachmentUploading
+                      }
                     >
                       <ArrowUp className="size-4" />
                       send

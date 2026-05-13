@@ -249,15 +249,23 @@ export type ExportResumeResponse = {
 export const RESUME_ENDPOINT = "/resume/user";
 export const RESUME_DETAIL_ENDPOINT = "/resume";
 
-const parseContentDispositionFilename = (header: string | undefined) => {
-  if (!header) return "";
+const getHeaderString = (header: unknown): string | undefined => {
+  if (typeof header === "string") return header;
+  if (Array.isArray(header))
+    return typeof header[0] === "string" ? header[0] : undefined;
+  return undefined;
+};
 
-  const utfMatch = header.match(/filename\*=UTF-8''([^;]+)/i);
+const parseContentDispositionFilename = (header: unknown) => {
+  const headerValue = getHeaderString(header);
+  if (!headerValue) return "";
+
+  const utfMatch = headerValue.match(/filename\*=UTF-8''([^;]+)/i);
   if (utfMatch?.[1]) {
     return decodeURIComponent(utfMatch[1]);
   }
 
-  const basicMatch = header.match(/filename="?([^"]+)"?/i);
+  const basicMatch = headerValue.match(/filename="?([^"]+)"?/i);
   return basicMatch?.[1] ?? "";
 };
 
@@ -407,7 +415,9 @@ export const exportResume = async (
 
   return {
     blob: response.data,
-    contentType: response.headers["content-type"] ?? "application/octet-stream",
+    contentType:
+      getHeaderString(response.headers["content-type"]) ??
+      "application/octet-stream",
     filename:
       parseContentDispositionFilename(
         response.headers["content-disposition"],

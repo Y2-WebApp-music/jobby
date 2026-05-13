@@ -1,7 +1,12 @@
 import PageLayout from "@/components/layout/PageLayout";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
-import { FiArrowRight, FiCheckCircle, FiFileText, FiSearch } from "react-icons/fi";
+import {
+  FiArrowRight,
+  FiCheckCircle,
+  FiFileText,
+  FiSearch,
+} from "react-icons/fi";
 
 export default function LandingPage() {
   const features = [

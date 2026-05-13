@@ -1,4 +1,4 @@
-export type SearchTypeCode = 0 | 1 | 2;
+export type SearchTypeCode = 0 | 1 | 2 | null;
 export type SortTypeCode = 0 | 1 | 2;
 
 export type SearchJobPayload = {
@@ -6,16 +6,16 @@ export type SearchJobPayload = {
   search_text: string;
   search_type: SearchTypeCode;
   skill: string[];
-  category: number[];
+  category: number[] | null;
   place: {
-    province_id: number;
-    district_id: number;
+    province_id: number | null;
+    district_id: number | null;
   };
-  type: number[];
-  option: number[];
+  type: number[] | null;
+  option: number[] | null;
   sort_type: SortTypeCode;
-  page: number;
-  limit: number;
+  page: number | null;
+  limit: number | null;
 };
 
 export type SearchJobResult = {
@@ -30,19 +30,19 @@ export type SearchJobResult = {
   province_name: string;
   district_name: string;
   created_at: string;
-  match_skill_count: number;
-  status: number;
+  match_skill_count: number | null;
+  status: number | null;
   is_viewed: boolean;
 };
 
 export type SearchJobResponse = {
   job_result: SearchJobResult[];
-  page: number;
-  total_page: number;
+  page: number | null;
+  total_page: number | null;
 };
 
 export type FilterOptionItem = {
-  id: number;
+  id: number | null;
   text_th: string;
   text_eng: string;
 };
@@ -56,8 +56,8 @@ export type SearchFilterOptionsResponse = {
 export type PlaceSearchItem = {
   province_name: string;
   district_name: string;
-  province_code: number;
-  district_code: number;
+  province_code: number | null;
+  district_code: number | null;
 };
 
 export type PlaceSearchResponse = {

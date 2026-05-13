@@ -1,23 +1,24 @@
 const isNumString = (str: string) => !isNaN(Number(str));
 
-function deepParseJson(jsonString: string): any {
+function deepParseJson(jsonString: unknown): unknown {
   if (typeof jsonString === "string") {
     if (isNumString(jsonString)) {
       return jsonString;
     }
     try {
       return deepParseJson(JSON.parse(jsonString));
-    } catch (err) {
+    } catch {
       return jsonString;
     }
   } else if (Array.isArray(jsonString)) {
-    return (jsonString as any).map((val: any) => deepParseJson(val));
+    return jsonString.map((val) => deepParseJson(val));
   } else if (typeof jsonString === "object" && jsonString !== null) {
-    return Object.keys(jsonString).reduce((obj: any, key) => {
-      const val = jsonString[key];
-      obj[key as keyof typeof obj] = isNumString(val)
-        ? val
-        : deepParseJson(val);
+    return Object.keys(jsonString as Record<string, unknown>).reduce<
+      Record<string, unknown>
+    >((obj, key) => {
+      const val = (jsonString as Record<string, unknown>)[key];
+      obj[key] =
+        typeof val === "string" && isNumString(val) ? val : deepParseJson(val);
       return obj;
     }, {});
   } else {

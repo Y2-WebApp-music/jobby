@@ -11,7 +11,9 @@ import resumeService, {
   mapResumeDetailToResumeForm,
   type CreateResumePayload,
 } from "@/services/resumeService";
-import profileService, { type UserProfileItem } from "@/services/profileService";
+import profileService, {
+  type UserProfileItem,
+} from "@/services/profileService";
 import utilityService from "@/services/utilityService";
 import { useAddressOptionStore } from "@/store/addressOption";
 import { useAuthStore } from "@/store/auth";
@@ -575,7 +577,6 @@ export default function CreateResumePage() {
         </header>
 
         <div className="flex gap-2 w-full">
-
           <div className="grow mb-5 rounded-xl border border-neutral-200 bg-white p-4">
             <label
               htmlFor="resume-name"
