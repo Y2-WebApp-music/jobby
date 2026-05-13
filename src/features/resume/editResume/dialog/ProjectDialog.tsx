@@ -5,7 +5,7 @@ import { ImageIcon } from "lucide-react";
 import { IoIosArrowDown } from "react-icons/io";
 import { Calendar } from "@/components/ui/calendar";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import {
   Popover,
   PopoverContent,
@@ -208,7 +208,9 @@ export default function ProjectDialog({
       >
         <div className="mb-4 flex items-start justify-between">
           <div>
-            <h2 className="text-2xl font-semibold text-slate-900">Project</h2>
+            <DialogTitle className="text-2xl font-semibold text-slate-900">
+              Project
+            </DialogTitle>
             <p className="text-sm text-slate-500">
               Make changes to your Experience here. Click save when you're done.
             </p>

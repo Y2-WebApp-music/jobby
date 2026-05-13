@@ -9,7 +9,7 @@ import {
   CommandItem,
   CommandList,
 } from "@/components/ui/command";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Popover, PopoverAnchor, PopoverContent } from "@/components/ui/popover";
 import ExamDialog from "@/features/profile/dialog/ExamDialog";
 import { getSkillExam } from "@/types/skillExam";
@@ -80,8 +80,6 @@ export default function AddskillDialog({
     }
     return false;
   }, [draftSkills, existingSkills, showSkillsList]);
-
-  if (!open) return null;
 
   const commitSkillAdd = (skillName: string) => {
     if (showSkillsList) {
@@ -180,9 +178,9 @@ export default function AddskillDialog({
       >
         <div className="mb-1 pt-2 flex items-start justify-between">
           <div>
-            <h2 className="text-xl leading-none font-medium text-slate-900">
+            <DialogTitle className="text-xl leading-none font-medium text-slate-900">
               Add Skill
-            </h2>
+            </DialogTitle>
             <p className="mt-1 text-sm text-slate-500">
               Search Skill you want to add
             </p>
