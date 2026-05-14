@@ -16,8 +16,12 @@ import {
   PopoverContent,
 } from "@/components/ui/popover";
 import ExamDialog from "@/features/profile/dialog/ExamDialog";
+import { getSearchSkill, type SearchSkillItem } from "@/services/searchSkillService";
+import {
+  getSkillDetail,
+  type SkillDetailResponse,
+} from "@/services/skillDetailService";
 import { getSkillExam } from "@/types/skillExam";
-import { profileSkillCatalog } from "@/types/skill";
 import { PlusIcon } from "lucide-react";
 
 interface AddskillDialogProps {
@@ -42,9 +46,12 @@ export default function AddskillDialog({
   enableSkillExam = false,
 }: AddskillDialogProps) {
   const [input, setInput] = useState("");
-  const [selectedSkillName, setSelectedSkillName] = useState<string | null>(
-    null,
-  );
+  const [selectedSkillId, setSelectedSkillId] = useState<string | null>(null);
+  const [selectedSkillDetail, setSelectedSkillDetail] =
+    useState<SkillDetailResponse | null>(null);
+  const [searchResults, setSearchResults] = useState<SearchSkillItem[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const [isLoadingSkillDetail, setIsLoadingSkillDetail] = useState(false);
   const [draftSkills, setDraftSkills] = useState<string[]>(existingSkills);
   const [pendingExamSkillName, setPendingExamSkillName] = useState<
     string | null
@@ -58,20 +65,22 @@ export default function AddskillDialog({
 
   const suggestions = useMemo(() => {
     const blocked = new Set(listSkills.map((item) => item.toLowerCase()));
-    if (!keyword) return [];
-
-    return profileSkillCatalog
+    return searchResults
       .filter((item) => !blocked.has(item.name.toLowerCase()))
-      .filter((item) => item.name.toLowerCase().includes(keyword))
       .slice(0, 6);
-  }, [listSkills, keyword]);
+  }, [listSkills, searchResults]);
 
-  const selectedSkill = useMemo(
-    () =>
-      profileSkillCatalog.find((item) => item.name === selectedSkillName) ??
-      null,
-    [selectedSkillName],
-  );
+  const selectedSkill = selectedSkillDetail?.skill ?? null;
+  const preSkills = useMemo(() => {
+    if (!selectedSkillDetail) return [];
+    const normalized = selectedSkillDetail.related_skills.filter((item) =>
+      item.relType.toLowerCase().includes("pre"),
+    );
+    return (normalized.length > 0
+      ? normalized
+      : selectedSkillDetail.related_skills
+    ).map((item) => item.name);
+  }, [selectedSkillDetail]);
 
   const shouldShowSkillsList = showSkillsList && !selectedSkill;
   const hasSkillChanges = useMemo(() => {
@@ -93,34 +102,38 @@ export default function AddskillDialog({
     }
 
     setInput("");
-    setSelectedSkillName(null);
+    setSelectedSkillId(null);
+    setSelectedSkillDetail(null);
   };
 
   const addToDraft = (raw: string) => {
     const next = normalizeSkill(raw);
     if (!next) return;
 
-    const preparedSkill = profileSkillCatalog.find(
-      (item) => item.name.toLowerCase() === next.toLowerCase(),
-    );
-    if (!preparedSkill) return;
+    const preparedSkill =
+      selectedSkillDetail?.skill ??
+      suggestions.find((item) => item.name.toLowerCase() === next.toLowerCase());
+    const preparedSkillName = preparedSkill?.name;
+    if (!preparedSkillName) return;
 
     const exists = listSkills.some(
-      (item) => item.toLowerCase() === preparedSkill.name.toLowerCase(),
+      (item) => item.toLowerCase() === preparedSkillName.toLowerCase(),
     );
     if (exists) return;
 
-    if (enableSkillExam && getSkillExam(preparedSkill.name)) {
-      setPendingExamSkillName(preparedSkill.name);
+    if (enableSkillExam && getSkillExam(preparedSkillName)) {
+      setPendingExamSkillName(preparedSkillName);
       return;
     }
 
-    commitSkillAdd(preparedSkill.name);
+    commitSkillAdd(preparedSkillName);
   };
 
   const handleClose = () => {
     setInput("");
-    setSelectedSkillName(null);
+    setSelectedSkillId(null);
+    setSelectedSkillDetail(null);
+    setSearchResults([]);
     setDraftSkills(existingSkills);
     setPendingExamSkillName(null);
     setIsSearchPopoverOpen(false);
@@ -135,9 +148,18 @@ export default function AddskillDialog({
     onRemoveSkill?.(name);
   };
 
-  const handleSelectSuggestion = (skillName: string) => {
-    setInput(skillName);
-    setSelectedSkillName(skillName);
+  const handleSelectSuggestion = async (skill: SearchSkillItem) => {
+    setInput(skill.name);
+    setSelectedSkillId(skill.eid);
+    setIsLoadingSkillDetail(true);
+    try {
+      const response = await getSkillDetail(skill.eid);
+      setSelectedSkillDetail(response.data);
+    } catch {
+      setSelectedSkillDetail(null);
+    } finally {
+      setIsLoadingSkillDetail(false);
+    }
   };
 
   const handleAddAllSkills = () => {
@@ -173,6 +195,38 @@ export default function AddskillDialog({
 
     return () => resizeObserver.disconnect();
   }, []);
+
+  useEffect(() => {
+    if (!open || !keyword) {
+      setSearchResults([]);
+      setIsSearching(false);
+      return;
+    }
+
+    let cancelled = false;
+    const timer = setTimeout(async () => {
+      setIsSearching(true);
+      try {
+        const response = await getSearchSkill(keyword);
+        if (!cancelled) {
+          setSearchResults(response.data);
+        }
+      } catch {
+        if (!cancelled) {
+          setSearchResults([]);
+        }
+      } finally {
+        if (!cancelled) {
+          setIsSearching(false);
+        }
+      }
+    }, 250);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [keyword, open]);
 
   return (
     <Dialog open={open} onOpenChange={(nextOpen) => !nextOpen && handleClose()}>
@@ -220,7 +274,8 @@ export default function AddskillDialog({
                   onChange={(e) => {
                     const nextValue = e.target.value;
                     setInput(nextValue);
-                    setSelectedSkillName(null);
+                    setSelectedSkillId(null);
+                    setSelectedSkillDetail(null);
                     setIsSearchPopoverOpen(Boolean(nextValue.trim()));
                   }}
                   onKeyDown={(e) => {
@@ -235,7 +290,8 @@ export default function AddskillDialog({
                     type="button"
                     onClick={() => {
                       setInput("");
-                      setSelectedSkillName(null);
+                      setSelectedSkillId(null);
+                      setSelectedSkillDetail(null);
                       setIsSearchPopoverOpen(false);
                     }}
                     className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500"
@@ -258,14 +314,16 @@ export default function AddskillDialog({
             >
               <Command className="p-0">
                 <CommandList className="max-h-56">
-                  <CommandEmpty>No skill found.</CommandEmpty>
+                  <CommandEmpty>
+                    {isSearching ? "Searching..." : "No skill found."}
+                  </CommandEmpty>
                   <CommandGroup>
                     {suggestions.map((skill) => (
                       <CommandItem
-                        key={skill.name}
+                        key={skill.eid}
                         value={skill.name}
-                        onSelect={() => {
-                          handleSelectSuggestion(skill.name);
+                        onSelect={async () => {
+                          await handleSelectSuggestion(skill);
                           setIsSearchPopoverOpen(false);
                         }}
                       >
@@ -286,7 +344,9 @@ export default function AddskillDialog({
                 Skill Description
               </h3>
               <p className="mt-1 text-sm leading-relaxed text-[#000000]">
-                {selectedSkill.description}
+                {isLoadingSkillDetail
+                  ? "Loading..."
+                  : selectedSkill.description || "-"}
               </p>
             </div>
 
@@ -295,23 +355,22 @@ export default function AddskillDialog({
                 Pre-Skill
               </h3>
               <div className="mt-2 flex flex-wrap gap-2">
-                {selectedSkill.preSkills.map((item) => (
-                  <span
-                    key={item}
-                    className="rounded-full border border-transparent px-3 py-1 text-xs text-primary-pink [background:linear-gradient(var(--color-background),var(--color-background))_padding-box,linear-gradient(to_right,var(--color-main),var(--color-second))_border-box]"
-                  >
-                    {item}
-                  </span>
-                ))}
+                {preSkills.length > 0 ? (
+                  preSkills.map((item) => (
+                    <span
+                      key={item}
+                      className="rounded-full border border-transparent px-3 py-1 text-xs text-primary-pink [background:linear-gradient(var(--color-background),var(--color-background))_padding-box,linear-gradient(to_right,var(--color-main),var(--color-second))_border-box]"
+                    >
+                      {item}
+                    </span>
+                  ))
+                ) : (
+                  <span className="text-sm text-slate-500">-</span>
+                )}
               </div>
             </div>
 
-            <div>
-              <h3 className="text-base font-normal leading-none">Category</h3>
-              <p className="mt-1 text-sm text-[#525252]">
-                {selectedSkill.categories.join(", ")}
-              </p>
-            </div>
+            {/* Category removed */}
 
             <div className="pt-2 text-center">
               <Button
@@ -319,6 +378,7 @@ export default function AddskillDialog({
                 onClick={() => addToDraft(selectedSkill.name)}
                 variant="default"
                 size="lg"
+                disabled={isLoadingSkillDetail || selectedSkillId == null}
               >
                 <PlusIcon className="size-4" />
                 Add This Skill
