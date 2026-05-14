@@ -177,6 +177,7 @@ export type UserProfileItem = {
   logo: string;
   banner: string;
   phone: string;
+  phone_region?: string;
   about: string;
   quote: string;
   address: ProfileAddressItem | null;
@@ -277,7 +278,6 @@ export type GetWorkExperienceResponse = WorkExperienceItem[];
 export type CreateWorkExperienceResponse = Record<string, unknown>;
 
 export type UpdateWorkExperienceResponse = Record<string, unknown>;
-
 export type GetProjectsResponse = ProjectItem[];
 
 export type GetProjectByIdResponse = ProjectItem;
@@ -285,6 +285,8 @@ export type GetProjectByIdResponse = ProjectItem;
 export type GetProjectResponse = GetProjectsResponse | GetProjectByIdResponse;
 
 export type CreateProjectResponse = Record<string, unknown>;
+
+export type UpdateProjectResponse = Record<string, unknown>;
 
 export type GetAchievementsResponse = AchievementItem[];
 
@@ -475,6 +477,18 @@ export const createProject = (id: string, data: CreateProjectRequest) => {
   });
 };
 
+export const updateProject = (
+  id: string,
+  projectId: string,
+  data: CreateProjectRequest,
+) => {
+  return apiService.fetchData<UpdateProjectResponse>({
+    url: `${PROFILE_ENDPOINT}/${encodeURIComponent(id)}/projects/${encodeURIComponent(projectId)}`,
+    method: "patch",
+    data: buildPayloadImagesFormData(data),
+  });
+};
+
 export function getAchievement(
   id: string,
 ): Promise<SuccessResponse<GetAchievementsResponse>>;
@@ -532,6 +546,7 @@ const profileService = {
   updateEducation,
   updateProfile,
   updateProfileMedia,
+  updateProject,
   updateWorkExperience,
 };
 

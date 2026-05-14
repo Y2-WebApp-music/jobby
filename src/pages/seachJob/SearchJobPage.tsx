@@ -23,6 +23,7 @@ import type {
   FilterOptionItem,
   PlaceSearchItem,
   SearchJobPayload,
+  SearchJobResponse,
   SearchJobResult,
   SearchSuggestItem,
   SearchTypeCode,

@@ -12,6 +12,8 @@ import {
 
 export type EducationItem = {
   id: number;
+  backendId?: string;
+  logo?: string | null;
   school: string;
   degree: string;
   fieldOfStudy: string;

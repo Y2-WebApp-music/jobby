@@ -24,13 +24,21 @@ import Thumbnail from "@/assets/Thumbnail.svg";
 import { Button } from "@/components/ui/button";
 import type { ApplicationItem } from "@/types/profile";
 import PageLayout from "@/components/layout/PageLayout";
+import {
+  changeAuthEmail,
+  hydrateAuthStoreFromSession,
+} from "@/services/authClient";
 import profileService, {
   type UserProfileItem,
 } from "@/services/profileService";
+import { useAddressOptionStore } from "@/store/addressOption";
 import { useAuthStore } from "@/store/auth";
 import { toast } from "sonner";
 
 const MAX_IMAGE_SIZE_BYTES = 15 * 1024 * 1024;
+const DEFAULT_COUNTRY_TH = "Thailand";
+const DEFAULT_COUNTRY_ENG = "KINGDOM OF THAILAND";
+const DEFAULT_COUNTRY_ID = 76400;
 
 const DialogID = {
   PROFILE_EDIT: "profile-edit",
@@ -51,6 +59,33 @@ const OverlayDialogID = {
 
 type DialogId = (typeof DialogID)[keyof typeof DialogID];
 type OverlayDialogId = (typeof OverlayDialogID)[keyof typeof OverlayDialogID];
+
+const REGION_METADATA = {
+  THA: {
+    dialCode: "+66",
+    countryId: DEFAULT_COUNTRY_ID,
+    countryTh: DEFAULT_COUNTRY_TH,
+    countryEng: DEFAULT_COUNTRY_ENG,
+  },
+  CHN: {
+    dialCode: "+86",
+    countryId: 0,
+    countryTh: "China",
+    countryEng: "CHINA",
+  },
+  JPN: {
+    dialCode: "+81",
+    countryId: 0,
+    countryTh: "Japan",
+    countryEng: "JAPAN",
+  },
+  GBR: {
+    dialCode: "+44",
+    countryId: 0,
+    countryTh: "United Kingdom",
+    countryEng: "UNITED KINGDOM",
+  },
+} as const;
 
 const createEmptyProfileForm = (): ProfileFormValue => ({
   firstName: "",
@@ -95,8 +130,56 @@ const toNumericId = (value: string, fallback: number) => {
 };
 
 const normalizePhone = (value: string) => value.replace(/\D/g, "");
+const normalizeSkillName = (value: string) => value.trim().toLowerCase();
+
+const normalizeContactUrl = (value: string) => {
+  const trimmed = value.trim();
+
+  if (!trimmed) return "";
+  if (/^(https?:\/\/|mailto:|tel:)/i.test(trimmed)) {
+    return trimmed;
+  }
+
+  return `https://${trimmed}`;
+};
+
+const PHONE_REGION_TO_REGION_CODE = {
+  THA: "THA",
+  "66": "THA",
+  "+66": "THA",
+  CHN: "CHN",
+  "86": "CHN",
+  "+86": "CHN",
+  JPN: "JPN",
+  "81": "JPN",
+  "+81": "JPN",
+  GBR: "GBR",
+  UK: "GBR",
+  "44": "GBR",
+  "+44": "GBR",
+} as const;
+
+const dataUrlToFile = async (dataUrl: string, fileName: string) => {
+  const response = await fetch(dataUrl);
+  const blob = await response.blob();
+  return new File([blob], fileName, {
+    type: blob.type || "image/jpeg",
+  });
+};
 
 const inferRegionCode = (profile: UserProfileItem) => {
+  const rawPhoneRegion = String(profile.phone_region ?? "")
+    .trim()
+    .toUpperCase();
+  const mappedRegion =
+    PHONE_REGION_TO_REGION_CODE[
+      rawPhoneRegion as keyof typeof PHONE_REGION_TO_REGION_CODE
+    ];
+
+  if (mappedRegion) {
+    return mappedRegion;
+  }
+
   const country =
     `${profile.address?.country_eng ?? ""} ${profile.address?.country_th ?? ""}`.toLowerCase();
   const phone = normalizePhone(profile.phone ?? "");
@@ -146,6 +229,8 @@ const mapEducationItems = (
 ): EducationItem[] =>
   items.map((item, index) => ({
     id: toNumericId(item.id, index + 1),
+    backendId: item.id,
+    logo: item.logo ?? null,
     school: item.school_name ?? "",
     degree: item.degree ?? "",
     fieldOfStudy: item.field_of_study ?? "",
@@ -160,6 +245,14 @@ const mapWorkExperienceItems = (
 ): WorkExperienceItem[] =>
   items.map((item, index) => ({
     id: toNumericId(item.id, index + 1),
+    backendId: item.id,
+    logo: item.logo ?? null,
+    companyId: "",
+    workTypeId: item.work_type_id ?? 0,
+    skillItems: (item.skills ?? []).map((skill) => ({
+      id: skill.id,
+      name: skill.name,
+    })),
     position: item.position ?? "",
     company: item.company_name ?? "",
     workType: item.work_type ?? "",
@@ -173,29 +266,55 @@ const mapWorkExperienceItems = (
 const mapProjectItems = (
   items: UserProfileItem["projects"] = [],
 ): ProjectItem[] =>
-  items.map((item, index) => ({
-    id: toNumericId(item.id, index + 1),
-    name: item.name ?? "",
-    description: item.description ?? "",
-    skills: (item.skills ?? []).map((skill) => skill.name).filter(Boolean),
-    startDate: item.start_date ?? "",
-    endDate: item.end_date ?? "",
-    images: (item.images ?? []).map((image) => image.image).filter(Boolean),
-    date: formatDateRange(item.start_date, item.end_date),
-  }));
+  items.map((item, index) => {
+    const existingImages = (item.images ?? [])
+      .map((image) => image.image)
+      .filter(Boolean);
+
+    return {
+      id: toNumericId(item.id, index + 1),
+      backendId: item.id,
+      skillItems: (item.skills ?? []).map((skill) => ({
+        id: skill.id,
+        name: skill.name,
+      })),
+      existingImages,
+      newImages: [],
+      name: item.name ?? "",
+      description: item.description ?? "",
+      skills: (item.skills ?? []).map((skill) => skill.name).filter(Boolean),
+      startDate: item.start_date ?? "",
+      endDate: item.end_date ?? "",
+      images: existingImages,
+      date: formatDateRange(item.start_date, item.end_date),
+    };
+  });
 
 const mapAchievementItems = (
   items: UserProfileItem["achievement"] = [],
 ): AchievementItem[] =>
-  items.map((item, index) => ({
-    id: toNumericId(item.id, index + 1),
-    name: item.name ?? "",
-    from: item.project_name ?? "",
-    description: item.description ?? "",
-    skills: (item.skills ?? []).map((skill) => skill.name).filter(Boolean),
-    images: (item.images ?? []).map((image) => image.image).filter(Boolean),
-    date: formatDisplayDate(item.date),
-  }));
+  items.map((item, index) => {
+    const existingImages = (item.images ?? [])
+      .map((image) => image.image)
+      .filter(Boolean);
+
+    return {
+      id: toNumericId(item.id, index + 1),
+      backendId: item.id,
+      skillItems: (item.skills ?? []).map((skill) => ({
+        id: skill.id,
+        name: skill.name,
+      })),
+      existingImages,
+      newImages: [],
+      name: item.name ?? "",
+      from: item.project_name ?? "",
+      description: item.description ?? "",
+      skills: (item.skills ?? []).map((skill) => skill.name).filter(Boolean),
+      images: existingImages,
+      date: item.date ?? "",
+    };
+  });
 
 const mapApplications = (
   items: Awaited<ReturnType<typeof profileService.getDynamicInfo>>["data"],
@@ -218,7 +337,7 @@ const buildLocationLabel = (profileForm: ProfileFormValue) => {
     .filter(Boolean)
     .join(", ");
 
-  return location || "Bangkok, Thailand";
+  return location;
 };
 
 function SectionHeader({
@@ -405,6 +524,9 @@ export default function Profile() {
     createEmptyProfileForm(),
   );
   const [userSkills, setUserSkills] = useState<string[]>([]);
+  const [userSkillItems, setUserSkillItems] = useState<
+    UserProfileItem["skills"]
+  >([]);
   const [applications, setApplications] = useState<ApplicationItem[]>([]);
   const [isLoadingProfile, setIsLoadingProfile] = useState(false);
   const [editingTarget, setEditingTarget] = useState<
@@ -416,6 +538,46 @@ export default function Profile() {
 
   const isDefaultBanner = bannerUrl === Thumbnail;
   const locationLabel = buildLocationLabel(profileForm);
+
+  const refreshProfile = async () => {
+    if (!user?.id) return;
+
+    setIsLoadingProfile(true);
+
+    const [profileResult, dynamicInfoResult] = await Promise.allSettled([
+      profileService.getUserProfile(user.id),
+      profileService.getDynamicInfo(user.id),
+    ]);
+
+    if (profileResult.status === "fulfilled") {
+      const profile = profileResult.value.data;
+
+      setProfileUrl(profile.logo || null);
+      setBannerUrl(profile.banner || Thumbnail);
+      setProfileForm(mapUserProfileToProfileForm(profile));
+      setAboutText(profile.about ?? "");
+      setEducation(mapEducationItems(profile.education));
+      setWorkExperience(mapWorkExperienceItems(profile.work_experience));
+      setAchievements(mapAchievementItems(profile.achievement));
+      setProjects(mapProjectItems(profile.projects));
+      setUserSkillItems(profile.skills ?? []);
+      setUserSkills(
+        Array.from(
+          new Set((profile.skills ?? []).map((skill) => skill.name).filter(Boolean)),
+        ),
+      );
+    } else {
+      toast.error("Failed to load profile data");
+    }
+
+    if (dynamicInfoResult.status === "fulfilled") {
+      setApplications(mapApplications(dynamicInfoResult.value.data));
+    } else {
+      setApplications([]);
+    }
+
+    setIsLoadingProfile(false);
+  };
 
   useEffect(() => {
     if (!user?.id) return;
@@ -443,6 +605,7 @@ export default function Profile() {
         setWorkExperience(mapWorkExperienceItems(profile.work_experience));
         setAchievements(mapAchievementItems(profile.achievement));
         setProjects(mapProjectItems(profile.projects));
+        setUserSkillItems(profile.skills ?? []);
         setUserSkills(
           Array.from(
             new Set(
@@ -491,13 +654,48 @@ export default function Profile() {
     setEditingTarget(null);
   };
 
-  const handleSaveImage = (image: string) => {
-    if (editingTarget === "profile") {
-      setProfileUrl(image);
-    } else if (editingTarget === "banner") {
-      setBannerUrl(image);
+  const resolveSkillPayloads = (
+    skills: string[],
+    itemSkills: { id?: string; name: string }[] = [],
+  ) =>
+    skills.map((skill, index) => {
+      const matchedItemSkill = itemSkills.find(
+        (item) => normalizeSkillName(item.name) === normalizeSkillName(skill),
+      );
+      const matchedUserSkill = userSkillItems.find(
+        (item) => normalizeSkillName(item.name) === normalizeSkillName(skill),
+      );
+
+      return {
+        skill_id:
+          matchedItemSkill?.id ?? matchedUserSkill?.id ?? `${skill}-${index}`,
+        skill_name: skill,
+      };
+    });
+
+  const handleSaveImage = async (image: string) => {
+    if (!user?.id || !editingTarget) return;
+
+    try {
+      const file = await dataUrlToFile(
+        image,
+        editingTarget === "profile" ? "profile.jpg" : "banner.jpg",
+      );
+
+      await profileService.updateProfileMedia(
+        user.id,
+        editingTarget === "profile" ? { logo: file } : { banner: file },
+      );
+
+      if (editingTarget === "profile") {
+        setProfileUrl(image);
+      } else {
+        setBannerUrl(image);
+      }
+      toast.success("Profile media updated");
+    } catch {
+      toast.error("Failed to update profile media");
     }
-    handleCloseEditor();
   };
 
   const handleOpenProjectPreview = (projectId: number) => {
@@ -529,13 +727,374 @@ export default function Profile() {
   const previewAchievement =
     achievements.find((item) => item.id === previewAchievementId) ?? null;
 
-  const handleAddProfileSkill = (skill: string) => {
-    if (!skill) return;
-    setUserSkills((prev) => (prev.includes(skill) ? prev : [...prev, skill]));
+  const handleSaveProfile = async (nextProfileForm: ProfileFormValue) => {
+    if (!user?.id) return;
+
+    const nextEmail = nextProfileForm.email.trim();
+    const currentEmail = profileForm.email.trim();
+    const emailChanged = nextEmail !== currentEmail;
+
+    if (!nextEmail) {
+      toast.error("Email is required");
+      throw new Error("Missing email");
+    }
+
+    const regionMeta =
+      REGION_METADATA[nextProfileForm.region as keyof typeof REGION_METADATA] ??
+      REGION_METADATA.THA;
+    const provinceOptions = useAddressOptionStore.getProvinceOptions();
+    const provinceOption = provinceOptions.find(
+      (item) => item.value === nextProfileForm.province,
+    );
+    const districtOptions = useAddressOptionStore.getDistrictOptions(
+      provinceOption?.id,
+    );
+    const districtOption = districtOptions.find(
+      (item) => item.value === nextProfileForm.district,
+    );
+    const subDistrictOptions = districtOption
+      ? useAddressOptionStore.getSubDistrictOptions(districtOption.id)
+      : [];
+    const subDistrictOption = subDistrictOptions.find(
+      (item) => item.value === nextProfileForm.subDistrict,
+    );
+    const addressStore = useAddressOptionStore.getState();
+    const provinceRecord = addressStore.provinces.find(
+      (item) => item.province_id === provinceOption?.id,
+    );
+    const districtRecord = addressStore.districts.find(
+      (item) => item.district_id === districtOption?.id,
+    );
+    const subDistrictRecord =
+      districtRecord?.sub_district_list?.find(
+        (item) => item.sub_district_id === subDistrictOption?.id,
+      ) ?? null;
+    const postalCode =
+      (districtOption && subDistrictOption
+        ? useAddressOptionStore.getPostalCode(
+            districtOption.id,
+            subDistrictOption.id,
+          )
+        : undefined) ??
+      (nextProfileForm.postalCode
+        ? Number(nextProfileForm.postalCode.replace(/\D/g, "")) || undefined
+        : undefined);
+
+    if (postalCode && !subDistrictOption?.id) {
+      toast.error("Please select a sub-district that matches the postal code");
+      throw new Error("Missing sub_district_id for postal code");
+      }
+
+    try {
+      await profileService.updateProfile(user.id, {
+        first_name: nextProfileForm.firstName.trim(),
+        last_name: nextProfileForm.lastName.trim(),
+        phone: nextProfileForm.tel,
+        phone_region: regionMeta.dialCode,
+        address: {
+          address_line: nextProfileForm.addressLine.trim() || undefined,
+          no: nextProfileForm.addressNo.trim() || undefined,
+          moo: nextProfileForm.moo.trim() || undefined,
+          soi: nextProfileForm.soi.trim() || undefined,
+          street: nextProfileForm.street.trim() || undefined,
+          sub_district_th: subDistrictRecord?.sub_district_th,
+          sub_district_eng: nextProfileForm.subDistrict.trim() || undefined,
+          district_th: districtRecord?.district_th,
+          district_eng: nextProfileForm.district.trim() || undefined,
+          province_th: provinceRecord?.province_th,
+          province_eng: nextProfileForm.province.trim() || undefined,
+          country_th: regionMeta.countryTh,
+          country_eng: regionMeta.countryEng,
+          sub_district_id: subDistrictOption?.id,
+          district_id: districtOption?.id,
+          province_id: provinceOption?.id,
+          country_id: provinceRecord?.country_id ?? regionMeta.countryId,
+          postal_code: postalCode,
+        },
+        contact: nextProfileForm.links
+          .filter((item) => item.label.trim() && item.url.trim())
+          .map((item) => ({
+            label: item.label.trim(),
+            link: item.url.trim(),
+          })),
+      });
+    } catch {
+      toast.error("Failed to update profile");
+      throw new Error("Failed to update profile");
+    }
+
+    if (emailChanged) {
+      try {
+        const response = await changeAuthEmail({
+          newEmail: nextEmail,
+          callbackURL: window.location.href,
+        });
+
+        if (response?.error) {
+          toast.error(response.error.message || "Failed to update email");
+          await refreshProfile();
+          return;
+        }
+
+        await hydrateAuthStoreFromSession();
+      } catch {
+        toast.error("Profile updated, but failed to update email");
+        await refreshProfile();
+        return;
+      }
+    }
+
+    toast.success(
+      emailChanged
+        ? "Profile updated. Check your email to confirm the new address."
+        : "Profile updated",
+    );
+    await refreshProfile();
   };
 
-  const handleRemoveProfileSkill = (skill: string) => {
-    setUserSkills((prev) => prev.filter((item) => item !== skill));
+  const handleSaveAbout = async (value: string) => {
+    if (!user?.id) return;
+
+    try {
+      await profileService.updateAbout(user.id, { about: value });
+      setAboutText(value);
+      toast.success("About updated");
+    } catch {
+      toast.error("Failed to update about");
+    }
+  };
+
+  const handleAddProfileSkill = async (skill: string) => {
+    if (!skill || !user?.id) return;
+    if (
+      userSkills.some(
+        (item) => normalizeSkillName(item) === normalizeSkillName(skill),
+      )
+    ) {
+      return;
+    }
+
+    setUserSkills((prev) => [...prev, skill]);
+
+    try {
+      const matched = userSkillItems.find(
+        (item) => normalizeSkillName(item.name) === normalizeSkillName(skill),
+      );
+      await profileService.addUserSkill(user.id, {
+        skill_id: matched?.id ?? skill,
+        skill_name: skill,
+        index: userSkills.length,
+      });
+      toast.success("Skill added");
+      void refreshProfile();
+    } catch {
+      setUserSkills((prev) =>
+        prev.filter((item) => normalizeSkillName(item) !== normalizeSkillName(skill)),
+      );
+      toast.error("Failed to add skill");
+    }
+  };
+
+  const handleRemoveProfileSkill = () => {
+    toast.error("Removing skills is not connected yet");
+  };
+
+  const handleSaveEducation = async (nextItems: EducationItem[]) => {
+    if (!user?.id) return;
+
+    const removedPersistedItems = education.filter(
+      (item) =>
+        item.backendId &&
+        !nextItems.some((nextItem) => nextItem.backendId === item.backendId),
+    );
+    if (removedPersistedItems.length > 0) {
+      toast.error("Deleting education items is not connected yet");
+      return;
+    }
+
+    try {
+      await Promise.all(
+        nextItems.map((item, index) => {
+          const payload = {
+            index,
+            school_name: item.school.trim(),
+            logo: item.logo ?? null,
+            degree: item.degree.trim(),
+            field_of_study: item.fieldOfStudy.trim(),
+            start_date: item.startDate,
+            end_date: item.endDate || null,
+            gpax: Number(item.gpax || 0),
+          };
+
+          return item.backendId
+            ? profileService.updateEducation(user.id, item.backendId, payload)
+            : profileService.createEducation(user.id, payload);
+        }),
+      );
+
+      toast.success("Education updated");
+      void refreshProfile();
+    } catch {
+      toast.error("Failed to update education");
+    }
+  };
+
+  const handleSaveWorkExperience = async (nextItems: WorkExperienceItem[]) => {
+    if (!user?.id) return;
+
+    const removedPersistedItems = workExperience.filter(
+      (item) =>
+        item.backendId &&
+        !nextItems.some((nextItem) => nextItem.backendId === item.backendId),
+    );
+
+    try {
+      if (removedPersistedItems.length > 0) {
+        toast.error("Deleting saved work experience is not supported yet");
+        throw new Error("Deleting saved work experience is not supported yet");
+      }
+
+      await Promise.all(
+        nextItems.map((item, index) => {
+          const payload = {
+            index,
+            position: item.position.trim(),
+            logo: item.logo ?? null,
+            company_name: item.company.trim(),
+            company_id: item.companyId ?? "",
+            start_date: item.startDate,
+            end_date: item.isFinished ? item.endDate || null : null,
+            work_type: item.workType.trim(),
+            work_type_id: item.workTypeId ?? 0,
+            skills: resolveSkillPayloads(item.skills, item.skillItems),
+          };
+
+          return item.backendId
+            ? profileService.updateWorkExperience(user.id, item.backendId, payload)
+            : profileService.createWorkExperience(user.id, payload);
+        }),
+      );
+
+      toast.success("Work experience updated");
+      await refreshProfile();
+    } catch (error) {
+      toast.error("Failed to update work experience");
+      throw error;
+    }
+  };
+
+  const handleSaveProjects = async (nextItems: ProjectItem[]) => {
+    if (!user?.id) return;
+
+    const removedPersistedItems = projects.filter(
+      (item) =>
+        item.backendId &&
+        !nextItems.some((nextItem) => nextItem.backendId === item.backendId),
+    );
+    if (removedPersistedItems.length > 0) {
+      toast.error("Deleting project items is not connected yet");
+      throw new Error("Deleting project items is not connected yet");
+    }
+
+    const removedExistingImages = nextItems.some((item) => {
+      const previousItem = projects.find(
+        (projectItem) => projectItem.backendId === item.backendId,
+      );
+      if (!previousItem?.backendId) return false;
+
+      return (previousItem.existingImages ?? []).some(
+        (image) => !(item.existingImages ?? []).includes(image),
+      );
+    });
+    if (removedExistingImages) {
+      toast.error("Deleting existing project images is not connected yet");
+      throw new Error("Deleting existing project images is not connected yet");
+    }
+
+    try {
+      await Promise.all(
+        nextItems.map((item, index) => {
+          const payload = {
+            payload: {
+              index,
+              name: item.name.trim(),
+              description: item.description.trim(),
+              start_date: item.startDate,
+              end_date: item.endDate,
+              skills: resolveSkillPayloads(item.skills, item.skillItems),
+            },
+            images: (item.newImages ?? []).map((image) => image.file),
+          };
+
+          return item.backendId
+            ? profileService.updateProject(user.id, item.backendId, payload)
+            : profileService.createProject(user.id, payload);
+        }),
+      );
+
+      toast.success("Projects updated");
+      await refreshProfile();
+    } catch (error) {
+      toast.error("Failed to update projects");
+      throw error;
+    }
+  };
+
+  const handleSaveAchievements = async (nextItems: AchievementItem[]) => {
+    if (!user?.id) return;
+
+    const removedPersistedItems = achievements.filter(
+      (item) =>
+        item.backendId &&
+        !nextItems.some((nextItem) => nextItem.backendId === item.backendId),
+    );
+    if (removedPersistedItems.length > 0) {
+      toast.error("Deleting achievement items is not connected yet");
+      throw new Error("Deleting achievement items is not connected yet");
+    }
+
+    const removedExistingImages = nextItems.some((item) => {
+      const previousItem = achievements.find(
+        (achievementItem) => achievementItem.backendId === item.backendId,
+      );
+      if (!previousItem?.backendId) return false;
+
+      return (previousItem.existingImages ?? []).some(
+        (image) => !(item.existingImages ?? []).includes(image),
+      );
+    });
+    if (removedExistingImages) {
+      toast.error("Deleting existing achievement images is not connected yet");
+      throw new Error("Deleting existing achievement images is not connected yet");
+    }
+
+    try {
+      await Promise.all(
+        nextItems.map((item, index) => {
+          const payload = {
+            payload: {
+              index,
+              name: item.name.trim(),
+              project_name: item.from.trim(),
+              description: item.description.trim(),
+              date: item.date,
+              skills: resolveSkillPayloads(item.skills, item.skillItems),
+            },
+            images: (item.newImages ?? []).map((image) => image.file),
+          };
+
+          return item.backendId
+            ? profileService.updateAchievement(user.id, item.backendId, payload)
+            : profileService.createAchievement(user.id, payload);
+        }),
+      );
+
+      toast.success("Achievements updated");
+      await refreshProfile();
+    } catch (error) {
+      toast.error("Failed to update achievements");
+      throw error;
+    }
   };
 
   const handleOpenSkillInfo = (skill: string) => {
@@ -606,8 +1165,7 @@ export default function Profile() {
             <div className="flex-1 md:mt-3">
               <div className="flex items-center gap-2">
                 <h2 className="text-lg font-semibold text-slate-900">
-                  {`${profileForm.firstName} ${profileForm.lastName}`.trim() ||
-                    "Your Name"}
+                  {`${profileForm.firstName} ${profileForm.lastName}`.trim()}
                 </h2>
                 <button
                   type="button"
@@ -618,33 +1176,52 @@ export default function Profile() {
                   <RiPencilFill className="h-4 w-4" />
                 </button>
               </div>
-              <p className="text-sm text-slate-600">
-                {profileForm.addressLine ||
-                  "Current Education/Current Position"}{" "}
-                <span className="text-slate-400">
-                  ({profileForm.addressNo || "No address number"})
-                </span>
-              </p>
-              <p className="text-sm text-slate-500">{locationLabel}</p>
-              <div className="mt-3 flex flex-wrap gap-2 text-xs text-slate-600">
-                {[
-                  profileForm.email,
-                  profileForm.tel ? `+${profileForm.tel}` : "",
-                  ...profileForm.links
-                    .map((link) => link.label || link.url)
-                    .filter(Boolean),
-                ]
-                  .filter(Boolean)
-                  .map((item) => (
-                    <span
-                      key={item}
-                      className="rounded-full border border-slate-200 bg-white px-3 py-1"
-                    >
-                      {item}
+              {profileForm.addressLine || profileForm.addressNo ? (
+                <p className="text-sm text-slate-600">
+                  {profileForm.addressLine}
+                  {profileForm.addressNo ? (
+                    <span className="text-slate-400">
+                      {profileForm.addressLine ? " " : ""}
+                      ({profileForm.addressNo})
                     </span>
-                  ))}
+                  ) : null}
+                </p>
+              ) : null}
+                {locationLabel ? (
+                  <p className="text-sm text-slate-500">{locationLabel}</p>
+                ) : null}
+                <div className="mt-3 flex flex-wrap gap-2 text-xs text-slate-600">
+                  {profileForm.email ? (
+                    <a
+                      href={`mailto:${profileForm.email}`}
+                      className="rounded-full border border-slate-200 bg-white px-3 py-1 hover:border-slate-300 hover:text-slate-900"
+                    >
+                      {profileForm.email}
+                    </a>
+                  ) : null}
+                  {profileForm.tel ? (
+                    <a
+                      href={`tel:+${profileForm.tel}`}
+                      className="rounded-full border border-slate-200 bg-white px-3 py-1 hover:border-slate-300 hover:text-slate-900"
+                    >
+                      +{profileForm.tel}
+                    </a>
+                  ) : null}
+                  {profileForm.links
+                    .filter((link) => link.url.trim())
+                    .map((link) => (
+                      <a
+                        key={`${link.id}-${link.label}-${link.url}`}
+                        href={normalizeContactUrl(link.url)}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="rounded-full border border-slate-200 bg-white px-3 py-1 hover:border-slate-300 hover:text-slate-900"
+                      >
+                        {link.label || link.url}
+                      </a>
+                    ))}
+                </div>
               </div>
-            </div>
             <Button
               type="button"
               className="mt-3 h-9 rounded-full bg-gradient-to-r from-main to-second px-4 text-sm font-medium text-white shadow-sm md:mt-3"
@@ -775,7 +1352,7 @@ export default function Profile() {
                       key={item.id}
                       title={item.name}
                       subtitle={item.from}
-                      meta={item.date}
+                      meta={formatDisplayDate(item.date)}
                       subtitleClassName="line-clamp-4 whitespace-pre-line break-words"
                       onClick={() => handleOpenAchievementPreview(item.id)}
                     />
@@ -816,7 +1393,7 @@ export default function Profile() {
           key={openDialog === DialogID.PROFILE_EDIT ? "open" : "closed"}
           open={openDialog === DialogID.PROFILE_EDIT}
           onClose={() => setOpenDialog(null)}
-          onSave={setProfileForm}
+          onSave={handleSaveProfile}
           initialData={profileForm}
         />
 
@@ -825,7 +1402,7 @@ export default function Profile() {
           open={openDialog === DialogID.ABOUT}
           initialValue={aboutText}
           onClose={() => setOpenDialog(null)}
-          onSave={setAboutText}
+          onSave={handleSaveAbout}
         />
 
         <AddskillDialog
@@ -843,7 +1420,7 @@ export default function Profile() {
           open={openDialog === DialogID.EDUCATION}
           initialData={education}
           onClose={() => setOpenDialog(null)}
-          onSave={setEducation}
+          onSave={handleSaveEducation}
         />
 
         <WorkexpDialog
@@ -851,7 +1428,7 @@ export default function Profile() {
           open={openDialog === DialogID.WORK_EXPERIENCE}
           initialData={workExperience}
           onClose={() => setOpenDialog(null)}
-          onSave={setWorkExperience}
+          onSave={handleSaveWorkExperience}
         />
 
         <AchievementDialog
@@ -865,8 +1442,8 @@ export default function Profile() {
             setAchievementEditingId(null);
             setAchievementDirectEditMode(false);
           }}
-          onSave={(items) => {
-            setAchievements(items);
+          onSave={async (items) => {
+            await handleSaveAchievements(items);
             setAchievementEditingId(null);
             setAchievementDirectEditMode(false);
           }}
@@ -883,8 +1460,8 @@ export default function Profile() {
             setProjectEditingId(null);
             setProjectDirectEditMode(false);
           }}
-          onSave={(items) => {
-            setProjects(items);
+          onSave={async (items) => {
+            await handleSaveProjects(items);
             setProjectEditingId(null);
             setProjectDirectEditMode(false);
           }}
@@ -896,10 +1473,10 @@ export default function Profile() {
               <div className="mb-4 flex items-start justify-between">
                 <div>
                   <h2 className="text-2xl font-semibold text-slate-900">
-                    {previewProject.name || "Project Name"}
+                    {previewProject.name}
                   </h2>
                   <p className="text-sm text-slate-500">
-                    {previewProject.date || "Start date - End date"}
+                    {previewProject.date}
                   </p>
                 </div>
                 <button
@@ -954,7 +1531,7 @@ export default function Profile() {
               </div>
 
               <p className="mb-3 whitespace-pre-line break-all text-sm leading-relaxed text-slate-700">
-                {previewProject.description || "No description."}
+                {previewProject.description}
               </p>
 
               <div>
@@ -1002,13 +1579,13 @@ export default function Profile() {
               <div className="mb-4 flex items-start justify-between">
                 <div>
                   <h2 className="text-2xl font-semibold text-slate-900">
-                    {previewAchievement.name || "Reward Name"}
+                    {previewAchievement.name}
                   </h2>
                   <p className="text-sm text-slate-700">
-                    {previewAchievement.from || "Project Name"}
+                    {previewAchievement.from}
                   </p>
                   <p className="text-sm text-slate-500">
-                    {previewAchievement.date || "Date"}
+                    {formatDisplayDate(previewAchievement.date)}
                   </p>
                 </div>
                 <button

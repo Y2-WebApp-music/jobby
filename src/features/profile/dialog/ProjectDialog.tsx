@@ -15,6 +15,10 @@ import AddskillDialog from "@/features/profile/dialog/AddskillDialog";
 
 export type ProjectItem = {
   id: number;
+  backendId?: string;
+  skillItems?: { id?: string; name: string }[];
+  existingImages?: string[];
+  newImages?: { url: string; file: File }[];
   name: string;
   description: string;
   skills: string[];
@@ -30,13 +34,16 @@ interface ProjectDialogProps {
   initialEditingId?: number | null;
   directEditMode?: boolean;
   onClose: () => void;
-  onSave: (items: ProjectItem[]) => void;
+  onSave: (items: ProjectItem[]) => void | Promise<void>;
 }
 
 const MAX_PROJECT_IMAGES = 5;
 
 const createEmptyProject = (): ProjectItem => ({
   id: Date.now(),
+  skillItems: [],
+  existingImages: [],
+  newImages: [],
   name: "",
   description: "",
   skills: [],
@@ -175,13 +182,18 @@ export default function ProjectDialog({
 
   const handleAddSkill = (nextSkill: string) => {
     if (!nextSkill || draft.skills.includes(nextSkill)) return;
-    setDraft((prev) => ({ ...prev, skills: [...prev.skills, nextSkill] }));
+    setDraft((prev) => ({
+      ...prev,
+      skills: [...prev.skills, nextSkill],
+      skillItems: [...(prev.skillItems ?? []), { name: nextSkill }],
+    }));
   };
 
   const handleRemoveSkill = (skill: string) => {
     setDraft((prev) => ({
       ...prev,
       skills: prev.skills.filter((item) => item !== skill),
+      skillItems: (prev.skillItems ?? []).filter((item) => item.name !== skill),
     }));
   };
 
@@ -191,8 +203,12 @@ export default function ProjectDialog({
     if (left <= 0) return;
     const selected = Array.from(files)
       .slice(0, left)
-      .map((file) => URL.createObjectURL(file));
-    setDraft((prev) => ({ ...prev, images: [...prev.images, ...selected] }));
+      .map((file) => ({ url: URL.createObjectURL(file), file }));
+    setDraft((prev) => ({
+      ...prev,
+      images: [...prev.images, ...selected.map((item) => item.url)],
+      newImages: [...(prev.newImages ?? []), ...selected],
+    }));
   };
 
   const handleRemoveImage = (index: number) => {
@@ -204,11 +220,15 @@ export default function ProjectDialog({
       return {
         ...prev,
         images: prev.images.filter((_, i) => i !== index),
+        existingImages: (prev.existingImages ?? []).filter(
+          (image) => image !== target,
+        ),
+        newImages: (prev.newImages ?? []).filter((image) => image.url !== target),
       };
     });
   };
 
-  const handleSaveDraft = (e: FormEvent<HTMLFormElement>) => {
+  const handleSaveDraft = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const normalized = {
       ...draft,
@@ -223,26 +243,28 @@ export default function ProjectDialog({
       );
     }
 
-    setItems(nextItems);
-
-    if (directEditMode) {
-      onSave(nextItems);
+    try {
+      await Promise.resolve(onSave(nextItems));
+      setItems(nextItems);
+      setEditorOpen(false);
       onClose();
+    } catch {
       return;
     }
-
-    setEditorOpen(false);
   };
 
-  const handleDeleteDraft = () => {
+  const handleDeleteDraft = async () => {
     if (editingId === null) return;
-    setItems((prev) => prev.filter((item) => item.id !== editingId));
-    setEditorOpen(false);
-  };
+    const nextItems = items.filter((item) => item.id !== editingId);
 
-  const handleSaveAll = () => {
-    onSave(items);
-    onClose();
+    try {
+      await Promise.resolve(onSave(nextItems));
+      setItems(nextItems);
+      setEditorOpen(false);
+      onClose();
+    } catch {
+      return;
+    }
   };
 
   return (
@@ -316,13 +338,6 @@ export default function ProjectDialog({
           >
             Cancel
           </button>
-          <Button
-            type="button"
-            onClick={handleSaveAll}
-            className="rounded-full bg-gradient-to-r from-main to-second px-5 py-1.5 text-base font-medium text-white"
-          >
-            Save Change
-          </Button>
         </div>
       </div>
 
@@ -422,17 +437,21 @@ export default function ProjectDialog({
                       : TODAY_YMD
                   }
                   onChange={(nextValue) =>
-                    setDraft((prev) => ({ ...prev, startDate: nextValue }))
+                    setDraft((prev) => ({
+                      ...prev,
+                      startDate: nextValue,
+                      endDate:
+                        prev.endDate && prev.endDate < nextValue
+                          ? nextValue
+                          : prev.endDate,
+                    }))
                   }
                 />
                 <DatePickerField
                   label="End date"
                   value={draft.endDate}
-                  minDate={
-                    draft.startDate && draft.startDate > TODAY_YMD
-                      ? draft.startDate
-                      : TODAY_YMD
-                  }
+                  minDate={draft.startDate || undefined}
+                  maxDate={TODAY_YMD}
                   onChange={(nextValue) =>
                     setDraft((prev) => ({ ...prev, endDate: nextValue }))
                   }
@@ -487,14 +506,14 @@ export default function ProjectDialog({
                 </div>
               </div>
 
-              <div className="flex justify-between pt-1">
-                <button
-                  type="button"
-                  onClick={handleDeleteDraft}
-                  disabled={editingId === null}
-                  className="rounded-full border border-slate-300 px-5 py-1.5 text-base text-slate-500 enabled:hover:bg-slate-50 disabled:opacity-50"
-                >
-                  Delete
+                <div className="flex justify-between pt-1">
+                  <button
+                    type="button"
+                    onClick={() => void handleDeleteDraft()}
+                    disabled={editingId === null}
+                    className="rounded-full border border-slate-300 px-5 py-1.5 text-base text-slate-500 enabled:hover:bg-slate-50 disabled:opacity-50"
+                  >
+                    Delete
                 </button>
                 <div className="flex gap-2">
                   <button
