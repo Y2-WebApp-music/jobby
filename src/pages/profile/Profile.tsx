@@ -889,11 +889,19 @@ export default function Profile() {
     );
 
     try {
-      await Promise.all([
-        ...removedPersistedItems.map((item) =>
+      await Promise.all(
+        removedPersistedItems.map((item) =>
           profileService.deleteEducation(user.id, item.backendId as string),
         ),
-        ...nextItems.map((item, index) => {
+      );
+    } catch {
+      toast.error("Failed to delete education");
+      return;
+    }
+
+    try {
+      await Promise.all(
+        nextItems.map((item, index) => {
           const payload = {
             index,
             school_name: item.school.trim(),
@@ -909,13 +917,18 @@ export default function Profile() {
             ? profileService.updateEducation(user.id, item.backendId, payload)
             : profileService.createEducation(user.id, payload);
         }),
-      ]);
-
-      toast.success("Education updated");
-      void refreshProfile();
+      );
     } catch {
-      toast.error("Failed to update education");
+      toast.error("Failed to save education changes");
+      return;
     }
+
+    toast.success(
+      removedPersistedItems.length > 0
+        ? "Education deleted"
+        : "Education updated",
+    );
+    void refreshProfile();
   };
 
   const handleSaveWorkExperience = async (nextItems: WorkExperienceItem[]) => {
@@ -928,14 +941,22 @@ export default function Profile() {
     );
 
     try {
-      await Promise.all([
-        ...removedPersistedItems.map((item) =>
+      await Promise.all(
+        removedPersistedItems.map((item) =>
           profileService.deleteWorkExperience(
             user.id,
             item.backendId as string,
           ),
         ),
-        ...nextItems.map((item, index) => {
+      );
+    } catch (error) {
+      toast.error("Failed to delete work experience");
+      throw error;
+    }
+
+    try {
+      await Promise.all(
+        nextItems.map((item, index) => {
           const payload = {
             index,
             position: item.position.trim(),
@@ -957,14 +978,18 @@ export default function Profile() {
               )
             : profileService.createWorkExperience(user.id, payload);
         }),
-      ]);
-
-      toast.success("Work experience updated");
-      await refreshProfile();
+      );
     } catch (error) {
-      toast.error("Failed to update work experience");
+      toast.error("Failed to save work experience changes");
       throw error;
     }
+
+    toast.success(
+      removedPersistedItems.length > 0
+        ? "Work experience deleted"
+        : "Work experience updated",
+    );
+    await refreshProfile();
   };
 
   const handleSaveProjects = async (nextItems: ProjectItem[]) => {
@@ -992,11 +1017,19 @@ export default function Profile() {
     }
 
     try {
-      await Promise.all([
-        ...removedPersistedItems.map((item) =>
+      await Promise.all(
+        removedPersistedItems.map((item) =>
           profileService.deleteProject(user.id, item.backendId as string),
         ),
-        ...nextItems.map((item, index) => {
+      );
+    } catch (error) {
+      toast.error("Failed to delete project");
+      throw error;
+    }
+
+    try {
+      await Promise.all(
+        nextItems.map((item, index) => {
           const payload = {
             payload: {
               index,
@@ -1013,14 +1046,16 @@ export default function Profile() {
             ? profileService.updateProject(user.id, item.backendId, payload)
             : profileService.createProject(user.id, payload);
         }),
-      ]);
-
-      toast.success("Projects updated");
-      await refreshProfile();
+      );
     } catch (error) {
-      toast.error("Failed to update projects");
+      toast.error("Failed to save project changes");
       throw error;
     }
+
+    toast.success(
+      removedPersistedItems.length > 0 ? "Project deleted" : "Projects updated",
+    );
+    await refreshProfile();
   };
 
   const handleSaveAchievements = async (nextItems: AchievementItem[]) => {
@@ -1050,11 +1085,19 @@ export default function Profile() {
     }
 
     try {
-      await Promise.all([
-        ...removedPersistedItems.map((item) =>
+      await Promise.all(
+        removedPersistedItems.map((item) =>
           profileService.deleteAchievement(user.id, item.backendId as string),
         ),
-        ...nextItems.map((item, index) => {
+      );
+    } catch (error) {
+      toast.error("Failed to delete achievement");
+      throw error;
+    }
+
+    try {
+      await Promise.all(
+        nextItems.map((item, index) => {
           const payload = {
             payload: {
               index,
@@ -1071,14 +1114,18 @@ export default function Profile() {
             ? profileService.updateAchievement(user.id, item.backendId, payload)
             : profileService.createAchievement(user.id, payload);
         }),
-      ]);
-
-      toast.success("Achievements updated");
-      await refreshProfile();
+      );
     } catch (error) {
-      toast.error("Failed to update achievements");
+      toast.error("Failed to save achievement changes");
       throw error;
     }
+
+    toast.success(
+      removedPersistedItems.length > 0
+        ? "Achievement deleted"
+        : "Achievements updated",
+    );
+    await refreshProfile();
   };
 
   const handleOpenSkillInfo = (skill: string) => {
