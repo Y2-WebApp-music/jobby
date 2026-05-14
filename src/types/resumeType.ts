@@ -71,6 +71,8 @@ export type ResumeCreateProps = {
   create_date?: string;
   theme: number;
   color: number;
+  resume_file?: string;
+  resume_file_metadata?: Record<string, unknown> | null;
   data: {
     first_name: string;
     last_name: string;
@@ -99,6 +101,8 @@ export const initialResume: ResumeCreateProps = {
   name: "",
   theme: 1,
   color: 0,
+  resume_file: "",
+  resume_file_metadata: null,
   data: {
     first_name: "",
     last_name: "",

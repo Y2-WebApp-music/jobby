@@ -34,6 +34,19 @@ const RenderResume = ({ resume, templateId }: Props) => {
     startScrollTop: number;
   } | null>(null);
   const Template = templateMap[templateId] || Template1;
+  const resumeFileUrl = resume.resume_file?.trim() ?? "";
+  const resumeFileMimeType =
+    typeof resume.resume_file_metadata?.content_type === "string"
+      ? resume.resume_file_metadata.content_type.toLowerCase()
+      : "";
+  const isPdfResumeFile =
+    Boolean(resumeFileUrl) &&
+    (resumeFileMimeType.includes("pdf") ||
+      resumeFileUrl.toLowerCase().includes(".pdf"));
+  const isImageResumeFile =
+    Boolean(resumeFileUrl) &&
+    (resumeFileMimeType.startsWith("image/") ||
+      /\.(png|jpe?g|webp|gif)$/i.test(resumeFileUrl));
 
   useEffect(() => {
     const el = containerRef.current;
@@ -167,44 +180,62 @@ const RenderResume = ({ resume, templateId }: Props) => {
         ref={containerRef}
         className="absolute inset-0 select-none overflow-auto overscroll-contain touch-pan-x touch-pan-y cursor-grab bg-neutral-50 border border-neutral-200 rounded-lg p-0"
       >
-        <div className="flex min-h-full w-full items-start justify-start">
-          <div
-            className="origin-top-left"
-            style={{ transform: `scale(${zoom})` }}
-          >
+        {isPdfResumeFile ? (
+          <div className="h-full w-full bg-white">
+            <iframe
+              title="Imported resume PDF"
+              src={resumeFileUrl}
+              className="h-full w-full border-0"
+            />
+          </div>
+        ) : isImageResumeFile ? (
+          <div className="flex h-full w-full items-center justify-center bg-white p-4">
+            <img
+              src={resumeFileUrl}
+              alt="Imported resume"
+              className="max-h-full max-w-full object-contain"
+            />
+          </div>
+        ) : (
+          <div className="flex min-h-full w-full items-start justify-start">
             <div
-              className="relative"
-              style={{ width: A4_WIDTH, minHeight: pageCount * A4_HEIGHT }}
+              className="origin-top-left"
+              style={{ transform: `scale(${zoom})` }}
             >
-              {pageCount > 1 && (
-                <div className="pointer-events-none absolute left-0 top-0 h-full w-full">
-                  {Array.from({ length: pageCount - 1 }).map((_, idx) => (
-                    <div
-                      key={`page-break-${idx + 1}`}
-                      style={{
-                        position: "absolute",
-                        top: (idx + 1) * A4_HEIGHT,
-                        left: 0,
-                        right: 0,
-                        borderTop: "1px dashed var(--color-c-e5e7eb)",
-                      }}
-                    />
-                  ))}
-                </div>
-              )}
               <div
-                ref={contentRef}
-                style={{
-                  width: A4_WIDTH,
-                  minHeight: A4_HEIGHT,
-                  boxSizing: "border-box",
-                }}
+                className="relative"
+                style={{ width: A4_WIDTH, minHeight: pageCount * A4_HEIGHT }}
               >
-                <Template resume={resume} />
+                {pageCount > 1 && (
+                  <div className="pointer-events-none absolute left-0 top-0 h-full w-full">
+                    {Array.from({ length: pageCount - 1 }).map((_, idx) => (
+                      <div
+                        key={`page-break-${idx + 1}`}
+                        style={{
+                          position: "absolute",
+                          top: (idx + 1) * A4_HEIGHT,
+                          left: 0,
+                          right: 0,
+                          borderTop: "1px dashed var(--color-c-e5e7eb)",
+                        }}
+                      />
+                    ))}
+                  </div>
+                )}
+                <div
+                  ref={contentRef}
+                  style={{
+                    width: A4_WIDTH,
+                    minHeight: A4_HEIGHT,
+                    boxSizing: "border-box",
+                  }}
+                >
+                  <Template resume={resume} />
+                </div>
               </div>
             </div>
           </div>
-        </div>
+        )}
       </div>
       <button
         type="button"

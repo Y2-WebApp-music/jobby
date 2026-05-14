@@ -44,15 +44,23 @@ const httpClient: AxiosInstance = axios.create({
 httpClient.interceptors.request.use(
   (config) => {
     config.withCredentials = true;
+    const headers = AxiosHeaders.from(config.headers);
+
+    // Let the browser set multipart boundaries for FormData uploads.
+    // Keeping a forced JSON content-type strips file payloads on some backends.
+    if (config.data instanceof FormData) {
+      headers.delete("Content-Type");
+    }
+
     const token =
       readSessionTokenFromCookie() ??
       useAuthStore.getState().getToken() ??
       readPersistedAuthToken();
     if (token) {
-      const headers = AxiosHeaders.from(config.headers);
       headers.set("Authorization", `Bearer ${token}`);
-      config.headers = headers;
     }
+
+    config.headers = headers;
 
     return config;
   },
