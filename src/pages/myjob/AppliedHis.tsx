@@ -207,7 +207,11 @@ export default function MyJobsPage() {
             job.id === selectedJobId
               ? {
                   ...job,
-                  skills: response.data.skills.map((item) => item.name),
+                  skills: response.data.skills.map((item, index) => ({
+                    index,
+                    skill_id: item.skill_id,
+                    skill_name: item.skill_name,
+                  })),
                   category: response.data.categories
                     .map((item) => item.text_eng)
                     .join(", "),
@@ -675,11 +679,11 @@ export default function MyJobsPage() {
                       {selectedJob.skills.length > 0 ? (
                         selectedJob.skills.map((skill) => (
                           <button
-                            key={skill}
+                            key={skill.skill_id}
                             type="button"
                             className={`${gradientOutlineChipClassName} h-8 cursor-default`}
                           >
-                            {skill}
+                            {skill.skill_name}
                           </button>
                         ))
                       ) : (

@@ -71,9 +71,16 @@ export type SearchJobDetailResponse = {
   sub_district: unknown | null;
   postal_code_ref: unknown | null;
   categories: SearchJobLookupLabel[];
-  skills: SearchJobSkillItem[];
+  skills: {
+    index: number;
+    skill_id: string;
+    skill_name: string;
+  }[];
   work_options: SearchJobLookupLabel[];
   work_types: SearchJobLookupLabel[];
+  applied: boolean;
+  save: boolean;
+  is_viewed: boolean;
 };
 
 export type SearchAddressOptionsParams = {

@@ -1,7 +1,6 @@
 import PageLayout from "@/components/layout/PageLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { PaginationEllipsis } from "@/components/ui/pagination";
 import {
   Combobox,
   ComboboxContent,
@@ -14,11 +13,22 @@ import {
   MultiSelect,
   type MultiSelectOption,
 } from "@/components/ui/multi-select";
+import { PaginationEllipsis } from "@/components/ui/pagination";
 import SkillinfoDialog from "@/features/profile/dialog/SkillinfoDialog";
 import { ApplyDialog } from "@/features/searchJob/dialogs/ApplyDialog";
 import { cn } from "@/lib/utils";
 import searchJobService from "@/services/searchJobService";
+import {
+  getSkillDetail,
+  type SkillDetailResponse,
+} from "@/services/skillDetailService";
 import { useAuthStore } from "@/store/auth";
+import {
+  pageSize,
+  searchTypeOptions,
+  useSearchJobState,
+  type Job,
+} from "@/types/job";
 import type {
   FilterOptionItem,
   PlaceSearchItem,
@@ -34,12 +44,6 @@ import {
   initialApplyPayload,
   type ApplyPayload,
 } from "@/types/searchJob";
-import {
-  pageSize,
-  searchTypeOptions,
-  type Job,
-  useSearchJobState,
-} from "@/types/job";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { CgClose } from "react-icons/cg";
 import { HiOutlineSelector } from "react-icons/hi";
@@ -116,6 +120,8 @@ const mapSearchResultToJob = (item: SearchJobResult): Job => ({
   extraDescription: "",
   matchSkillCount: item.match_skill_count ?? 0,
   viewed: normalizeViewedFlag(item.is_viewed),
+  applied: Boolean(item.applied),
+  saved: Boolean(item.save),
   detailLoaded: false,
 });
 
@@ -181,6 +187,116 @@ const getTotalResultsCount = (
   return totalPages * pageSize;
 };
 
+const useSkillInfoDialogState = () => {
+  const [skillInfoOpen, setSkillInfoOpen] = useState(false);
+  const [selectedSkillName, setSelectedSkillName] = useState<string | null>(
+    null,
+  );
+  const [selectedSkillDetail, setSelectedSkillDetail] =
+    useState<SkillDetailResponse | null>(null);
+  const [loadingSkillDetail, setLoadingSkillDetail] = useState(false);
+  const [skillDetailError, setSkillDetailError] = useState<string | null>(null);
+
+  return {
+    skillInfoOpen,
+    setSkillInfoOpen,
+    selectedSkillName,
+    setSelectedSkillName,
+    selectedSkillDetail,
+    setSelectedSkillDetail,
+    loadingSkillDetail,
+    setLoadingSkillDetail,
+    skillDetailError,
+    setSkillDetailError,
+  };
+};
+
+const useApplyDialogState = () => {
+  const [applyData, setApplyData] = useState<ApplyPayload>(initialApplyPayload);
+  const [applyDetail, setApplyDetail] = useState(initialApplyDialogJob);
+  const [resumesInJobby, setResumesInJobby] = useState<
+    { id: string; name: string; create_date: string }[]
+  >([]);
+  const [loadingApply, setLoadingApply] = useState(false);
+
+  return {
+    applyData,
+    setApplyData,
+    applyDetail,
+    setApplyDetail,
+    resumesInJobby,
+    setResumesInJobby,
+    loadingApply,
+    setLoadingApply,
+  };
+};
+
+const useSearchFiltersState = () => {
+  const [filterOptions, setFilterOptions] = useState<{
+    categoryOptions: FilterOptionItem[];
+    workTypeOptions: FilterOptionItem[];
+    workOptionOptions: FilterOptionItem[];
+  }>({
+    categoryOptions: [],
+    workTypeOptions: [],
+    workOptionOptions: [],
+  });
+  const [placeOptions, setPlaceOptions] = useState<PlaceSearchItem[]>([]);
+  const [placeInput, setPlaceInput] = useState("");
+  const [skillFilterQuery, setSkillFilterQuery] = useState("");
+  const [skillFilterSuggestions, setSkillFilterSuggestions] = useState<
+    SearchSuggestItem[]
+  >([]);
+  const [selectedPlaceLabel, setSelectedPlaceLabel] = useState("Any Place");
+  const [selectedSkillItems, setSelectedSkillItems] = useState<
+    SearchSuggestItem[]
+  >([]);
+  const { categoryOptions, workTypeOptions, workOptionOptions } = filterOptions;
+
+  return {
+    ...filterOptions,
+    setFilterOptions,
+    categoryOptions,
+    workTypeOptions,
+    workOptionOptions,
+    placeOptions,
+    setPlaceOptions,
+    placeInput,
+    setPlaceInput,
+    skillFilterQuery,
+    setSkillFilterQuery,
+    skillFilterSuggestions,
+    setSkillFilterSuggestions,
+    selectedPlaceLabel,
+    setSelectedPlaceLabel,
+    selectedSkillItems,
+    setSelectedSkillItems,
+  };
+};
+
+const useJobsUiState = () => {
+  const [savedJobIds, setSavedJobIds] = useState<Set<string>>(new Set());
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalResults, setTotalResults] = useState(0);
+  const [loadingJobs, setLoadingJobs] = useState(false);
+  const [sessionViewedIds, setSessionViewedIds] = useState<Set<string>>(
+    new Set(),
+  );
+
+  return {
+    savedJobIds,
+    setSavedJobIds,
+    totalPages,
+    setTotalPages,
+    totalResults,
+    setTotalResults,
+    loadingJobs,
+    setLoadingJobs,
+    sessionViewedIds,
+    setSessionViewedIds,
+  };
+};
+
 export default function SearchJobPage() {
   const user = useAuthStore((state) => state.user);
   const {
@@ -198,49 +314,68 @@ export default function SearchJobPage() {
     setApplyOpen,
     applyDialogKey,
     setApplyDialogKey,
-    setMessageCount,
   } = useSearchJobState();
 
   const skillInfoRef = useRef<HTMLDivElement | null>(null);
   const skillFilterRef = useRef<HTMLDivElement | null>(null);
   const jobListScrollRef = useRef<HTMLDivElement | null>(null);
+  const skillDetailRequestRef = useRef(0);
+  const jobsRequestKeyRef = useRef<string | null>(null);
+  const jobsRequestInFlightRef = useRef(false);
+  const jobDetailInFlightRef = useRef<Set<string>>(new Set());
 
-  const [skillInfoOpen, setSkillInfoOpen] = useState(false);
-  const [selectedSkillName, setSelectedSkillName] = useState<string | null>(
-    null,
-  );
-  const [applyData, setApplyData] = useState<ApplyPayload>(initialApplyPayload);
-  const [applyDetail, setApplyDetail] = useState(initialApplyDialogJob);
-  const [resumesInJobby, setResumesInJobby] = useState<
-    { id: string; name: string; create_date: string }[]
-  >([]);
-  const [categoryOptions, setCategoryOptions] = useState<FilterOptionItem[]>(
-    [],
-  );
-  const [workTypeOptions, setWorkTypeOptions] = useState<FilterOptionItem[]>(
-    [],
-  );
-  const [workOptionOptions, setWorkOptionOptions] = useState<
-    FilterOptionItem[]
-  >([]);
-  const [placeOptions, setPlaceOptions] = useState<PlaceSearchItem[]>([]);
-  const [placeInput, setPlaceInput] = useState("");
-  const [skillFilterQuery, setSkillFilterQuery] = useState("");
-  const [skillFilterSuggestions, setSkillFilterSuggestions] = useState<
-    SearchSuggestItem[]
-  >([]);
-  const [selectedPlaceLabel, setSelectedPlaceLabel] = useState("Any Place");
-  const [selectedSkillItems, setSelectedSkillItems] = useState<
-    SearchSuggestItem[]
-  >([]);
-  const [savedJobIds, setSavedJobIds] = useState<Set<string>>(new Set());
-  const [totalPages, setTotalPages] = useState(1);
-  const [totalResults, setTotalResults] = useState(0);
-  const [loadingJobs, setLoadingJobs] = useState(false);
-  const [loadingApply, setLoadingApply] = useState(false);
-  const [sessionViewedIds, setSessionViewedIds] = useState<Set<string>>(
-    new Set(),
-  );
+  const {
+    skillInfoOpen,
+    setSkillInfoOpen,
+    selectedSkillName,
+    setSelectedSkillName,
+    selectedSkillDetail,
+    setSelectedSkillDetail,
+    loadingSkillDetail,
+    setLoadingSkillDetail,
+    skillDetailError,
+    setSkillDetailError,
+  } = useSkillInfoDialogState();
+  const {
+    applyData,
+    setApplyData,
+    applyDetail,
+    setApplyDetail,
+    resumesInJobby,
+    setResumesInJobby,
+    loadingApply,
+    setLoadingApply,
+  } = useApplyDialogState();
+  const {
+    categoryOptions,
+    workTypeOptions,
+    workOptionOptions,
+    setFilterOptions,
+    placeOptions,
+    setPlaceOptions,
+    placeInput,
+    setPlaceInput,
+    skillFilterQuery,
+    setSkillFilterQuery,
+    skillFilterSuggestions,
+    setSkillFilterSuggestions,
+    selectedPlaceLabel,
+    setSelectedPlaceLabel,
+    selectedSkillItems,
+    setSelectedSkillItems,
+  } = useSearchFiltersState();
+  const {
+    savedJobIds,
+    setSavedJobIds,
+    totalPages,
+    setTotalPages,
+    totalResults,
+    setTotalResults,
+    loadingJobs,
+    setLoadingJobs,
+    sessionViewedIds,
+    setSessionViewedIds,
+  } = useJobsUiState();
 
   const currentPage = searchPayload.page ? searchPayload.page + 1 : 1;
   const filterMode = sortTypeToMode(searchPayload.sort_type);
@@ -314,6 +449,19 @@ export default function SearchJobPage() {
     [setSearchPayload, user?.id],
   );
 
+  const [searchInput, setSearchInput] = useState(searchPayload.search_text);
+
+  useEffect(() => {
+    setSearchInput(searchPayload.search_text);
+  }, [searchPayload.search_text]);
+
+  useEffect(() => {
+    const id = window.setTimeout(() => {
+      updatePayload({ search_text: searchInput, page: 0 });
+    }, 300);
+    return () => window.clearTimeout(id);
+  }, [searchInput, updatePayload]);
+
   useEffect(() => {
     setSearchPayload((prev) => ({
       ...prev,
@@ -323,19 +471,17 @@ export default function SearchJobPage() {
   }, [setSearchPayload, user?.id]);
 
   useEffect(() => {
-    setMessageCount(100);
-  }, [setMessageCount]);
-
-  useEffect(() => {
     let cancelled = false;
 
     const loadFilterOptions = async () => {
       try {
         const response = await searchJobService.getSearchFilterOptions();
         if (cancelled) return;
-        setCategoryOptions(response.data.category);
-        setWorkTypeOptions(response.data.work_type);
-        setWorkOptionOptions(response.data.work_option);
+        setFilterOptions({
+          categoryOptions: response.data.category,
+          workTypeOptions: response.data.work_type,
+          workOptionOptions: response.data.work_option,
+        });
       } catch {
         if (!cancelled) {
           toast.error("Failed to load search filters");
@@ -348,7 +494,7 @@ export default function SearchJobPage() {
     return () => {
       cancelled = true;
     };
-  }, [updatePayload]);
+  }, [setFilterOptions]);
 
   useEffect(() => {
     const searchText = searchPayload.search_text.trim();
@@ -408,7 +554,7 @@ export default function SearchJobPage() {
       cancelled = true;
       window.clearTimeout(timeoutId);
     };
-  }, [placeInput]);
+  }, [placeInput, setPlaceOptions]);
 
   useEffect(() => {
     if (!skillOpen) return;
@@ -446,10 +592,13 @@ export default function SearchJobPage() {
       cancelled = true;
       window.clearTimeout(timeoutId);
     };
-  }, [skillFilterQuery, skillOpen]);
+  }, [setSkillFilterSuggestions, skillFilterQuery, skillOpen]);
 
   const fetchJobDetail = useCallback(
     async (job: Job) => {
+      if (jobDetailInFlightRef.current.has(job.id)) return;
+      jobDetailInFlightRef.current.add(job.id);
+
       setSessionViewedIds((prev) => {
         if (prev.has(job.id)) return prev;
         const next = new Set(prev);
@@ -462,7 +611,6 @@ export default function SearchJobPage() {
       try {
         const [detailResponse] = await Promise.all([
           searchJobService.getSearchJobDetail(job.id, user.id),
-          searchJobService.viewedJob(user.id, job.id).catch(() => undefined),
         ]);
 
         setJobs((prev) =>
@@ -470,7 +618,7 @@ export default function SearchJobPage() {
             item.nodeId === job.nodeId
               ? {
                   ...item,
-                  skills: detailResponse.data.skills.map((skill) => skill.name),
+                  skills: detailResponse.data.skills,
                   category:
                     detailResponse.data.categories
                       .map((category) => category.text_eng)
@@ -485,60 +633,86 @@ export default function SearchJobPage() {
                       .join(", ") || item.workOption,
                   companyDescription: detailResponse.data.description ?? "",
                   extraDescription: detailResponse.data.description_rtf ?? "",
+                  applied: Boolean(detailResponse.data.applied),
+                  saved: Boolean(detailResponse.data.save),
                   detailLoaded: true,
                 }
               : item,
           ),
         );
+        setSavedJobIds((prev) => {
+          const next = new Set(prev);
+          if (detailResponse.data.save) {
+            next.add(job.id);
+          } else {
+            next.delete(job.id);
+          }
+          return next;
+        });
       } catch {
         return;
+      } finally {
+        jobDetailInFlightRef.current.delete(job.id);
       }
     },
-    [setJobs, user?.id],
+    [setJobs, setSavedJobIds, setSessionViewedIds, user?.id],
   );
 
-  useEffect(() => {
-    let cancelled = false;
+  const loadJobs = useCallback(async () => {
+    const requestKey = JSON.stringify({
+      ...searchPayload,
+      user_id: user?.id ?? "",
+      limit: pageSize,
+    });
+    if (
+      jobsRequestInFlightRef.current &&
+      jobsRequestKeyRef.current === requestKey
+    ) {
+      return;
+    }
+    jobsRequestInFlightRef.current = true;
+    jobsRequestKeyRef.current = requestKey;
 
-    const loadJobs = async () => {
-      setLoadingJobs(true);
-      try {
-        const response = await searchJobService.searchJobs({
-          ...searchPayload,
-          user_id: user?.id ?? "",
-          limit: pageSize,
-        });
-        if (cancelled) return;
+    setLoadingJobs(true);
+    try {
+      const response = await searchJobService.searchJobs({
+        ...searchPayload,
+        user_id: user?.id ?? "",
+        limit: pageSize,
+      });
 
-        const nextJobs = response.data.job_result.map(mapSearchResultToJob);
-        setJobs(nextJobs);
-        setTotalPages(Math.max(1, response.data.total_page ?? 0));
-        setTotalResults(getTotalResultsCount(response.data, nextJobs.length));
-        setSelectedJobId((prev) => {
-          if (prev && nextJobs.some((job) => job.nodeId === prev)) return prev;
-          return null;
-        });
-      } catch {
-        if (!cancelled) {
-          setJobs([]);
-          setTotalPages(1);
-          setTotalResults(0);
-          setSelectedJobId(null);
-          toast.error("Failed to load jobs");
-        }
-      } finally {
-        if (!cancelled) {
-          setLoadingJobs(false);
-        }
+      const nextJobs = response.data.job_result.map(mapSearchResultToJob);
+      setJobs(nextJobs);
+      setSavedJobIds(new Set(nextJobs.filter((j) => j.saved).map((j) => j.id)));
+      setTotalPages(Math.max(1, response.data.total_page ?? 0));
+      setTotalResults(getTotalResultsCount(response.data, nextJobs.length));
+      setSelectedJobId(nextJobs[0]?.nodeId ?? null);
+    } catch {
+      setJobs([]);
+      setTotalPages(1);
+      setTotalResults(0);
+      setSelectedJobId(null);
+      toast.error("Failed to load jobs");
+    } finally {
+      if (jobsRequestKeyRef.current === requestKey) {
+        jobsRequestInFlightRef.current = false;
       }
-    };
+      setLoadingJobs(false);
+    }
+  }, [
+    searchPayload,
+    setJobs,
+    setLoadingJobs,
+    setSavedJobIds,
+    setSelectedJobId,
+    setTotalPages,
+    setTotalResults,
+    user?.id,
+  ]);
 
-    void loadJobs();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [searchPayload, setJobs, setSelectedJobId, user?.id]);
+  useEffect(() => {
+    loadJobs();
+  }, [loadJobs]);
 
   useEffect(() => {
     if (!selectedJobId) return;
@@ -552,25 +726,6 @@ export default function SearchJobPage() {
   useEffect(() => {
     jobListScrollRef.current?.scrollTo({ top: 0 });
   }, [currentPage]);
-
-  useEffect(() => {
-    if (!skillOpen) return;
-
-    const handlePointerDown = (event: MouseEvent | TouchEvent) => {
-      const target = event.target as Node | null;
-      if (!target) return;
-      if (skillFilterRef.current?.contains(target)) return;
-      setSkillOpen(false);
-    };
-
-    document.addEventListener("mousedown", handlePointerDown);
-    document.addEventListener("touchstart", handlePointerDown);
-
-    return () => {
-      document.removeEventListener("mousedown", handlePointerDown);
-      document.removeEventListener("touchstart", handlePointerDown);
-    };
-  }, [setSkillOpen, skillOpen]);
 
   useEffect(() => {
     const handler = () => updatePayload({ search_text: "", page: 0 });
@@ -612,9 +767,35 @@ export default function SearchJobPage() {
     skillInfoRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
-  const handleOpenSkillInfo = (skillName: string) => {
+  const handleOpenSkillInfo = async (skillId: string, skillName: string) => {
     setSelectedSkillName(skillName);
+    setSelectedSkillDetail(null);
+    setSkillDetailError(null);
+    setLoadingSkillDetail(true);
     setSkillInfoOpen(true);
+
+    const requestId = ++skillDetailRequestRef.current;
+    try {
+      const response = await getSkillDetail(skillId);
+      if (requestId !== skillDetailRequestRef.current) return;
+      setSelectedSkillDetail(response.data);
+    } catch {
+      if (requestId !== skillDetailRequestRef.current) return;
+      setSelectedSkillDetail(null);
+      setSkillDetailError("Unable to load skill details.");
+    } finally {
+      if (requestId === skillDetailRequestRef.current) {
+        setLoadingSkillDetail(false);
+      }
+    }
+  };
+
+  const handleCloseSkillInfo = () => {
+    skillDetailRequestRef.current += 1;
+    setSkillInfoOpen(false);
+    setLoadingSkillDetail(false);
+    setSkillDetailError(null);
+    setSelectedSkillDetail(null);
   };
 
   const handlePlaceSelect = (label: string) => {
@@ -663,6 +844,12 @@ export default function SearchJobPage() {
         await searchJobService.saveJob(user.id, selectedJob.id);
         setSavedJobIds((prev) => new Set(prev).add(selectedJob.id));
       }
+      // mirror save flag into job list for UI consistency
+      setJobs((prev) =>
+        prev.map((job) =>
+          job.id === selectedJob.id ? { ...job, saved: !isSaved } : job,
+        ),
+      );
     } catch {
       toast.error("Failed to update saved job");
     }
@@ -727,10 +914,8 @@ export default function SearchJobPage() {
                 <Combobox items={searchSuggestionNames}>
                   <ComboboxInput
                     placeholder="Software Engineer"
-                    value={searchPayload.search_text}
-                    onChange={(e) =>
-                      updatePayload({ search_text: e.target.value, page: 0 })
-                    }
+                    value={searchInput}
+                    onChange={(e) => setSearchInput(e.target.value)}
                     className="h-10 min-w-0 flex-1 border-0 bg-transparent px-1 text-xl outline-none focus-visible:ring-0 **:data-[slot=input-group-button]:bg-none! **:data-[slot=input-group-button]:bg-transparent! **:data-[slot=input-group-button]:hover:bg-transparent! **:data-[slot=input-group-control]:border-0 **:data-[slot=input-group-control]:bg-transparent **:data-[slot=input-group-control]:shadow-none"
                     showTrigger={false}
                     showClear
@@ -1054,6 +1239,7 @@ export default function SearchJobPage() {
                 </div>
               </div>
 
+              {/* left Card job List */}
               <div
                 ref={jobListScrollRef}
                 className="min-h-0 flex-1 overflow-y-auto"
@@ -1108,7 +1294,7 @@ export default function SearchJobPage() {
                                 {job.location}
                               </div>
                               <div className="mt-2 text-xs text-slate-500">
-                                {sessionViewedIds.has(job.id)
+                                {sessionViewedIds.has(job.id) || job.viewed
                                   ? "Viewed - "
                                   : ""}
                                 {job.meta}
@@ -1178,6 +1364,7 @@ export default function SearchJobPage() {
               </div>
             </div>
 
+            {/* Job Detail */}
             <div className="h-full overflow-y-auto border-l border-[#e5e5e5] pl-4">
               {visibleJobs.length === 0 || !selectedJob ? (
                 <div className="pt-6 text-sm text-slate-500">
@@ -1196,7 +1383,7 @@ export default function SearchJobPage() {
                           />
                         ) : null}
                       </div>
-                      <div className="min-w-0 text-sm text-slate-500 break-words">
+                      <div className="min-w-0 text-sm text-slate-500 wrap-break-word">
                         {selectedJob.company}
                       </div>
                       <button
@@ -1206,10 +1393,10 @@ export default function SearchJobPage() {
                         <IoIosMore size={20} />
                       </button>
                     </div>
-                    <h2 className="text-[22px] font-semibold leading-tight text-slate-950 break-words">
+                    <h2 className="text-[22px] font-semibold leading-tight text-slate-950 wrap-break-word">
                       {selectedJob.title}
                     </h2>
-                    <p className="text-sm text-slate-500 break-words">
+                    <p className="text-sm text-slate-500 wrap-break-word">
                       {selectedJob.location} -{" "}
                       {formatPostedLabel(selectedJob.postedAt)}
                     </p>
@@ -1231,17 +1418,27 @@ export default function SearchJobPage() {
                   <div className="mt-4 flex items-center gap-3">
                     <Button
                       onClick={() => void handleOpenApply()}
-                      disabled={loadingApply}
-                      className="h-10 rounded-full bg-[linear-gradient(90deg,var(--color-main),var(--color-second))] px-5 text-sm font-medium text-white shadow-none hover:opacity-90"
+                      disabled={loadingApply || selectedJob.applied}
+                      className="h-10 rounded-full px-4 "
+                      variant={selectedJob.applied ? "outline" : "default"}
                     >
-                      {loadingApply ? "Loading..." : "Apply This Job"}
+                      {selectedJob.applied
+                        ? "Applied"
+                        : loadingApply
+                          ? "Loading..."
+                          : "Apply This Job"}
                     </Button>
                     <Button
-                      variant="outline"
+                      variant={selectedJob.saved ? "default" : "outline"}
                       onClick={() => void handleToggleSave()}
-                      className="h-10 rounded-full border border-[#ff9ad3] px-5 text-sm text-[#ff5db1] hover:bg-[#fff4fa]"
+                      className={cn(
+                        "h-10 rounded-full px-5 text-sm",
+                        selectedJob.saved
+                          ? "bg-[#fff0f6] text-[#ff5db1] hover:bg-[#ffe6f3]"
+                          : "border border-[#ff9ad3] text-[#ff5db1] hover:bg-[#fff4fa]",
+                      )}
                     >
-                      {savedJobIds.has(selectedJob.id) ? "Saved" : "Save"}
+                      {selectedJob.saved ? "Saved" : "Save"}
                     </Button>
                   </div>
 
@@ -1253,13 +1450,18 @@ export default function SearchJobPage() {
                       {selectedJob.skills.length > 0 ? (
                         selectedJob.skills.map((skill) => (
                           <Button
-                            key={skill}
+                            key={skill.skill_id}
                             type="button"
                             variant="outline_gradient"
                             size="sm"
-                            onClick={() => handleOpenSkillInfo(skill)}
+                            onClick={() =>
+                              void handleOpenSkillInfo(
+                                skill.skill_id,
+                                skill.skill_name,
+                              )
+                            }
                           >
-                            {skill}
+                            {skill.skill_name}
                           </Button>
                         ))
                       ) : (
@@ -1301,8 +1503,14 @@ export default function SearchJobPage() {
       </div>
       <SkillinfoDialog
         open={skillInfoOpen}
-        onClose={() => setSkillInfoOpen(false)}
+        onClose={handleCloseSkillInfo}
         skillName={selectedSkillName}
+        skillDetail={selectedSkillDetail}
+        isLoading={loadingSkillDetail}
+        errorMessage={skillDetailError}
+        onSelectSkill={(skillId, skillName) =>
+          void handleOpenSkillInfo(skillId, skillName)
+        }
       />
       <ApplyDialog
         key={applyDialogKey}

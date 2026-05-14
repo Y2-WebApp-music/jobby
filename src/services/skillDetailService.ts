@@ -21,7 +21,7 @@ export const SKILL_DETAIL_ENDPOINT = "/graph/skills";
 
 export const getSkillDetail = (skillId: string) => {
   return apiService.fetchData<SkillDetailResponse>({
-    url: `${SKILL_DETAIL_ENDPOINT}/${encodeURIComponent(skillId)}`,
+    url: `${SKILL_DETAIL_ENDPOINT}/${skillId}`,
     method: "get",
   });
 };
