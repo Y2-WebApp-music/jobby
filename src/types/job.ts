@@ -28,6 +28,7 @@ export type Job = {
   extraDescription: string;
   matchSkillCount: number;
   viewed: boolean;
+  detailLoaded?: boolean;
   saved?: boolean;
   applied?: boolean;
   archived?: boolean;

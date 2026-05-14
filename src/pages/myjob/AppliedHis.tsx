@@ -699,15 +699,19 @@ export default function MyJobsPage() {
                     <p className="text-sm leading-relaxed text-slate-500">
                       Company Description
                     </p>
-                    <p className="mt-2 text-sm leading-relaxed text-slate-500">
-                      {selectedJob.companyDescription ||
-                        "No description available."}
-                    </p>
                     {selectedJob.extraDescription ? (
+                      <div
+                        className="mt-2 text-sm leading-6 text-muted-foreground [&_ol]:my-3 [&_ol]:list-decimal [&_ol]:pl-5 [&_p]:my-0 [&_p+ol]:mt-3 [&_p+ul]:mt-3 [&_p:not(:first-child)]:mt-3 [&_strong]:font-semibold [&_strong]:text-foreground [&_ul]:my-3 [&_ul]:list-disc [&_ul]:pl-5"
+                        dangerouslySetInnerHTML={{
+                          __html: selectedJob.extraDescription,
+                        }}
+                      />
+                    ) : (
                       <p className="mt-2 text-sm leading-relaxed text-slate-500">
-                        {selectedJob.extraDescription}
+                        {selectedJob.companyDescription ||
+                          "No description available."}
                       </p>
-                    ) : null}
+                    )}
                   </div>
                 </div>
               )}

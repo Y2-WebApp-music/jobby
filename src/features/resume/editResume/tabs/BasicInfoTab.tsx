@@ -124,7 +124,8 @@ export function BasicInfoTab({
     .filter((item) => item.value !== "");
   const subDistrictOptions = (
     subDistrictsByDistrict[districtId] ??
-    districts.find((item) => item.district_id === districtId)?.sub_district_list ??
+    districts.find((item) => item.district_id === districtId)
+      ?.sub_district_list ??
     []
   )
     .map((item) => ({
@@ -465,11 +466,18 @@ export function BasicInfoTab({
             <FieldLabel htmlFor="address-postal">Postal code</FieldLabel>
             <SearchSelect
               id="address-postal"
-              value={resume.data.address?.postal_code ? String(resume.data.address.postal_code) : ""}
+              value={
+                resume.data.address?.postal_code
+                  ? String(resume.data.address.postal_code)
+                  : ""
+              }
               onValueChange={(val) =>
                 updateAddress("postal_code", val ? Number(val) || 0 : 0)
               }
-              options={postalOptions.map((o) => ({ value: String(o.id), label: o.value }))}
+              options={postalOptions.map((o) => ({
+                value: String(o.id),
+                label: o.value,
+              }))}
               placeholder="Select"
               searchPlaceholder="Search postal code..."
               emptyMessage="No postal code found."

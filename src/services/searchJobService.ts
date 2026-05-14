@@ -5,7 +5,9 @@ import type {
   SearchJobPayload,
   SearchJobResponse,
   SearchSuggestResponse,
+  SearchTypeCode,
 } from "@/types/search-job";
+import type { SuccessResponse } from "@/types/apiServiceTypes";
 import type { ApplyDialogJob, ApplyPayload } from "@/types/searchJob";
 import apiService from "./apiService";
 
@@ -82,7 +84,7 @@ export type SearchAddressOptionsParams = {
 
 export type SearchNameOptionsParams = {
   search_text: string;
-  search_type?: string;
+  search_type?: SearchTypeCode | string;
 };
 
 export type SearchJobApplyNeedQuestionOption = {
@@ -142,6 +144,28 @@ export const SEARCH_ENDPOINT = "/search";
 export const SEARCH_JOB_ENDPOINT = "/search/job";
 export const SEARCH_JOB_USER_ENDPOINT = "/search/user";
 
+const emptySearchFilterOptions: SearchFilterOptionsResponse = {
+  category: [],
+  work_type: [],
+  work_option: [],
+};
+
+const emptyPlaceSearchResponse: PlaceSearchResponse = {
+  search_result: [],
+};
+
+const emptySearchSuggestResponse: SearchSuggestResponse = {
+  search_result: [],
+};
+
+const emptySearchJobResponse: SearchJobResponse = {
+  job_result: [],
+  page: 0,
+  total_page: 0,
+  total_result: 0,
+  total_count: 0,
+};
+
 const buildSearchJobPayload = (payload: SearchJobPayload) => {
   const trimmedUserId = payload.user_id.trim();
 
@@ -160,42 +184,64 @@ const buildSearchJobPayload = (payload: SearchJobPayload) => {
   };
 };
 
+const normalizeSearchTypeParam = (searchType?: SearchTypeCode | string) => {
+  if (searchType === 1 || searchType === "skill") return "skill";
+  if (searchType === 2 || searchType === "job") return "job";
+  return "any";
+};
+
+const withDefaultData = <T>(
+  response: SuccessResponse<T | undefined>,
+  fallback: T,
+): SuccessResponse<T> => ({
+  ...response,
+  data: response.data ?? fallback,
+});
+
 export const getSearchFilterOptions = () => {
-  return apiService.fetchData<SearchFilterOptionsResponse>({
-    url: `${SEARCH_ENDPOINT}/filter-options`,
-    method: "get",
-  });
+  return apiService
+    .fetchData<SearchFilterOptionsResponse | undefined>({
+      url: `${SEARCH_ENDPOINT}/filter-options`,
+      method: "get",
+    })
+    .then((response) => withDefaultData(response, emptySearchFilterOptions));
 };
 
 export const getSearchAddressOptions = (params: SearchAddressOptionsParams) => {
-  return apiService.fetchData<PlaceSearchResponse>({
-    url: `${SEARCH_ENDPOINT}/address-options`,
-    method: "get",
-    params: {
-      search_text: params.search_text,
-      search_type: params.search_type ?? "any",
-      ...(typeof params.limit === "number" ? { limit: params.limit } : {}),
-    },
-  });
+  return apiService
+    .fetchData<PlaceSearchResponse | undefined>({
+      url: `${SEARCH_ENDPOINT}/address-options`,
+      method: "get",
+      params: {
+        search_text: params.search_text,
+        search_type: params.search_type ?? "any",
+        ...(typeof params.limit === "number" ? { limit: params.limit } : {}),
+      },
+    })
+    .then((response) => withDefaultData(response, emptyPlaceSearchResponse));
 };
 
 export const getSearchNameOptions = (params: SearchNameOptionsParams) => {
-  return apiService.fetchData<SearchSuggestResponse>({
-    url: `${SEARCH_ENDPOINT}/options`,
-    method: "get",
-    params: {
-      search_text: params.search_text,
-      search_type: params.search_type ?? "any",
-    },
-  });
+  return apiService
+    .fetchData<SearchSuggestResponse | undefined>({
+      url: `${SEARCH_ENDPOINT}/options`,
+      method: "get",
+      params: {
+        search_text: params.search_text,
+        search_type: normalizeSearchTypeParam(params.search_type),
+      },
+    })
+    .then((response) => withDefaultData(response, emptySearchSuggestResponse));
 };
 
 export const searchJobs = (payload: SearchJobPayload) => {
-  return apiService.fetchData<SearchJobResponse>({
-    url: SEARCH_JOB_ENDPOINT,
-    method: "post",
-    data: buildSearchJobPayload(payload),
-  });
+  return apiService
+    .fetchData<SearchJobResponse | undefined>({
+      url: SEARCH_JOB_ENDPOINT,
+      method: "post",
+      data: buildSearchJobPayload(payload),
+    })
+    .then((response) => withDefaultData(response, emptySearchJobResponse));
 };
 
 export const getSearchJobDetail = (jobId: string, user_id: string) => {
