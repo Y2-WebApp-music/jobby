@@ -74,6 +74,9 @@ export type SearchJobDetailResponse = {
   skills: SearchJobSkillItem[];
   work_options: SearchJobLookupLabel[];
   work_types: SearchJobLookupLabel[];
+  applied: boolean;
+  save: boolean;
+  is_viewed: boolean;
 };
 
 export type SearchAddressOptionsParams = {

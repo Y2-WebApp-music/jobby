@@ -23,6 +23,7 @@ import type {
   FilterOptionItem,
   PlaceSearchItem,
   SearchJobPayload,
+  SearchJobResponse,
   SearchJobResult,
   SearchSuggestItem,
   SearchTypeCode,
@@ -115,6 +116,8 @@ const mapSearchResultToJob = (item: SearchJobResult): Job => ({
   extraDescription: "",
   matchSkillCount: item.match_skill_count ?? 0,
   viewed: normalizeViewedFlag(item.is_viewed),
+  applied: Boolean(item.applied),
+  saved: Boolean(item.save),
   detailLoaded: false,
 });
 
@@ -313,6 +316,19 @@ export default function SearchJobPage() {
     [setSearchPayload, user?.id],
   );
 
+  const [searchInput, setSearchInput] = useState(searchPayload.search_text);
+
+  useEffect(() => {
+    setSearchInput(searchPayload.search_text);
+  }, [searchPayload.search_text]);
+
+  useEffect(() => {
+    const id = window.setTimeout(() => {
+      updatePayload({ search_text: searchInput, page: 0 });
+    }, 300);
+    return () => window.clearTimeout(id);
+  }, [searchInput, updatePayload]);
+
   useEffect(() => {
     setSearchPayload((prev) => ({
       ...prev,
@@ -461,7 +477,6 @@ export default function SearchJobPage() {
       try {
         const [detailResponse] = await Promise.all([
           searchJobService.getSearchJobDetail(job.id, user.id),
-          searchJobService.viewedJob(user.id, job.id).catch(() => undefined),
         ]);
 
         setJobs((prev) =>
@@ -484,11 +499,22 @@ export default function SearchJobPage() {
                       .join(", ") || item.workOption,
                   companyDescription: detailResponse.data.description ?? "",
                   extraDescription: detailResponse.data.description_rtf ?? "",
+                  applied: Boolean(detailResponse.data.applied),
+                  saved: Boolean(detailResponse.data.save),
                   detailLoaded: true,
                 }
               : item,
           ),
         );
+        setSavedJobIds((prev) => {
+          const next = new Set(prev);
+          if (detailResponse.data.save) {
+            next.add(job.id);
+          } else {
+            next.delete(job.id);
+          }
+          return next;
+        });
       } catch {
         return;
       }
@@ -511,6 +537,7 @@ export default function SearchJobPage() {
 
         const nextJobs = response.data.job_result.map(mapSearchResultToJob);
         setJobs(nextJobs);
+        setSavedJobIds(new Set(nextJobs.filter((j) => j.saved).map((j) => j.id)));
         setTotalPages(Math.max(1, response.data.total_page ?? 0));
         setTotalResults(getTotalResultsCount(response.data, nextJobs.length));
         setSelectedJobId((prev) => {
@@ -662,6 +689,12 @@ export default function SearchJobPage() {
         await searchJobService.saveJob(user.id, selectedJob.id);
         setSavedJobIds((prev) => new Set(prev).add(selectedJob.id));
       }
+      // mirror save flag into job list for UI consistency
+      setJobs((prev) =>
+        prev.map((job) =>
+          job.id === selectedJob.id ? { ...job, saved: !isSaved } : job,
+        ),
+      );
     } catch {
       toast.error("Failed to update saved job");
     }
@@ -712,6 +745,10 @@ export default function SearchJobPage() {
     await searchJobService.applyJob(user.id, selectedJob.id, applyData);
   };
 
+  useEffect(() => {
+    console.log('selectedJob ',selectedJob)
+  }, [selectedJob]);
+
   return (
     <PageLayout>
       <div className="h-[calc(100vh-56px)] min-h-0 overflow-hidden bg-white">
@@ -726,10 +763,8 @@ export default function SearchJobPage() {
                 <Combobox items={searchSuggestionNames}>
                   <ComboboxInput
                     placeholder="Software Engineer"
-                    value={searchPayload.search_text}
-                    onChange={(e) =>
-                      updatePayload({ search_text: e.target.value, page: 0 })
-                    }
+                    value={searchInput}
+                    onChange={(e) => setSearchInput(e.target.value)}
                     className="h-10 min-w-0 flex-1 border-0 bg-transparent px-1 text-xl outline-none focus-visible:ring-0 **:data-[slot=input-group-button]:bg-none! **:data-[slot=input-group-button]:bg-transparent! **:data-[slot=input-group-button]:hover:bg-transparent! **:data-[slot=input-group-control]:border-0 **:data-[slot=input-group-control]:bg-transparent **:data-[slot=input-group-control]:shadow-none"
                     showTrigger={false}
                     showClear
@@ -1107,9 +1142,7 @@ export default function SearchJobPage() {
                                 {job.location}
                               </div>
                               <div className="mt-2 text-xs text-slate-500">
-                                {sessionViewedIds.has(job.id)
-                                  ? "Viewed - "
-                                  : ""}
+                                {(sessionViewedIds.has(job.id) || job.viewed) ? "Viewed - " : ""}
                                 {job.meta}
                               </div>
                             </div>
@@ -1230,17 +1263,23 @@ export default function SearchJobPage() {
                   <div className="mt-4 flex items-center gap-3">
                     <Button
                       onClick={() => void handleOpenApply()}
-                      disabled={loadingApply}
-                      className="h-10 rounded-full bg-[linear-gradient(90deg,var(--color-main),var(--color-second))] px-5 text-sm font-medium text-white shadow-none hover:opacity-90"
+                      disabled={loadingApply || selectedJob.applied}
+                      className="h-10 rounded-full px-4 "
+                      variant={selectedJob.applied ? "outline" : "default"}
                     >
-                      {loadingApply ? "Loading..." : "Apply This Job"}
+                      {selectedJob.applied? "Applied" : loadingApply ? "Loading..." : "Apply This Job"}
                     </Button>
                     <Button
-                      variant="outline"
+                      variant={selectedJob.saved ? "default" : "outline"}
                       onClick={() => void handleToggleSave()}
-                      className="h-10 rounded-full border border-[#ff9ad3] px-5 text-sm text-[#ff5db1] hover:bg-[#fff4fa]"
+                      className={cn(
+                        "h-10 rounded-full px-5 text-sm",
+                        selectedJob.saved
+                          ? "bg-[#fff0f6] text-[#ff5db1] hover:bg-[#ffe6f3]"
+                          : "border border-[#ff9ad3] text-[#ff5db1] hover:bg-[#fff4fa]",
+                      )}
                     >
-                      {savedJobIds.has(selectedJob.id) ? "Saved" : "Save"}
+                      {selectedJob.saved ? "Saved" : "Save"}
                     </Button>
                   </div>
 
