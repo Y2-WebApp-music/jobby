@@ -18,7 +18,7 @@ export type Job = {
   provinceName: string;
   districtName: string;
   meta: string;
-  skills: string[];
+  skills: { index: number; skill_name: string; skill_id: string }[];
   category: string;
   workType: string;
   workOption: string;
@@ -72,7 +72,6 @@ export const useSearchJobState = () => {
     [],
   );
   const [skillOpen, setSkillOpen] = useState(false);
-  const [messageCount, setMessageCount] = useState<number>(0);
   const [applyOpen, setApplyOpen] = useState(false);
   const [applyDialogKey, setApplyDialogKey] = useState(0);
   const [searchQuery, setSearchQuery] = useState("");
@@ -91,8 +90,6 @@ export const useSearchJobState = () => {
     setSkillSuggestions,
     skillOpen,
     setSkillOpen,
-    messageCount,
-    setMessageCount,
     applyOpen,
     setApplyOpen,
     applyDialogKey,

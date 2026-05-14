@@ -1,82 +1,104 @@
-import { useMemo } from "react";
 import { CgClose } from "react-icons/cg";
-import { profileSkillCatalog } from "@/types/skill";
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import type { SkillDetailResponse } from "@/services/skillDetailService";
+import { Button } from "@/components/ui/button";
 
 interface SkillinfoDialogProps {
   open: boolean;
   onClose: () => void;
   skillName: string | null;
+  skillDetail: SkillDetailResponse | null;
+  isLoading: boolean;
+  errorMessage: string | null;
+  onSelectSkill: (skillId: string, skillName: string) => void | Promise<void>;
 }
 
 export default function SkillinfoDialog({
   open,
   onClose,
   skillName,
+  skillDetail,
+  isLoading,
+  errorMessage,
+  onSelectSkill,
 }: SkillinfoDialogProps) {
-  const skill = useMemo(() => {
-    if (!skillName) return null;
-    return (
-      profileSkillCatalog.find(
-        (item) => item.name.toLowerCase() === skillName.toLowerCase(),
-      ) ?? null
-    );
-  }, [skillName]);
+  if (!open) return null;
 
-  if (!open || !skill) return null;
+  const skill = skillDetail?.skill ?? null;
+  const preSkillsRaw = skillDetail?.related_skills ?? [];
+  const preSkills = preSkillsRaw.filter((item) =>
+    item.relType.toLowerCase().includes("pre"),
+  );
+  const normalizedPreSkills = preSkills.length > 0 ? preSkills : preSkillsRaw;
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 p-4">
-      <div className="w-full max-w-[620px] rounded-[28px] bg-white p-4 shadow-xl sm:p-5">
+    <Dialog open={open} onOpenChange={(nextOpen) => !nextOpen && onClose()}>
+      <DialogContent className="gap-0 rounded-xl bg-white p-6 shadow-xl">
         <div className="flex items-start justify-between">
-          <h2 className="bg-gradient-to-r from-main to-second bg-clip-text text-[30px] leading-none font-semibold text-transparent sm:text-[40px]">
-            {skill.name}
-          </h2>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Close skill info dialog"
-            className="rounded-full bg-[#f3f3f3] p-1 text-black hover:bg-[#e7e7e7]"
-          >
-            <CgClose className="h-6 w-6" />
-          </button>
+          <DialogTitle className="bg-linear-to-r from-main to-second text-4xl py-2 leading-none font-normal bg-clip-text text-transparent">
+            {skill?.name ?? skillName ?? "Skill Detail"}
+          </DialogTitle>
+          <DialogClose asChild>
+            <button
+              type="button"
+              aria-label="Close skill info dialog"
+              className="rounded-full bg-[#f3f3f3] p-1 text-black hover:bg-[#e7e7e7]"
+            >
+              <CgClose className="h-6 w-6" />
+            </button>
+          </DialogClose>
         </div>
 
-        <div className="mt-5 space-y-4">
-          <div>
-            <h3 className="text-[18px] leading-none font-semibold text-[#0A0A0A]">
-              Category
-            </h3>
-            <p className="mt-2 text-[16px] leading-6 text-[#5f5f5f]">
-              {skill.categories.join(", ")}
-            </p>
+        {isLoading ? (
+          <div className="mt-5 text-[16px] text-[#5f5f5f]">
+            Loading skill details...
           </div>
+        ) : errorMessage ? (
+          <div className="mt-5 text-[16px] text-red-500">{errorMessage}</div>
+        ) : (
+          <div className="mt-5 space-y-4">
+            <div>
+              <h3 className="text-lg leading-none font-normal text-[#0A0A0A]">
+                Pre-Skill
+              </h3>
+              <div className="mt-3 flex flex-wrap gap-2">
+                {normalizedPreSkills.length > 0 ? (
+                  normalizedPreSkills.map((item) => (
+                    <Button
+                      key={item.skillElementId}
+                      className="rounded-full"
+                      variant="outline_gradient"
+                      onClick={() => {
+                        void onSelectSkill(item.skillElementId, item.name);
+                      }}
+                    >
+                      {item.name}
+                    </Button>
+                  ))
+                ) : (
+                  <p className="text-[16px] leading-6 text-[#5f5f5f]">
+                    No related pre-skills.
+                  </p>
+                )}
+              </div>
+            </div>
 
-          <div>
-            <h3 className="text-[18px] leading-none font-semibold text-[#0A0A0A]">
-              Pre-Skill
-            </h3>
-            <div className="mt-3 flex flex-wrap gap-2">
-              {skill.preSkills.map((item) => (
-                <span
-                  key={item}
-                  className="rounded-full border border-transparent px-4 py-1.5 text-[14px] leading-none text-primary-pink [background:linear-gradient(var(--color-background),var(--color-background))_padding-box,linear-gradient(to_right,var(--color-main),var(--color-second))_border-box]"
-                >
-                  {item}
-                </span>
-              ))}
+            <div>
+              <h3 className="text-lg leading-none font-normal text-[#0A0A0A]">
+                Skill Description
+              </h3>
+              <p className="mt-3 text-sm leading-7 text-[#0A0A0A]">
+                {skill?.description || "No description available."}
+              </p>
             </div>
           </div>
-
-          <div>
-            <h3 className="text-[18px] leading-none font-semibold text-[#0A0A0A]">
-              Skill Description
-            </h3>
-            <p className="mt-3 text-[16px] leading-7 text-[#0A0A0A]">
-              {skill.description}
-            </p>
-          </div>
-        </div>
-      </div>
-    </div>
+        )}
+      </DialogContent>
+    </Dialog>
   );
 }
