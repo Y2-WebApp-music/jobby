@@ -32,7 +32,6 @@ const navItems: NavItem[] = [
   {
     label: "Message",
     href: "/message",
-    badge: "9",
     isActive: (pathname) => pathname.startsWith("/message"),
   },
   {

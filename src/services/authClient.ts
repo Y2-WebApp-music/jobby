@@ -19,6 +19,31 @@ export const authClient = createAuthClient({
   },
 });
 
+export type ChangeAuthEmailPayload = {
+  newEmail: string;
+  callbackURL?: string;
+};
+
+type ChangeAuthEmailResult = {
+  error?: {
+    message?: string;
+  };
+};
+
+export const changeAuthEmail = async (payload: ChangeAuthEmailPayload) => {
+  const client = authClient as typeof authClient & {
+    changeEmail?: (
+      input: ChangeAuthEmailPayload,
+    ) => Promise<ChangeAuthEmailResult>;
+  };
+
+  if (typeof client.changeEmail !== "function") {
+    throw new Error("changeEmail is not available");
+  }
+
+  return client.changeEmail(payload);
+};
+
 export const clearAuthStore = () => {
   useAuthStore.getState().logout();
 };

@@ -1,5 +1,6 @@
 import { CgClose } from "react-icons/cg";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 
 interface UserskillDialogProps {
   open: boolean;
@@ -17,8 +18,11 @@ export default function UserskillDialog({
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-[95] flex items-center justify-center bg-black/60 p-4">
-      <div className="w-full max-w-[760px] rounded-2xl bg-white p-4 shadow-xl sm:p-5">
+    <Dialog open={open} onOpenChange={(nextOpen) => !nextOpen && onClose()}>
+      <DialogContent
+        showCloseButton={false}
+        className="z-[95] w-full max-w-[760px] rounded-2xl bg-white p-4 shadow-xl sm:p-5 max-h-[90vh] overflow-y-auto"
+      >
         <div className="mb-3 flex items-start justify-between">
           <div>
             <h2 className="text-[30px] leading-none font-semibold text-slate-900">
@@ -64,7 +68,7 @@ export default function UserskillDialog({
             + New Skill
           </Button>
         </div>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }

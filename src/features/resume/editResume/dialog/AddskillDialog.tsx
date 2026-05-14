@@ -24,7 +24,6 @@ import {
   getSkillDetail,
   type SkillDetailResponse,
 } from "@/services/skillDetailService";
-import { getSkillExam } from "@/types/skillExam";
 import { PlusIcon } from "lucide-react";
 
 interface AddskillDialogProps {
@@ -56,9 +55,10 @@ export default function AddskillDialog({
   const [isSearching, setIsSearching] = useState(false);
   const [isLoadingSkillDetail, setIsLoadingSkillDetail] = useState(false);
   const [draftSkills, setDraftSkills] = useState<string[]>(existingSkills);
-  const [pendingExamSkillName, setPendingExamSkillName] = useState<
-    string | null
-  >(null);
+  const [pendingExamSkill, setPendingExamSkill] = useState<{
+    id: string;
+    name: string;
+  } | null>(null);
   const [isSearchPopoverOpen, setIsSearchPopoverOpen] = useState(false);
   const [searchInputWidth, setSearchInputWidth] = useState<number>(0);
   const searchAnchorRef = useRef<HTMLDivElement>(null);
@@ -125,8 +125,8 @@ export default function AddskillDialog({
     );
     if (exists) return;
 
-    if (enableSkillExam && getSkillExam(preparedSkillName)) {
-      setPendingExamSkillName(preparedSkillName);
+    if (enableSkillExam && selectedSkillId) {
+      setPendingExamSkill({ id: selectedSkillId, name: preparedSkillName });
       return;
     }
 
@@ -139,7 +139,7 @@ export default function AddskillDialog({
     setSelectedSkillDetail(null);
     setSearchResults([]);
     setDraftSkills(existingSkills);
-    setPendingExamSkillName(null);
+    setPendingExamSkill(null);
     setIsSearchPopoverOpen(false);
     onClose();
   };
@@ -440,11 +440,12 @@ export default function AddskillDialog({
       </DialogContent>
 
       <ExamDialog
-        open={Boolean(pendingExamSkillName)}
-        skillName={pendingExamSkillName}
-        onClose={() => setPendingExamSkillName(null)}
+        open={Boolean(pendingExamSkill)}
+        skillId={pendingExamSkill?.id ?? null}
+        skillName={pendingExamSkill?.name ?? null}
+        onClose={() => setPendingExamSkill(null)}
         onPass={(skillName) => {
-          setPendingExamSkillName(null);
+          setPendingExamSkill(null);
           commitSkillAdd(skillName);
         }}
       />

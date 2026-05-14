@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { CgClose } from "react-icons/cg";
 import { RiPencilFill } from "react-icons/ri";
 import { IoIosArrowDown } from "react-icons/io";
@@ -10,10 +10,17 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import AddskillDialog from "@/features/profile/dialog/AddskillDialog";
+import searchJobService from "@/services/searchJobService";
+import type { FilterOptionItem } from "@/types/search-job";
 // import SkillinfoDialog from "@/features/profile/dialog/SkillinfoDialog";
 
 export type WorkExperienceItem = {
   id: number;
+  backendId?: string;
+  logo?: string | null;
+  companyId?: string;
+  workTypeId?: number;
+  skillItems?: { id?: string; name: string }[];
   position: string;
   company: string;
   workType: string;
@@ -28,13 +35,15 @@ interface WorkexpDialogProps {
   open: boolean;
   initialData: WorkExperienceItem[];
   onClose: () => void;
-  onSave: (items: WorkExperienceItem[]) => void;
+  onSave: (items: WorkExperienceItem[]) => void | Promise<void>;
 }
-
-const WORK_TYPE_OPTIONS = ["Full-time", "Part-time", "Internship", "Contract"];
 
 const createEmptyWorkExp = (): WorkExperienceItem => ({
   id: Date.now(),
+  logo: null,
+  companyId: "",
+  workTypeId: 0,
+  skillItems: [],
   position: "",
   company: "",
   workType: "",
@@ -82,17 +91,25 @@ const buildDateRange = (
   return `${start || "-"} - ${end}`;
 };
 
+const clampWorkEndDate = (endDate: string, isFinished: boolean) => {
+  if (!endDate) return "";
+  if (!isFinished) return endDate;
+  return endDate > TODAY_YMD ? TODAY_YMD : endDate;
+};
+
 function DatePickerField({
   label,
   value,
   minDate,
   maxDate,
+  disabled = false,
   onChange,
 }: {
   label: string;
   value: string;
   minDate?: string;
   maxDate?: string;
+  disabled?: boolean;
   onChange: (nextValue: string) => void;
 }) {
   const [open, setOpen] = useState(false);
@@ -103,11 +120,18 @@ function DatePickerField({
   return (
     <div>
       <label className="mb-1 block text-sm text-slate-700">{label}</label>
-      <Popover open={open} onOpenChange={setOpen}>
+      <Popover
+        open={disabled ? false : open}
+        onOpenChange={(nextOpen) => {
+          if (disabled) return;
+          setOpen(nextOpen);
+        }}
+      >
         <PopoverTrigger asChild>
           <button
             type="button"
-            className="flex h-10 w-full items-center justify-between rounded-xl border border-slate-200 px-3 text-left text-base text-slate-900"
+            disabled={disabled}
+            className="flex h-10 w-full items-center justify-between rounded-xl border border-slate-200 px-3 text-left text-base text-slate-900 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
           >
             <span className={value ? "text-slate-900" : "text-slate-400"}>
               {value ? formatDate(value) : "Select date"}
@@ -151,13 +175,67 @@ export default function WorkexpDialog({
   const [addSkillDialogOpen, setAddSkillDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [draft, setDraft] = useState<WorkExperienceItem>(createEmptyWorkExp());
+  const [workTypeOptions, setWorkTypeOptions] = useState<FilterOptionItem[]>(
+    [],
+  );
+
+  useEffect(() => {
+    if (!open) return;
+    setItems(initialData);
+    setEditorOpen(false);
+    setEditingId(null);
+    setDraft(createEmptyWorkExp());
+  }, [open, initialData]);
+
+  useEffect(() => {
+    if (!open) return;
+
+    let cancelled = false;
+
+    const loadWorkTypes = async () => {
+      try {
+        const response = await searchJobService.getSearchFilterOptions();
+        if (cancelled) return;
+        setWorkTypeOptions(response.data.work_type ?? []);
+      } catch {
+        if (!cancelled) {
+          setWorkTypeOptions([]);
+        }
+      }
+    };
+
+    void loadWorkTypes();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [open]);
 
   if (!open) return null;
+
+  const normalizeWorkTypeItem = (item: WorkExperienceItem) => {
+    const matchedWorkType = workTypeOptions.find(
+      (option) =>
+        option.id === item.workTypeId ||
+        option.text_eng === item.workType ||
+        option.text_th === item.workType,
+    );
+
+    if (!matchedWorkType) {
+      return item;
+    }
+
+    return {
+      ...item,
+      workTypeId: matchedWorkType.id ?? 0,
+      workType: matchedWorkType.text_eng || item.workType,
+    };
+  };
 
   const openEditor = (item?: WorkExperienceItem) => {
     if (item) {
       setEditingId(item.id);
-      setDraft(item);
+      setDraft(normalizeWorkTypeItem(item));
     } else {
       setEditingId(null);
       setDraft(createEmptyWorkExp());
@@ -167,43 +245,97 @@ export default function WorkexpDialog({
 
   const handleAddSkill = (nextSkill: string) => {
     if (!nextSkill || draft.skills.includes(nextSkill)) return;
-    setDraft((prev) => ({ ...prev, skills: [...prev.skills, nextSkill] }));
+    setDraft((prev) => ({
+      ...prev,
+      skills: [...prev.skills, nextSkill],
+      skillItems: [...(prev.skillItems ?? []), { name: nextSkill }],
+    }));
   };
 
   const handleRemoveSkill = (skill: string) => {
     setDraft((prev) => ({
       ...prev,
       skills: prev.skills.filter((item) => item !== skill),
+      skillItems: (prev.skillItems ?? []).filter((item) => item.name !== skill),
     }));
   };
 
-  const handleSaveDraft = (e: FormEvent<HTMLFormElement>) => {
+  const handleSaveDraft = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    const normalizedEndDate = clampWorkEndDate(draft.endDate, draft.isFinished);
     const normalized = {
-      ...draft,
-      date: buildDateRange(draft.startDate, draft.endDate, draft.isFinished),
+      ...normalizeWorkTypeItem(draft),
+      endDate: normalizedEndDate,
+      date: buildDateRange(
+        draft.startDate,
+        normalizedEndDate,
+        draft.isFinished,
+      ),
     };
+    const nextItems = [...items];
 
     if (editingId === null) {
-      setItems((prev) => [...prev, normalized]);
+      nextItems.push(normalized);
     } else {
-      setItems((prev) =>
-        prev.map((item) => (item.id === editingId ? normalized : item)),
-      );
+      const editingIndex = nextItems.findIndex((item) => item.id === editingId);
+      if (editingIndex >= 0) {
+        nextItems[editingIndex] = normalized;
+      }
     }
-    setEditorOpen(false);
+
+    try {
+      await Promise.resolve(onSave(nextItems));
+      setItems(nextItems);
+      setEditorOpen(false);
+      onClose();
+    } catch {
+      return;
+    }
   };
 
-  const handleDeleteDraft = () => {
+  const handleDeleteDraft = async () => {
     if (editingId === null) return;
-    setItems((prev) => prev.filter((item) => item.id !== editingId));
-    setEditorOpen(false);
+    const nextItems = items.filter((item) => item.id !== editingId);
+
+    try {
+      await Promise.resolve(onSave(nextItems));
+      setItems(nextItems);
+      setEditorOpen(false);
+      onClose();
+    } catch {
+      return;
+    }
   };
 
-  const handleSaveAll = () => {
-    onSave(items);
-    onClose();
-  };
+  const workTypeSelectOptions =
+    draft.workType &&
+    !workTypeOptions.some(
+      (option) =>
+        option.id === draft.workTypeId ||
+        option.text_eng === draft.workType ||
+        option.text_th === draft.workType,
+    )
+      ? [
+          {
+            id: draft.workTypeId || -1,
+            text_eng: draft.workType,
+            text_th: draft.workType,
+          },
+          ...workTypeOptions,
+        ]
+      : workTypeOptions;
+  const selectedWorkTypeValue =
+    draft.workTypeId !== undefined &&
+    draft.workTypeId !== null &&
+    draft.workTypeId !== 0
+      ? String(draft.workTypeId)
+      : String(
+          workTypeSelectOptions.find(
+            (option) =>
+              option.text_eng === draft.workType ||
+              option.text_th === draft.workType,
+          )?.id ?? "",
+        );
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
@@ -278,13 +410,6 @@ export default function WorkexpDialog({
           >
             Cancel
           </button>
-          <Button
-            type="button"
-            onClick={handleSaveAll}
-            className="rounded-full bg-gradient-to-r from-main to-second px-5 py-1.5 text-base font-medium text-white"
-          >
-            Save Change
-          </Button>
         </div>
       </div>
 
@@ -343,20 +468,31 @@ export default function WorkexpDialog({
                   Work Type
                 </label>
                 <select
-                  value={draft.workType}
-                  onChange={(e) =>
-                    setDraft((prev) => ({ ...prev, workType: e.target.value }))
-                  }
+                  value={selectedWorkTypeValue}
+                  onChange={(e) => {
+                    const nextOption = workTypeSelectOptions.find(
+                      (option) => String(option.id) === e.target.value,
+                    );
+
+                    setDraft((prev) => ({
+                      ...prev,
+                      workType: nextOption?.text_eng ?? "",
+                      workTypeId: nextOption?.id ?? 0,
+                    }));
+                  }}
                   className={`h-10 w-full rounded-xl border border-slate-200 px-3 text-base outline-none ${
-                    draft.workType ? "text-slate-900" : "text-slate-400"
+                    selectedWorkTypeValue ? "text-slate-900" : "text-slate-400"
                   }`}
                 >
                   <option value="" disabled>
                     Select
                   </option>
-                  {WORK_TYPE_OPTIONS.map((option) => (
-                    <option key={option} value={option}>
-                      {option}
+                  {workTypeSelectOptions.map((option) => (
+                    <option
+                      key={`${option.id}-${option.text_eng}`}
+                      value={String(option.id)}
+                    >
+                      {option.text_eng}
                     </option>
                   ))}
                 </select>
@@ -411,11 +547,9 @@ export default function WorkexpDialog({
                 <DatePickerField
                   label="End date"
                   value={draft.endDate}
-                  minDate={
-                    draft.startDate && draft.startDate > TODAY_YMD
-                      ? draft.startDate
-                      : TODAY_YMD
-                  }
+                  minDate={draft.startDate || undefined}
+                  maxDate={draft.isFinished ? TODAY_YMD : undefined}
+                  disabled={!draft.isFinished}
                   onChange={(nextValue) =>
                     setDraft((prev) => ({ ...prev, endDate: nextValue }))
                   }
@@ -430,6 +564,9 @@ export default function WorkexpDialog({
                     setDraft((prev) => ({
                       ...prev,
                       isFinished: e.target.checked,
+                      endDate: e.target.checked
+                        ? clampWorkEndDate(prev.endDate, true)
+                        : "",
                     }))
                   }
                   className="h-5 w-5 rounded border border-slate-300"
@@ -440,7 +577,7 @@ export default function WorkexpDialog({
               <div className="flex justify-between pt-1">
                 <button
                   type="button"
-                  onClick={handleDeleteDraft}
+                  onClick={() => void handleDeleteDraft()}
                   disabled={editingId === null}
                   className="rounded-full border border-slate-300 px-5 py-1.5 text-base text-slate-500 enabled:hover:bg-slate-50 disabled:opacity-50"
                 >

@@ -1,97 +1,148 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { CgClose } from "react-icons/cg";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Spinner } from "@/components/ui/spinner";
 import ExamFailedDialog from "@/features/profile/dialog/ExamFailedDialog";
 import ExamPassedDialog from "@/features/profile/dialog/ExamPassedDialog";
-import { shuffleExamQuestions, type ExamQuestion } from "@/types/examQuestion";
-import { getSkillExam } from "@/types/skillExam";
+import {
+  getExam,
+  submitExam,
+  type ExamQuestionItem,
+} from "@/services/getExamService";
+import { getSearchSkill } from "@/services/searchSkillService";
+import { useAuthStore } from "@/store/auth";
 
-type ExamPhase = "intro" | "exam" | "loading";
+type ExamPhase = "intro" | "exam" | "loading" | "fetching";
 type ExamResult = "passed" | "failed" | null;
 
 interface ExamDialogProps {
   open: boolean;
+  skillId?: string | null;
   skillName: string | null;
   onClose: () => void;
   onPass: (skillName: string) => void;
 }
 
-const buildAttempt = (skillName: string | null): ExamQuestion[] => {
-  const exam = getSkillExam(skillName);
-  if (!exam) return [];
-
-  return shuffleExamQuestions(exam.questions).slice(0, exam.questionCount);
-};
-
 export default function ExamDialog({
   open,
+  skillId = null,
   skillName,
   onClose,
   onPass,
 }: ExamDialogProps) {
-  const exam = useMemo(() => getSkillExam(skillName), [skillName]);
   const [phase, setPhase] = useState<ExamPhase>("intro");
-  const [selectedQuestions, setSelectedQuestions] = useState(
-    buildAttempt(skillName),
+  const [questions, setQuestions] = useState<ExamQuestionItem[]>([]);
+  const [resolvedSkillId, setResolvedSkillId] = useState<string | null>(
+    skillId,
   );
-  const [answers, setAnswers] = useState<Record<string, number>>({});
+  const [answers, setAnswers] = useState<Record<number, number>>({});
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [result, setResult] = useState<ExamResult>(null);
+  const user = useAuthStore((state) => state.user);
 
   useEffect(() => {
-    if (!open || !exam) return;
+    if (!open) return;
+    if (skillId) {
+      setResolvedSkillId(skillId);
+      return;
+    }
+    if (!skillName) {
+      setResolvedSkillId(null);
+      return;
+    }
+    let cancelled = false;
+    void (async () => {
+      try {
+        const response = await getSearchSkill(skillName);
+        if (cancelled) return;
+        const matched = response.data.find(
+          (item) => item.name.toLowerCase() === skillName.toLowerCase(),
+        );
+        setResolvedSkillId(matched?.eid ?? response.data[0]?.eid ?? null);
+      } catch {
+        if (cancelled) return;
+        setResolvedSkillId(null);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [open, skillId, skillName]);
 
-    setSelectedQuestions(buildAttempt(exam.skillName));
+  useEffect(() => {
+    if (!open || !resolvedSkillId) return;
+    let cancelled = false;
+    setPhase("fetching");
     setAnswers({});
     setCurrentQuestionIndex(0);
-    setPhase("intro");
     setResult(null);
-  }, [exam, open]);
+    void (async () => {
+      try {
+        const response = await getExam(resolvedSkillId);
+        if (cancelled) return;
+        setQuestions(response.data ?? []);
+        setPhase("intro");
+      } catch {
+        if (cancelled) return;
+        setQuestions([]);
+        setPhase("intro");
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [open, resolvedSkillId]);
 
-  if (!open || !exam) return null;
+  if (!open || !resolvedSkillId) return null;
 
-  const currentQuestion = selectedQuestions[currentQuestionIndex];
+  const currentQuestion = questions[currentQuestionIndex];
   const selectedAnswer = currentQuestion
     ? answers[currentQuestion.id]
     : undefined;
-  const isLastQuestion = currentQuestionIndex === exam.questionCount - 1;
+  const isLastQuestion = currentQuestionIndex === questions.length - 1;
   const showResultDialog = result !== null;
 
   const resetAttempt = () => {
-    setSelectedQuestions(buildAttempt(exam.skillName));
     setAnswers({});
     setCurrentQuestionIndex(0);
     setPhase("intro");
     setResult(null);
   };
 
-  const submitExam = () => {
-    const score = selectedQuestions.reduce((total, question) => {
-      return total + (answers[question.id] === question.correctAnswer ? 1 : 0);
-    }, 0);
-
-    const nextResult: ExamResult =
-      score >= exam.passScore ? "passed" : "failed";
-
+  const handleSubmitExam = async () => {
     setPhase("loading");
-
-    window.setTimeout(() => {
+    try {
+      const response = await submitExam(resolvedSkillId, {
+        user_id: user?.id ?? "",
+        answers: questions.map((question) => ({
+          id: question.id,
+          selected_index: answers[question.id] ?? -1,
+        })),
+      });
+      const nextResult: ExamResult = response.data.is_pass
+        ? "passed"
+        : "failed";
       setResult(nextResult);
-    }, 900);
+    } catch {
+      setResult("failed");
+    }
   };
 
   return (
     <>
       {!showResultDialog ? (
-        <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/65 p-4">
-          <div className="w-full max-w-[920px] rounded-[28px] bg-white p-5 shadow-2xl sm:p-7">
+        <Dialog open={open} onOpenChange={(nextOpen) => !nextOpen && onClose()}>
+          <DialogContent
+            showCloseButton={false}
+            className="z-[120] min-w-[50vw] w-full max-w-[920px] rounded-[28px] bg-white p-5 shadow-2xl sm:p-7 max-h-[90vh] overflow-y-auto"
+          >
             <div className="flex items-start justify-between gap-4">
               <div>
-                <h2 className="bg-gradient-to-r from-main to-second bg-clip-text text-[20px] leading-none font-semibold text-transparent sm:text-[44px]">
-                  {exam.title}
+                <h2 className="bg-gradient-to-r from-main to-second bg-clip-text text-[18px] leading-none font-medium text-transparent sm:text-[40px]">
+                  {skillName || "Skill Exam"}
                 </h2>
-                <p className="mt-2 text-base text-[#787878]">
+                <p className="mt-2 text-sm text-[#787878]">
                   Before skill add to you, Must be Exam your knowledge
                 </p>
               </div>
@@ -107,25 +158,26 @@ export default function ExamDialog({
 
             {phase === "intro" ? (
               <div className="mt-8">
-                <p className="text-center text-[28px] font-semibold text-black">
-                  {exam.questionCount} questions
+                <p className="text-center text-lg font-normal text-black">
+                  {questions.length} questions
                 </p>
 
                 <div className="mt-8 space-y-5 text-black">
                   <div>
-                    <h3 className="text-[18px] font-semibold">
+                    <h3 className="text-[16px] font-medium">
                       Exam Description
                     </h3>
-                    <p className="mt-4 text-lg leading-8 text-[#2a2a2a]">
-                      {exam.description}
+                    <p className="mt-4 text-base leading-7 text-[#2a2a2a]">
+                      Answer all questions to add this skill.
                     </p>
                   </div>
 
                   <div className="pt-3 text-center">
                     <Button
                       type="button"
+                      disabled={questions.length === 0}
                       onClick={() => setPhase("exam")}
-                      className="h-12 rounded-full px-8 text-[22px] font-medium text-white"
+                      className="h-12 rounded-full px-8 text-xl font-normal text-white"
                     >
                       Start Exam
                     </Button>
@@ -136,12 +188,12 @@ export default function ExamDialog({
 
             {phase === "exam" ? (
               <div className="mt-6">
-                <p className="text-[16px] font-semibold text-[#7b7b7b]">
-                  {currentQuestionIndex + 1} of {exam.questionCount}
+                <p className="text-[14px] font-medium text-[#7b7b7b]">
+                  {currentQuestionIndex + 1} of {questions.length}
                 </p>
 
-                <p className="mt-4 max-w-[760px] text-[20px] leading-8 font-semibold text-black">
-                  {currentQuestion?.prompt}
+                <p className="mt-4 max-w-[760px] text-[18px] leading-7 font-medium text-black">
+                  {currentQuestion?.question}
                 </p>
 
                 <div className="mt-5 space-y-2">
@@ -167,7 +219,7 @@ export default function ExamDialog({
                               : "border-[#d8d8d8] bg-white"
                           }`}
                         />
-                        <span className="text-[18px] leading-8 text-[#202020]">
+                        <span className="text-[16px] leading-7 text-[#202020]">
                           {choice}
                         </span>
                       </button>
@@ -182,7 +234,7 @@ export default function ExamDialog({
                       setCurrentQuestionIndex((prev) => Math.max(0, prev - 1))
                     }
                     disabled={currentQuestionIndex === 0}
-                    className="rounded-full border border-[#d7d7d7] px-5 py-2 text-[16px] font-medium text-[#7b7b7b] transition hover:bg-[#f7f7f7] disabled:cursor-not-allowed disabled:opacity-70"
+                    className="rounded-full border border-[#d7d7d7] px-5 py-2 text-[14px] font-normal text-[#7b7b7b] transition hover:bg-[#f7f7f7] disabled:cursor-not-allowed disabled:opacity-70"
                   >
                     Back
                   </button>
@@ -192,13 +244,13 @@ export default function ExamDialog({
                     disabled={selectedAnswer === undefined}
                     onClick={() => {
                       if (isLastQuestion) {
-                        submitExam();
+                        void handleSubmitExam();
                         return;
                       }
 
                       setCurrentQuestionIndex((prev) => prev + 1);
                     }}
-                    className="h-12 rounded-full px-8 text-[18px] font-medium text-white"
+                    className="h-12 rounded-full px-8 text-[16px] font-normal text-white"
                   >
                     {isLastQuestion ? "Submit" : "Next"}
                   </Button>
@@ -209,27 +261,37 @@ export default function ExamDialog({
             {phase === "loading" ? (
               <div className="flex min-h-[360px] flex-col items-center justify-center gap-4">
                 <Spinner className="size-14 text-main" />
-                <p className="text-[18px] font-medium text-[#6f6f6f]">
+                <p className="text-[16px] font-normal text-[#6f6f6f]">
                   Checking your exam result...
                 </p>
               </div>
             ) : null}
-          </div>
-        </div>
+
+            {phase === "fetching" ? (
+              <div className="flex min-h-[260px] flex-col items-center justify-center gap-4">
+                <Spinner className="size-14 text-main" />
+                <p className="text-[16px] font-normal text-[#6f6f6f]">
+                  Loading exam...
+                </p>
+              </div>
+            ) : null}
+          </DialogContent>
+        </Dialog>
       ) : null}
 
       <ExamPassedDialog
         open={result === "passed"}
-        skillName={exam.skillName}
+        skillName={skillName}
         onClose={onClose}
         onContinue={() => {
-          onPass(exam.skillName);
+          if (!skillName) return;
+          onPass(skillName);
         }}
       />
 
       <ExamFailedDialog
         open={result === "failed"}
-        skillName={exam.skillName}
+        skillName={skillName}
         onClose={onClose}
         onRetake={resetAttempt}
       />

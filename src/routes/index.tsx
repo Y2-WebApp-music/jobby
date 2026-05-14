@@ -13,6 +13,7 @@ import SignInPage from "@/pages/auth/SignInPage";
 import RegisterPage from "@/pages/auth/RegisterPage";
 import ForgotPasswordPage from "@/pages/auth/ForgotPasswordPage";
 import AccountSettingsPage from "@/pages/pagesetting/AccountSettingsPage";
+import NotFoundPage from "@/pages/NotFoundPage";
 
 export const router = createBrowserRouter(
   [
@@ -58,7 +59,7 @@ export const router = createBrowserRouter(
     },
     {
       path: "*",
-      element: <div>Not Found ESUS</div>,
+      element: <NotFoundPage />,
     },
     { path: "/searchjob", element: <SearchJobPage /> },
     { path: "/profile", element: <Profile /> },
