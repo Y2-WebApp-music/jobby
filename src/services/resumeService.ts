@@ -15,6 +15,8 @@ export type UserResumeListItem = {
   email: string;
   phone: string;
   phone_region: string;
+  resume_file?: string | null;
+  resume_file_metadata?: Record<string, unknown> | null;
   user_id: string;
 };
 
@@ -120,6 +122,8 @@ export type ResumeDetailResponse = {
   email: string;
   phone: string;
   phone_region: string;
+  resume_file?: string | null;
+  resume_file_metadata?: Record<string, unknown> | null;
   address_line: string;
   no: string;
   moo: string;
@@ -277,6 +281,8 @@ export const mapResumeDetailToResumeForm = (
   create_date: detail.create_date,
   theme: detail.theme,
   color: detail.color,
+  resume_file: detail.resume_file ?? "",
+  resume_file_metadata: detail.resume_file_metadata ?? null,
   data: {
     first_name: detail.first_name,
     last_name: detail.last_name,
@@ -395,7 +401,7 @@ export const updateUserResume = (
 
 export const uploadUserResumeFile = (userId: string, file: File) => {
   const formData = new FormData();
-  formData.append("file", file);
+  formData.append("file", file, file.name);
 
   return apiService.fetchData<UploadResumeFileResponse>({
     url: `${RESUME_ENDPOINT}/${encodeURIComponent(userId)}/upload`,
