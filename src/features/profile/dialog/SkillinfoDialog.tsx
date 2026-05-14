@@ -6,35 +6,48 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import type { SkillDetailResponse } from "@/services/skillDetailService";
+import { profileSkillCatalog } from "@/types/skill";
 import { Button } from "@/components/ui/button";
 
 interface SkillinfoDialogProps {
   open: boolean;
   onClose: () => void;
   skillName: string | null;
-  skillDetail: SkillDetailResponse | null;
-  isLoading: boolean;
-  errorMessage: string | null;
-  onSelectSkill: (skillId: string, skillName: string) => void | Promise<void>;
+  skillDetail?: SkillDetailResponse | null;
+  isLoading?: boolean;
+  errorMessage?: string | null;
+  onSelectSkill?: (skillId: string, skillName: string) => void | Promise<void>;
 }
 
 export default function SkillinfoDialog({
   open,
   onClose,
   skillName,
-  skillDetail,
-  isLoading,
-  errorMessage,
+  skillDetail = null,
+  isLoading = false,
+  errorMessage = null,
   onSelectSkill,
 }: SkillinfoDialogProps) {
   if (!open) return null;
 
-  const skill = skillDetail?.skill ?? null;
+  const fallbackSkill = skillName
+    ? (profileSkillCatalog.find(
+        (item) => item.name.toLowerCase() === skillName.toLowerCase(),
+      ) ?? null)
+    : null;
+  const skill = skillDetail?.skill ?? fallbackSkill;
   const preSkillsRaw = skillDetail?.related_skills ?? [];
   const preSkills = preSkillsRaw.filter((item) =>
     item.relType.toLowerCase().includes("pre"),
   );
   const normalizedPreSkills = preSkills.length > 0 ? preSkills : preSkillsRaw;
+  const fallbackPreSkills =
+    fallbackSkill?.preSkills.map((item) => ({
+      skillElementId: item,
+      name: item,
+    })) ?? [];
+  const skillButtons =
+    normalizedPreSkills.length > 0 ? normalizedPreSkills : fallbackPreSkills;
 
   return (
     <Dialog open={open} onOpenChange={(nextOpen) => !nextOpen && onClose()}>
@@ -67,15 +80,17 @@ export default function SkillinfoDialog({
                 Pre-Skill
               </h3>
               <div className="mt-3 flex flex-wrap gap-2">
-                {normalizedPreSkills.length > 0 ? (
-                  normalizedPreSkills.map((item) => (
+                {skillButtons.length > 0 ? (
+                  skillButtons.map((item) => (
                     <Button
                       key={item.skillElementId}
                       className="rounded-full"
                       variant="outline_gradient"
                       onClick={() => {
+                        if (!onSelectSkill) return;
                         void onSelectSkill(item.skillElementId, item.name);
                       }}
+                      disabled={!onSelectSkill}
                     >
                       {item.name}
                     </Button>
