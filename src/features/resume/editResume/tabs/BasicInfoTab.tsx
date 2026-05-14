@@ -89,14 +89,53 @@ export function BasicInfoTab({
   logoPreview,
 }: BasicInfoTabProps) {
   const [regionOpen, setRegionOpen] = useState(false);
+  const phoneRegions = usePropertiesStore((state) => state.phoneRegions);
+  const provinces = useAddressOptionStore((state) => state.provinces);
+  const districts = useAddressOptionStore((state) => state.districts);
+  const subDistrictsByDistrict = useAddressOptionStore(
+    (state) => state.subDistrictsByDistrict,
+  );
+  const postalCodesBySubDistrict = useAddressOptionStore(
+    (state) => state.postalCodesBySubDistrict,
+  );
 
-  const phoneRegionOptions = usePropertiesStore.getPhoneRegionOptions();
-  const provinceOptions = useAddressOptionStore.getProvinceOptions();
+  const phoneRegionOptions = phoneRegions
+    .map((item) => ({
+      id: item.id,
+      label: item.label ?? "",
+      text_th: item.text_th,
+      text_eng: item.text_eng,
+    }))
+    .filter((item) => item.label !== "");
+  const provinceOptions = provinces
+    .map((item) => ({
+      id: item.province_id,
+      value: item.province_eng ?? "",
+    }))
+    .filter((item) => item.value !== "");
   const provinceId = resume.data.address?.province_id ?? 0;
   const districtId = resume.data.address?.district_id ?? 0;
-  const districtOptions = useAddressOptionStore.getDistrictOptions(provinceId);
-  const subDistrictOptions =
-    useAddressOptionStore.getSubDistrictOptions(districtId);
+  const districtOptions = districts
+    .filter((item) => item.province_id === provinceId)
+    .map((item) => ({
+      id: item.district_id,
+      value: item.district_eng ?? "",
+    }))
+    .filter((item) => item.value !== "");
+  const subDistrictOptions = (
+    subDistrictsByDistrict[districtId] ??
+    districts.find((item) => item.district_id === districtId)?.sub_district_list ??
+    []
+  )
+    .map((item) => ({
+      id: item.sub_district_id,
+      value: item.sub_district_eng ?? "",
+    }))
+    .filter((item) => item.value !== "");
+  const subDistrictId = resume.data.address?.sub_district_id ?? 0;
+  const postalOptions = (postalCodesBySubDistrict[subDistrictId] ?? []).map(
+    (postalCode) => ({ id: postalCode, value: String(postalCode) }),
+  );
   const selectedPhoneRegion = phoneRegionOptions.find(
     (option) =>
       option.id === Number(resume.data.phone_region || 0) ||
@@ -424,15 +463,18 @@ export function BasicInfoTab({
           </Field>
           <Field>
             <FieldLabel htmlFor="address-postal">Postal code</FieldLabel>
-            <Input
+            <SearchSelect
               id="address-postal"
-              placeholder="xxxxx"
-              readOnly
-              value={
-                resume.data.address?.postal_code
-                  ? String(resume.data.address.postal_code)
-                  : ""
+              value={resume.data.address?.postal_code ? String(resume.data.address.postal_code) : ""}
+              onValueChange={(val) =>
+                updateAddress("postal_code", val ? Number(val) || 0 : 0)
               }
+              options={postalOptions.map((o) => ({ value: String(o.id), label: o.value }))}
+              placeholder="Select"
+              searchPlaceholder="Search postal code..."
+              emptyMessage="No postal code found."
+              disabled={postalOptions.length === 0}
+              align="start"
             />
           </Field>
         </FieldGroup>
