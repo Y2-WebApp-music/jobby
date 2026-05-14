@@ -537,7 +537,9 @@ export default function SearchJobPage() {
 
         const nextJobs = response.data.job_result.map(mapSearchResultToJob);
         setJobs(nextJobs);
-        setSavedJobIds(new Set(nextJobs.filter((j) => j.saved).map((j) => j.id)));
+        setSavedJobIds(
+          new Set(nextJobs.filter((j) => j.saved).map((j) => j.id)),
+        );
         setTotalPages(Math.max(1, response.data.total_page ?? 0));
         setTotalResults(getTotalResultsCount(response.data, nextJobs.length));
         setSelectedJobId((prev) => {
@@ -746,7 +748,7 @@ export default function SearchJobPage() {
   };
 
   useEffect(() => {
-    console.log('selectedJob ',selectedJob)
+    console.log("selectedJob ", selectedJob);
   }, [selectedJob]);
 
   return (
@@ -1142,7 +1144,9 @@ export default function SearchJobPage() {
                                 {job.location}
                               </div>
                               <div className="mt-2 text-xs text-slate-500">
-                                {(sessionViewedIds.has(job.id) || job.viewed) ? "Viewed - " : ""}
+                                {sessionViewedIds.has(job.id) || job.viewed
+                                  ? "Viewed - "
+                                  : ""}
                                 {job.meta}
                               </div>
                             </div>
@@ -1267,7 +1271,11 @@ export default function SearchJobPage() {
                       className="h-10 rounded-full px-4 "
                       variant={selectedJob.applied ? "outline" : "default"}
                     >
-                      {selectedJob.applied? "Applied" : loadingApply ? "Loading..." : "Apply This Job"}
+                      {selectedJob.applied
+                        ? "Applied"
+                        : loadingApply
+                          ? "Loading..."
+                          : "Apply This Job"}
                     </Button>
                     <Button
                       variant={selectedJob.saved ? "default" : "outline"}
