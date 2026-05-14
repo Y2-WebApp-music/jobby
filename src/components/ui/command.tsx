@@ -1,7 +1,6 @@
-import * as React from "react";
 import { Command as CommandPrimitive } from "cmdk";
+import * as React from "react";
 
-import { cn } from "@/lib/utils";
 import {
   Dialog,
   DialogContent,
@@ -10,14 +9,16 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { InputGroup, InputGroupAddon } from "@/components/ui/input-group";
-import { SearchIcon, CheckIcon } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { CheckIcon, SearchIcon } from "lucide-react";
 
-function Command({
-  className,
-  ...props
-}: React.ComponentProps<typeof CommandPrimitive>) {
+const Command = React.forwardRef<
+  React.ElementRef<typeof CommandPrimitive>,
+  React.ComponentProps<typeof CommandPrimitive>
+>(({ className, ...props }, ref) => {
   return (
     <CommandPrimitive
+      ref={ref}
       data-slot="command"
       className={cn(
         "bg-popover text-popover-foreground rounded-xl! p-1 flex size-full flex-col overflow-hidden",
@@ -26,7 +27,7 @@ function Command({
       {...props}
     />
   );
-}
+});
 
 function CommandDialog({
   title = "Command Palette",
@@ -57,14 +58,15 @@ function CommandDialog({
   );
 }
 
-function CommandInput({
-  className,
-  ...props
-}: React.ComponentProps<typeof CommandPrimitive.Input>) {
+const CommandInput = React.forwardRef<
+  React.ElementRef<typeof CommandPrimitive.Input>,
+  React.ComponentProps<typeof CommandPrimitive.Input>
+>(({ className, ...props }, ref) => {
   return (
     <div data-slot="command-input-wrapper" className="p-1 pb-0">
       <InputGroup className="bg-input/30 border-input/30 h-8! rounded-lg! shadow-none! *:data-[slot=input-group-addon]:pl-2!">
         <CommandPrimitive.Input
+          ref={ref}
           data-slot="command-input"
           className={cn(
             "w-full text-sm outline-hidden disabled:cursor-not-allowed disabled:opacity-50",
@@ -78,14 +80,15 @@ function CommandInput({
       </InputGroup>
     </div>
   );
-}
+});
 
-function CommandList({
-  className,
-  ...props
-}: React.ComponentProps<typeof CommandPrimitive.List>) {
+const CommandList = React.forwardRef<
+  React.ElementRef<typeof CommandPrimitive.List>,
+  React.ComponentProps<typeof CommandPrimitive.List>
+>(({ className, ...props }, ref) => {
   return (
     <CommandPrimitive.List
+      ref={ref}
       data-slot="command-list"
       className={cn(
         "no-scrollbar max-h-72 scroll-py-1 outline-none overflow-x-hidden overflow-y-auto",
@@ -94,27 +97,29 @@ function CommandList({
       {...props}
     />
   );
-}
+});
 
-function CommandEmpty({
-  className,
-  ...props
-}: React.ComponentProps<typeof CommandPrimitive.Empty>) {
+const CommandEmpty = React.forwardRef<
+  React.ElementRef<typeof CommandPrimitive.Empty>,
+  React.ComponentProps<typeof CommandPrimitive.Empty>
+>(({ className, ...props }, ref) => {
   return (
     <CommandPrimitive.Empty
+      ref={ref}
       data-slot="command-empty"
       className={cn("py-6 text-center text-sm", className)}
       {...props}
     />
   );
-}
+});
 
-function CommandGroup({
-  className,
-  ...props
-}: React.ComponentProps<typeof CommandPrimitive.Group>) {
+const CommandGroup = React.forwardRef<
+  React.ElementRef<typeof CommandPrimitive.Group>,
+  React.ComponentProps<typeof CommandPrimitive.Group>
+>(({ className, ...props }, ref) => {
   return (
     <CommandPrimitive.Group
+      ref={ref}
       data-slot="command-group"
       className={cn(
         "text-foreground **:[[cmdk-group-heading]]:text-muted-foreground overflow-hidden p-1 **:[[cmdk-group-heading]]:px-2 **:[[cmdk-group-heading]]:py-1.5 **:[[cmdk-group-heading]]:text-xs **:[[cmdk-group-heading]]:font-medium",
@@ -123,31 +128,29 @@ function CommandGroup({
       {...props}
     />
   );
-}
+});
 
-function CommandSeparator({
-  className,
-  ...props
-}: React.ComponentProps<typeof CommandPrimitive.Separator>) {
+const CommandSeparator = React.forwardRef<
+  React.ElementRef<typeof CommandPrimitive.Separator>,
+  React.ComponentProps<typeof CommandPrimitive.Separator>
+>(({ className, ...props }, ref) => {
   return (
     <CommandPrimitive.Separator
+      ref={ref}
       data-slot="command-separator"
       className={cn("bg-border -mx-1 h-px w-auto", className)}
       {...props}
     />
   );
-}
+});
 
-function CommandItem({
-  className,
-  children,
-  checked,
-  ...props
-}: React.ComponentProps<typeof CommandPrimitive.Item> & {
-  checked?: boolean;
-}) {
+const CommandItem = React.forwardRef<
+  React.ElementRef<typeof CommandPrimitive.Item>,
+  React.ComponentProps<typeof CommandPrimitive.Item> & { checked?: boolean }
+>(({ className, children, checked, ...props }, ref) => {
   return (
     <CommandPrimitive.Item
+      ref={ref}
       data-slot="command-item"
       data-checked={checked ? "true" : undefined}
       className={cn(
@@ -160,7 +163,7 @@ function CommandItem({
       <CheckIcon className="ml-auto opacity-0 group-has-data-[slot=command-shortcut]/command-item:hidden group-data-[checked=true]/command-item:opacity-100" />
     </CommandPrimitive.Item>
   );
-}
+});
 
 function CommandShortcut({
   className,
@@ -180,12 +183,7 @@ function CommandShortcut({
 
 export {
   Command,
-  CommandDialog,
-  CommandInput,
-  CommandList,
-  CommandEmpty,
-  CommandGroup,
-  CommandItem,
-  CommandShortcut,
-  CommandSeparator,
+  CommandDialog, CommandEmpty,
+  CommandGroup, CommandInput, CommandItem, CommandList, CommandSeparator, CommandShortcut
 };
+

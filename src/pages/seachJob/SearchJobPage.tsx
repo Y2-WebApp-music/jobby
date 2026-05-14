@@ -810,14 +810,14 @@ export default function SearchJobPage() {
                 </div>
               </div>
 
-                <div
-                  ref={skillFilterRef}
-                  onClick={(event) => {
-                    if ((event.target as HTMLElement).closest("button")) return;
-                    setSkillOpen(true);
-                  }}
-                  className="relative flex min-w-0 flex-1 items-center gap-3 rounded-[18px] border border-[#d9d9d9] bg-white px-4 py-2 shadow-[0_2px_14px_rgba(0,0,0,0.09)]"
-                >
+              <div
+                ref={skillFilterRef}
+                onClick={(event) => {
+                  if ((event.target as HTMLElement).closest("button")) return;
+                  setSkillOpen(true);
+                }}
+                className="relative flex min-w-0 flex-1 items-center gap-3 rounded-[18px] border border-[#d9d9d9] bg-white px-4 py-2 shadow-[0_2px_14px_rgba(0,0,0,0.09)]"
+              >
                 <button
                   type="button"
                   onClick={handleScrollToSkillInfo}

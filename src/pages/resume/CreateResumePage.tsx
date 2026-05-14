@@ -11,7 +11,9 @@ import resumeService, {
   mapResumeDetailToResumeForm,
   type CreateResumePayload,
 } from "@/services/resumeService";
-import profileService, { type UserProfileItem } from "@/services/profileService";
+import profileService, {
+  type UserProfileItem,
+} from "@/services/profileService";
 import utilityService from "@/services/utilityService";
 import { useAddressOptionStore } from "@/store/addressOption";
 import { useAuthStore } from "@/store/auth";
@@ -44,9 +46,9 @@ const mapPhoneRegionOptions = (
 ) =>
   regions.map((item) => ({
     id: item.id,
-    label: item.dialing_code,
-    text_th: item.text_th,
-    text_eng: item.text_eng,
+    label: item.dialing_code ?? "",
+    text_th: item.text_th ?? "",
+    text_eng: item.text_eng ?? "",
   }));
 
 const mapProvinceOptions = (
@@ -54,8 +56,8 @@ const mapProvinceOptions = (
 ) =>
   provinces.map((item) => ({
     province_id: item.province_code,
-    province_th: item.province_name_th,
-    province_eng: item.province_name_en,
+    province_th: item.province_name_th ?? "",
+    province_eng: item.province_name_en ?? "",
     country_id: item.country_id,
   }));
 
@@ -66,8 +68,8 @@ const mapDistrictOptions = (
 ) =>
   districts.map((item) => ({
     district_id: item.district_code,
-    district_th: item.district_name_th,
-    district_eng: item.district_name_en,
+    district_th: item.district_name_th ?? "",
+    district_eng: item.district_name_en ?? "",
     province_id: item.province_id,
     sub_district_list: [],
   }));
@@ -79,8 +81,8 @@ const mapSubDistrictOptions = (
 ) =>
   subDistricts.map((item) => ({
     sub_district_id: item.sub_district_code,
-    sub_district_th: item.sub_district_name_th,
-    sub_district_eng: item.sub_district_name_en,
+    sub_district_th: item.sub_district_name_th ?? "",
+    sub_district_eng: item.sub_district_name_en ?? "",
     district_id: item.district_id,
   }));
 
@@ -295,6 +297,8 @@ export default function CreateResumePage() {
   const resumeId = searchParams.get("id")?.trim() || "";
   const isEditMode = resumeId !== "";
 
+  console.log('resume ',resume.data.address.country_id)
+
   const updateData = <K extends keyof ResumeCreateProps["data"]>(
     key: K,
     value: ResumeCreateProps["data"][K],
@@ -407,6 +411,7 @@ export default function CreateResumePage() {
     setIsSubmitting(true);
     try {
       const payload = buildResumePayload(resume);
+      console.log(payload);
       if (isEditMode) {
         await resumeService.updateUserResume(user.id, resumeId, payload);
       } else {
@@ -463,6 +468,8 @@ export default function CreateResumePage() {
       try {
         const response = await profileService.getUserProfile(user.id);
         if (cancelled) return;
+
+        console.log('response ',response.data)
 
         setResume((prev) => ({
           ...prev,
@@ -575,7 +582,6 @@ export default function CreateResumePage() {
         </header>
 
         <div className="flex gap-2 w-full">
-
           <div className="grow mb-5 rounded-xl border border-neutral-200 bg-white p-4">
             <label
               htmlFor="resume-name"

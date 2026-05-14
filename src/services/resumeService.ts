@@ -15,6 +15,8 @@ export type UserResumeListItem = {
   email: string;
   phone: string;
   phone_region: string;
+  resume_file?: string | null;
+  resume_file_metadata?: Record<string, unknown> | null;
   user_id: string;
 };
 
@@ -120,6 +122,8 @@ export type ResumeDetailResponse = {
   email: string;
   phone: string;
   phone_region: string;
+  resume_file?: string | null;
+  resume_file_metadata?: Record<string, unknown> | null;
   address_line: string;
   no: string;
   moo: string;
@@ -249,15 +253,23 @@ export type ExportResumeResponse = {
 export const RESUME_ENDPOINT = "/resume/user";
 export const RESUME_DETAIL_ENDPOINT = "/resume";
 
-const parseContentDispositionFilename = (header: string | undefined) => {
-  if (!header) return "";
+const getHeaderString = (header: unknown): string | undefined => {
+  if (typeof header === "string") return header;
+  if (Array.isArray(header))
+    return typeof header[0] === "string" ? header[0] : undefined;
+  return undefined;
+};
 
-  const utfMatch = header.match(/filename\*=UTF-8''([^;]+)/i);
+const parseContentDispositionFilename = (header: unknown) => {
+  const headerValue = getHeaderString(header);
+  if (!headerValue) return "";
+
+  const utfMatch = headerValue.match(/filename\*=UTF-8''([^;]+)/i);
   if (utfMatch?.[1]) {
     return decodeURIComponent(utfMatch[1]);
   }
 
-  const basicMatch = header.match(/filename="?([^"]+)"?/i);
+  const basicMatch = headerValue.match(/filename="?([^"]+)"?/i);
   return basicMatch?.[1] ?? "";
 };
 
@@ -269,6 +281,8 @@ export const mapResumeDetailToResumeForm = (
   create_date: detail.create_date,
   theme: detail.theme,
   color: detail.color,
+  resume_file: detail.resume_file ?? "",
+  resume_file_metadata: detail.resume_file_metadata ?? null,
   data: {
     first_name: detail.first_name,
     last_name: detail.last_name,
@@ -387,7 +401,7 @@ export const updateUserResume = (
 
 export const uploadUserResumeFile = (userId: string, file: File) => {
   const formData = new FormData();
-  formData.append("file", file);
+  formData.append("file", file, file.name);
 
   return apiService.fetchData<UploadResumeFileResponse>({
     url: `${RESUME_ENDPOINT}/${encodeURIComponent(userId)}/upload`,
@@ -407,7 +421,9 @@ export const exportResume = async (
 
   return {
     blob: response.data,
-    contentType: response.headers["content-type"] ?? "application/octet-stream",
+    contentType:
+      getHeaderString(response.headers["content-type"]) ??
+      "application/octet-stream",
     filename:
       parseContentDispositionFilename(
         response.headers["content-disposition"],

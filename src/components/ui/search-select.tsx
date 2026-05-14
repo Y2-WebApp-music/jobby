@@ -65,14 +65,22 @@ export function SearchSelect({
   align = "start",
 }: SearchSelectProps) {
   const [open, setOpen] = useState(false);
+  const safeValue = typeof value === "string" ? value : "";
+  const normalizedOptions = options
+    .map((option) => ({
+      value: typeof option.value === "string" ? option.value.trim() : "",
+      label:
+        typeof option.label === "string" ? option.label.trim() : option.label,
+    }))
+    .filter((option) => option.value.length > 0);
 
-  const displayValue = value
-    ? (options.find((o) => o.value === value)?.label ?? value)
+  const displayValue = safeValue
+    ? (normalizedOptions.find((o) => o.value === safeValue)?.label ?? safeValue)
     : "";
 
   const handleSelect = (optionValue: string) => {
     const isPlaceholder = optionValue === PLACEHOLDER_VALUE;
-    const isCurrent = optionValue === value;
+    const isCurrent = optionValue === safeValue;
     if (clearable && (isPlaceholder || isCurrent)) {
       onValueChange("");
     } else {
@@ -81,7 +89,7 @@ export function SearchSelect({
     setOpen(false);
   };
 
-  const commandValue = value || PLACEHOLDER_VALUE;
+  const commandValue = safeValue || PLACEHOLDER_VALUE;
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -113,8 +121,8 @@ export function SearchSelect({
           <CommandList>
             <CommandEmpty>{emptyMessage}</CommandEmpty>
             <CommandGroup>
-              {options.map((opt) => {
-                const isSelected = value === opt.value;
+              {normalizedOptions.map((opt) => {
+                const isSelected = safeValue === opt.value;
                 const label = opt.label ?? opt.value;
                 return (
                   <CommandItem

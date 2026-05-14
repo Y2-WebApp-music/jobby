@@ -7,9 +7,8 @@ import svgr from "vite-plugin-svgr";
 // https://vite.dev/config/
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), "");
-  const betterAuthProxyTarget = (
-    env.VITE_BETTER_AUTH_PROXY_TARGET
-  ).trim();
+  const betterAuthProxyTarget = env.VITE_BETTER_AUTH_PROXY_TARGET?.trim() ?? "";
+  const hasBetterAuthProxyTarget = betterAuthProxyTarget.length > 0;
 
   return {
     plugins: [react(), tailwindcss(), svgr()],
@@ -18,13 +17,15 @@ export default defineConfig(({ mode }) => {
         "@": path.resolve(__dirname, "./src"),
       },
     },
-    server: {
-      proxy: {
-        "/api/auth": {
-          target: betterAuthProxyTarget,
-          changeOrigin: true,
-        },
-      },
-    },
+    server: hasBetterAuthProxyTarget
+      ? {
+          proxy: {
+            "/api/auth": {
+              target: betterAuthProxyTarget,
+              changeOrigin: true,
+            },
+          },
+        }
+      : undefined,
   };
 });
