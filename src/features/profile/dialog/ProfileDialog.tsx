@@ -1,7 +1,11 @@
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { CgClose } from "react-icons/cg";
 import { Button } from "@/components/ui/button";
-import { useAddressOptionStore, type AddressOptionItem } from "@/store/addressOption";
+import {
+  useAddressOptionStore,
+  type AddressOptionItem,
+} from "@/store/addressOption";
+import { usePhoneRegionStore } from "@/store/phoneRegion";
 import utilityService from "@/services/utilityService";
 
 export type ProfileLink = {
@@ -13,8 +17,8 @@ export type ProfileLink = {
 export type ProfileFormValue = {
   firstName: string;
   lastName: string;
-  region: string;
-  tel: string;
+  phone_region: string;
+  phone: string;
   email: string;
   addressLine: string;
   addressNo: string;
@@ -35,37 +39,9 @@ interface ProfileDialogProps {
   initialData: ProfileFormValue;
 }
 
-const REGION_OPTIONS = [
-  { value: "THA", label: "Thailand", dialCode: "66" },
-  { value: "CHN", label: "China", dialCode: "86" },
-  { value: "JPN", label: "Japan", dialCode: "81" },
-  { value: "GBR", label: "United Kingdom", dialCode: "44" },
-] as const;
+const normalizeDialCode = (value: string) => value.replace(/\D/g, "");
 
-const getDialCodeByRegion = (region: string) =>
-  REGION_OPTIONS.find((item) => item.value === region)?.dialCode ?? "66";
-
-const normalizeLocalTel = (region: string, localTel: string) => {
-  const digits = localTel.replace(/\D/g, "");
-  if (!digits) return "";
-  if (region === "THA") {
-    return digits.replace(/^0/, "");
-  }
-  return digits;
-};
-
-const buildTelWithDialCode = (region: string, rawLocalTel: string) => {
-  const dialCode = getDialCodeByRegion(region);
-  const normalizedLocal = normalizeLocalTel(region, rawLocalTel);
-  return `${dialCode}${normalizedLocal}`;
-};
-
-const extractLocalTel = (region: string, fullTel: string) => {
-  const digits = fullTel.replace(/\D/g, "");
-  const dialCode = getDialCodeByRegion(region);
-  if (!digits.startsWith(dialCode)) return digits;
-  return digits.slice(dialCode.length);
-};
+const getDialCodeByRegion = (region: string) => normalizeDialCode(region);
 
 const withSelectedFallback = (
   options: AddressOptionItem[],
@@ -118,18 +94,17 @@ export default function ProfileDialog({
   initialData,
 }: ProfileDialogProps) {
   const [formValue, setFormValue] = useState<ProfileFormValue>(initialData);
-  const [localTelInput, setLocalTelInput] = useState(() =>
-    extractLocalTel(initialData.region, initialData.tel),
-  );
+  const [localTelInput, setLocalTelInput] = useState(initialData.phone);
   const provinces = useAddressOptionStore((state) => state.provinces);
   const districts = useAddressOptionStore((state) => state.districts);
   const postalCodesBySubDistrict = useAddressOptionStore(
     (state) => state.postalCodesBySubDistrict,
   );
+  const phoneRegions = usePhoneRegionStore((state) => state.phoneRegions);
 
   useEffect(() => {
     setFormValue(initialData);
-    setLocalTelInput(extractLocalTel(initialData.region, initialData.tel));
+    setLocalTelInput(initialData.phone);
   }, [initialData]);
 
   useEffect(() => {
@@ -147,6 +122,54 @@ export default function ProfileDialog({
 
     void loadProvinces();
   }, [open, provinces.length]);
+
+  useEffect(() => {
+    if (!open) return;
+    if (phoneRegions.length > 0) return;
+    void usePhoneRegionStore.fetchPhoneRegions();
+  }, [open, phoneRegions.length]);
+
+  useEffect(() => {
+    if (!open || phoneRegions.length === 0) return;
+    const currentDial = getDialCodeByRegion(formValue.phone_region);
+    if (
+      currentDial &&
+      phoneRegions.some(
+        (item) => normalizeDialCode(item.dialing_code) === currentDial,
+      )
+    ) {
+      return;
+    }
+
+    const phoneDigits = formValue.phone.replace(/\D/g, "");
+    const inferred = phoneRegions.find((item) =>
+      phoneDigits.startsWith(normalizeDialCode(item.dialing_code)),
+    );
+    const nextDial =
+      normalizeDialCode(inferred?.dialing_code ?? "") ||
+      normalizeDialCode(phoneRegions[0]?.dialing_code ?? "");
+    if (!nextDial) return;
+
+    setFormValue((prev) => ({ ...prev, phone_region: nextDial }));
+  }, [formValue.phone, formValue.phone_region, open, phoneRegions]);
+
+  const regionOptions = useMemo(() => {
+    return phoneRegions
+      .map((item) => {
+        const dialCode = normalizeDialCode(item.dialing_code);
+        if (!dialCode) return null;
+        return {
+          value: dialCode,
+          label:
+            item.text_eng?.trim() || item.text_th?.trim() || `+${dialCode}`,
+          dialCode,
+        };
+      })
+      .filter(
+        (item): item is { value: string; label: string; dialCode: string } =>
+          Boolean(item),
+      );
+  }, [phoneRegions]);
 
   const baseProvinceOptions = useMemo(
     () =>
@@ -206,12 +229,15 @@ export default function ProfileDialog({
   useEffect(() => {
     if (!open || !selectedDistrictId) return;
 
-    const district = districts.find((item) => item.district_id === selectedDistrictId);
+    const district = districts.find(
+      (item) => item.district_id === selectedDistrictId,
+    );
     if (district?.sub_district_list?.length) return;
 
     const loadSubDistricts = async () => {
       try {
-        const response = await utilityService.getSubDistrict(selectedDistrictId);
+        const response =
+          await utilityService.getSubDistrict(selectedDistrictId);
         useAddressOptionStore.setSubDistricts(
           selectedDistrictId,
           mapSubDistrictOptions(response.data.sub_districts),
@@ -225,8 +251,9 @@ export default function ProfileDialog({
   }, [districts, open, selectedDistrictId]);
   const baseSubDistrictOptions = useMemo(
     () =>
-      (districts.find((item) => item.district_id === selectedDistrictId)
-        ?.sub_district_list ?? []
+      (
+        districts.find((item) => item.district_id === selectedDistrictId)
+          ?.sub_district_list ?? []
       ).map((item) => ({
         id: item.sub_district_id,
         value: item.sub_district_eng,
@@ -243,13 +270,20 @@ export default function ProfileDialog({
 
   useEffect(() => {
     if (!open || !selectedSubDistrictId || !selectedDistrictId) return;
-    if (useAddressOptionStore.getPostalCode(selectedDistrictId, selectedSubDistrictId)) {
+    if (
+      useAddressOptionStore.getPostalCode(
+        selectedDistrictId,
+        selectedSubDistrictId,
+      )
+    ) {
       return;
     }
 
     const loadPostalCodes = async () => {
       try {
-        const response = await utilityService.getPostalCode(selectedSubDistrictId);
+        const response = await utilityService.getPostalCode(
+          selectedSubDistrictId,
+        );
         useAddressOptionStore.setPostalCodes(
           selectedSubDistrictId,
           response.data
@@ -372,7 +406,7 @@ export default function ProfileDialog({
       await Promise.resolve(
         onSave({
           ...formValue,
-          tel: buildTelWithDialCode(formValue.region, localTelInput),
+          phone: localTelInput,
         }),
       );
       onClose();
@@ -441,24 +475,24 @@ export default function ProfileDialog({
 
           <div>
             <h3 className="text-xl font-semibold text-slate-900">Contact</h3>
-            <div className="mt-1 grid grid-cols-1 gap-2 sm:grid-cols-[84px_144px_minmax(0,1fr)]">
+            <div className="mt-1 grid grid-cols-1 gap-2 sm:grid-cols-[160px_144px_minmax(0,1fr)]">
               <div>
                 <label className="mb-1 block text-sm text-slate-700">
                   Region
                 </label>
                 <select
-                  value={formValue.region}
+                  value={formValue.phone_region}
                   onChange={(e) => {
                     setFormValue((prev) => ({
                       ...prev,
-                      region: e.target.value,
+                      phone_region: e.target.value,
                     }));
                   }}
                   className="h-9 w-full rounded-xl border border-slate-200 px-2 text-sm outline-none"
                 >
-                  {REGION_OPTIONS.map((option) => (
+                  {regionOptions.map((option) => (
                     <option key={option.value} value={option.value}>
-                      {option.value}
+                      {option.label}
                     </option>
                   ))}
                 </select>
@@ -469,7 +503,7 @@ export default function ProfileDialog({
                 </label>
                 <div className="flex h-9 w-full overflow-hidden rounded-xl border border-slate-200 bg-white">
                   <span className="inline-flex items-center border-r border-slate-200 px-2 text-sm text-slate-600">
-                    +{getDialCodeByRegion(formValue.region)}
+                    +{getDialCodeByRegion(formValue.phone_region)}
                   </span>
                   <input
                     value={localTelInput}
@@ -677,12 +711,17 @@ export default function ProfileDialog({
                     postalCode: e.target.value,
                   }))
                 }
-                disabled={!formValue.subDistrict || postalCodeOptions.length === 0}
+                disabled={
+                  !formValue.subDistrict || postalCodeOptions.length === 0
+                }
                 className="h-9 w-full rounded-xl border border-slate-200 px-3 text-sm outline-none"
               >
                 <option value="">Select postal code</option>
                 {postalCodeOptions.map((option) => (
-                  <option key={`${option.id}-${option.value}`} value={option.value}>
+                  <option
+                    key={`${option.id}-${option.value}`}
+                    value={option.value}
+                  >
                     {option.value}
                   </option>
                 ))}

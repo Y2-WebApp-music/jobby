@@ -1,9 +1,10 @@
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { CgClose } from "react-icons/cg";
 import { RiPencilFill } from "react-icons/ri";
 import { IoIosArrowDown } from "react-icons/io";
 import { Calendar } from "@/components/ui/calendar";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 import {
   Popover,
   PopoverContent,
@@ -27,7 +28,7 @@ interface EducateDialogProps {
   open: boolean;
   initialData: EducationItem[];
   onClose: () => void;
-  onSave: (items: EducationItem[]) => void;
+  onSave: (items: EducationItem[]) => void | Promise<void>;
 }
 
 const createEmptyEducation = (): EducationItem => ({
@@ -172,6 +173,14 @@ export default function EducateDialog({
   const [editingId, setEditingId] = useState<number | null>(null);
   const [draft, setDraft] = useState<EducationItem>(createEmptyEducation());
 
+  useEffect(() => {
+    if (!open) return;
+    setItems(initialData);
+    setEditorOpen(false);
+    setEditingId(null);
+    setDraft(createEmptyEducation());
+  }, [open, initialData]);
+
   if (!open) return null;
 
   const openEditor = (item?: EducationItem) => {
@@ -202,20 +211,36 @@ export default function EducateDialog({
     setEditorOpen(false);
   };
 
-  const handleDeleteDraft = () => {
+  const handleDeleteDraft = async () => {
     if (editingId === null) return;
-    setItems((prev) => prev.filter((item) => item.id !== editingId));
-    setEditorOpen(false);
+    const nextItems = items.filter((item) => item.id !== editingId);
+
+    try {
+      await Promise.resolve(onSave(nextItems));
+      setItems(nextItems);
+      setEditorOpen(false);
+      setEditingId(null);
+      setDraft(createEmptyEducation());
+    } catch {
+      return;
+    }
   };
 
-  const handleSaveAll = () => {
-    onSave(items);
-    onClose();
+  const handleSaveAll = async () => {
+    try {
+      await Promise.resolve(onSave(items));
+      onClose();
+    } catch {
+      return;
+    }
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-      <div className="w-full max-w-4xl rounded-3xl bg-white p-5 shadow-xl">
+    <Dialog open={open} onOpenChange={(nextOpen) => !nextOpen && onClose()}>
+      <DialogContent
+        showCloseButton={false}
+        className="w-full min-w-[50vw] max-w-4xl rounded-3xl bg-white p-5 shadow-xl max-h-[90vh] overflow-y-auto"
+      >
         <div className="mb-4 flex items-start justify-between">
           <div>
             <h2 className="text-2xl font-semibold text-slate-900">Education</h2>
@@ -295,11 +320,17 @@ export default function EducateDialog({
             Save Change
           </Button>
         </div>
-      </div>
+      </DialogContent>
 
       {editorOpen ? (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 p-4">
-          <div className="w-full max-w-3xl rounded-3xl bg-white p-5 shadow-xl">
+        <Dialog
+          open={editorOpen}
+          onOpenChange={(nextOpen) => !nextOpen && setEditorOpen(false)}
+        >
+          <DialogContent
+            showCloseButton={false}
+            className="z-[60] w-full min-w-[50vw] max-w-3xl rounded-3xl bg-white p-5 shadow-xl max-h-[90vh] overflow-y-auto"
+          >
             <div className="mb-4 flex items-start justify-between">
               <div>
                 <h2 className="text-2xl font-semibold text-slate-900">
@@ -406,7 +437,7 @@ export default function EducateDialog({
               <div className="flex justify-between pt-1">
                 <button
                   type="button"
-                  onClick={handleDeleteDraft}
+                  onClick={() => void handleDeleteDraft()}
                   disabled={editingId === null}
                   className="rounded-full border border-slate-300 px-5 py-1.5 text-base text-slate-500 enabled:hover:bg-slate-50 disabled:opacity-50"
                 >
@@ -429,9 +460,9 @@ export default function EducateDialog({
                 </div>
               </div>
             </form>
-          </div>
-        </div>
+          </DialogContent>
+        </Dialog>
       ) : null}
-    </div>
+    </Dialog>
   );
 }

@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { CgClose } from "react-icons/cg";
 import { RiDeleteBin5Line, RiPencilFill } from "react-icons/ri";
 import { ImageIcon } from "lucide-react";
@@ -160,6 +160,19 @@ export default function AchievementDialog({
     initialEditingItem ?? createEmptyAchievement(),
   );
 
+  useEffect(() => {
+    if (!open) return;
+    const openingEditingItem =
+      initialEditingId === null
+        ? null
+        : (initialData.find((item) => item.id === initialEditingId) ?? null);
+
+    setItems(initialData);
+    setEditingId(openingEditingItem?.id ?? null);
+    setDraft(openingEditingItem ?? createEmptyAchievement());
+    setEditorOpen(Boolean(directEditMode && openingEditingItem));
+  }, [open, initialData, initialEditingId, directEditMode]);
+
   if (!open) return null;
 
   const openEditor = (item?: AchievementItem) => {
@@ -216,7 +229,9 @@ export default function AchievementDialog({
         existingImages: (prev.existingImages ?? []).filter(
           (image) => image !== target,
         ),
-        newImages: (prev.newImages ?? []).filter((image) => image.url !== target),
+        newImages: (prev.newImages ?? []).filter(
+          (image) => image.url !== target,
+        ),
       };
     });
   };
@@ -262,7 +277,7 @@ export default function AchievementDialog({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-      <div className="w-full max-w-4xl rounded-3xl bg-white p-5 shadow-xl">
+      <div className="w-full max-w-4xl rounded-3xl bg-white p-5 shadow-xl max-h-[80vh] overflow-y-auto">
         <div className="mb-4 flex items-start justify-between">
           <div>
             <h2 className="text-2xl font-semibold text-slate-900">
@@ -342,7 +357,7 @@ export default function AchievementDialog({
 
       {editorOpen ? (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 p-4">
-          <div className="w-full max-w-4xl rounded-3xl bg-white p-5 shadow-xl">
+          <div className="w-full max-w-4xl rounded-3xl bg-white p-5 shadow-xl max-h-[80vh] overflow-y-auto">
             <div className="mb-4 flex items-start justify-between">
               <div>
                 <h2 className="text-2xl font-semibold text-slate-900">
@@ -499,14 +514,14 @@ export default function AchievementDialog({
                 </div>
               </div>
 
-                <div className="flex justify-between pt-1">
-                  <button
-                    type="button"
-                    onClick={() => void handleDeleteDraft()}
-                    disabled={editingId === null}
-                    className="rounded-full border border-slate-300 px-5 py-1.5 text-base text-slate-500 enabled:hover:bg-slate-50 disabled:opacity-50"
-                  >
-                    Delete
+              <div className="flex justify-between pt-1">
+                <button
+                  type="button"
+                  onClick={() => void handleDeleteDraft()}
+                  disabled={editingId === null}
+                  className="rounded-full border border-slate-300 px-5 py-1.5 text-base text-slate-500 enabled:hover:bg-slate-50 disabled:opacity-50"
+                >
+                  Delete
                 </button>
                 <div className="flex gap-2">
                   <button

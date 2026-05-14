@@ -1,5 +1,6 @@
 import { CgClose } from "react-icons/cg";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 
 type ExamResultVariant = "passed" | "failed";
 
@@ -50,8 +51,11 @@ export default function ExamResultDialog({
   const copy = resultCopy[variant];
 
   return (
-    <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/65 p-4">
-      <div className="w-full max-w-[620px] rounded-[28px] bg-white px-6 py-5 shadow-2xl sm:px-10 sm:py-6">
+    <Dialog open={open} onOpenChange={(nextOpen) => !nextOpen && onClose()}>
+      <DialogContent
+        showCloseButton={false}
+        className="z-[120] w-full max-w-[620px] rounded-[28px] bg-white px-6 py-5 shadow-2xl sm:px-10 sm:py-6 max-h-[90vh] overflow-y-auto"
+      >
         <div className="flex justify-end">
           <button
             type="button"
@@ -94,7 +98,7 @@ export default function ExamResultDialog({
             </Button>
           </div>
         </div>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }

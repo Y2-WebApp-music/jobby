@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from "react";
 import { CgClose } from "react-icons/cg";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 
 interface AboutDialogProps {
   open: boolean;
@@ -27,8 +28,11 @@ export default function AboutDialog({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-      <div className="w-full max-w-3xl rounded-3xl bg-white p-5 shadow-xl">
+    <Dialog open={open} onOpenChange={(nextOpen) => !nextOpen && onClose()}>
+      <DialogContent
+        showCloseButton={false}
+        className="w-full max-w-3xl rounded-3xl bg-white p-5 shadow-xl max-h-[90vh] overflow-y-auto"
+      >
         <div className="mb-3 flex items-start justify-between">
           <div>
             <h2 className="text-4 font-semibold text-slate-900">About Me</h2>
@@ -71,7 +75,7 @@ export default function AboutDialog({
             </Button>
           </div>
         </form>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }

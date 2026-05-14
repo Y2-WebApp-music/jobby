@@ -175,7 +175,17 @@ export default function WorkexpDialog({
   const [addSkillDialogOpen, setAddSkillDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [draft, setDraft] = useState<WorkExperienceItem>(createEmptyWorkExp());
-  const [workTypeOptions, setWorkTypeOptions] = useState<FilterOptionItem[]>([]);
+  const [workTypeOptions, setWorkTypeOptions] = useState<FilterOptionItem[]>(
+    [],
+  );
+
+  useEffect(() => {
+    if (!open) return;
+    setItems(initialData);
+    setEditorOpen(false);
+    setEditingId(null);
+    setDraft(createEmptyWorkExp());
+  }, [open, initialData]);
 
   useEffect(() => {
     if (!open) return;
@@ -256,7 +266,11 @@ export default function WorkexpDialog({
     const normalized = {
       ...normalizeWorkTypeItem(draft),
       endDate: normalizedEndDate,
-      date: buildDateRange(draft.startDate, normalizedEndDate, draft.isFinished),
+      date: buildDateRange(
+        draft.startDate,
+        normalizedEndDate,
+        draft.isFinished,
+      ),
     };
     const nextItems = [...items];
 
@@ -474,7 +488,10 @@ export default function WorkexpDialog({
                     Select
                   </option>
                   {workTypeSelectOptions.map((option) => (
-                    <option key={`${option.id}-${option.text_eng}`} value={String(option.id)}>
+                    <option
+                      key={`${option.id}-${option.text_eng}`}
+                      value={String(option.id)}
+                    >
                       {option.text_eng}
                     </option>
                   ))}
