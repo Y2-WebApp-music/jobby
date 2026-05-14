@@ -5,6 +5,8 @@ import {
   useAddressOptionStore,
   type AddressOptionItem,
 } from "@/store/addressOption";
+import { usePhoneRegionStore } from "@/store/phoneRegion";
+import utilityService from "@/services/utilityService";
 
 export type ProfileLink = {
   id: number;
@@ -15,8 +17,8 @@ export type ProfileLink = {
 export type ProfileFormValue = {
   firstName: string;
   lastName: string;
-  region: string;
-  tel: string;
+  phone_region: string;
+  phone: string;
   email: string;
   addressLine: string;
   addressNo: string;
@@ -33,75 +35,13 @@ export type ProfileFormValue = {
 interface ProfileDialogProps {
   open: boolean;
   onClose: () => void;
-  onSave: (data: ProfileFormValue) => void;
+  onSave: (data: ProfileFormValue) => void | Promise<void>;
   initialData: ProfileFormValue;
 }
 
-const REGION_OPTIONS = [
-  { value: "THA", label: "Thailand", dialCode: "66" },
-  { value: "CHN", label: "China", dialCode: "86" },
-  { value: "JPN", label: "Japan", dialCode: "81" },
-  { value: "GBR", label: "United Kingdom", dialCode: "44" },
-] as const;
+const normalizeDialCode = (value: string) => value.replace(/\D/g, "");
 
-const getDialCodeByRegion = (region: string) =>
-  REGION_OPTIONS.find((item) => item.value === region)?.dialCode ?? "66";
-
-const normalizeLocalTel = (region: string, localTel: string) => {
-  const digits = localTel.replace(/\D/g, "");
-  if (!digits) return "";
-  if (region === "THA") {
-    return digits.replace(/^0/, "");
-  }
-  return digits;
-};
-
-const buildTelWithDialCode = (region: string, rawLocalTel: string) => {
-  const dialCode = getDialCodeByRegion(region);
-  const normalizedLocal = normalizeLocalTel(region, rawLocalTel);
-  return `${dialCode}${normalizedLocal}`;
-};
-
-const extractLocalTel = (region: string, fullTel: string) => {
-  const digits = fullTel.replace(/\D/g, "");
-  const dialCode = getDialCodeByRegion(region);
-  if (!digits.startsWith(dialCode)) return digits;
-  return digits.slice(dialCode.length);
-};
-
-const FALLBACK_ADDRESS_TREE = [
-  {
-    province: "Bangkok",
-    districts: [
-      {
-        district: "Huai Khwang",
-        subDistricts: [{ subDistrict: "Bang Kapi", postalCode: "10310" }],
-      },
-      {
-        district: "Pathum Wan",
-        subDistricts: [{ subDistrict: "Lumphini", postalCode: "10330" }],
-      },
-    ],
-  },
-  {
-    province: "Chiang Mai",
-    districts: [
-      {
-        district: "Mueang Chiang Mai",
-        subDistricts: [{ subDistrict: "Suthep", postalCode: "50200" }],
-      },
-    ],
-  },
-  {
-    province: "Chon Buri",
-    districts: [
-      {
-        district: "Mueang Chon Buri",
-        subDistricts: [{ subDistrict: "Saen Suk", postalCode: "20130" }],
-      },
-    ],
-  },
-] as const;
+const getDialCodeByRegion = (region: string) => normalizeDialCode(region);
 
 const withSelectedFallback = (
   options: AddressOptionItem[],
@@ -112,6 +52,41 @@ const withSelectedFallback = (
   return [{ id: -1, value: selectedValue }, ...options];
 };
 
+const mapProvinceOptions = (
+  provinces: Awaited<ReturnType<typeof utilityService.getProvince>>["data"],
+) =>
+  provinces.map((item) => ({
+    province_id: item.province_code,
+    province_th: item.province_name_th ?? "",
+    province_eng: item.province_name_en ?? "",
+    country_id: item.country_id,
+  }));
+
+const mapDistrictOptions = (
+  districts: Awaited<
+    ReturnType<typeof utilityService.getDistrict>
+  >["data"]["districts"],
+) =>
+  districts.map((item) => ({
+    district_id: item.district_code,
+    district_th: item.district_name_th ?? "",
+    district_eng: item.district_name_en ?? "",
+    province_id: item.province_id,
+    sub_district_list: [],
+  }));
+
+const mapSubDistrictOptions = (
+  subDistricts: Awaited<
+    ReturnType<typeof utilityService.getSubDistrict>
+  >["data"]["sub_districts"],
+) =>
+  subDistricts.map((item) => ({
+    sub_district_id: item.sub_district_code,
+    sub_district_th: item.sub_district_name_th ?? "",
+    sub_district_eng: item.sub_district_name_en ?? "",
+    district_id: item.district_id,
+  }));
+
 export default function ProfileDialog({
   open,
   onClose,
@@ -119,67 +94,89 @@ export default function ProfileDialog({
   initialData,
 }: ProfileDialogProps) {
   const [formValue, setFormValue] = useState<ProfileFormValue>(initialData);
-  const [localTelInput, setLocalTelInput] = useState(() =>
-    extractLocalTel(initialData.region, initialData.tel),
-  );
+  const [localTelInput, setLocalTelInput] = useState(initialData.phone);
   const provinces = useAddressOptionStore((state) => state.provinces);
   const districts = useAddressOptionStore((state) => state.districts);
+  const postalCodesBySubDistrict = useAddressOptionStore(
+    (state) => state.postalCodesBySubDistrict,
+  );
+  const phoneRegions = usePhoneRegionStore((state) => state.phoneRegions);
 
   useEffect(() => {
     setFormValue(initialData);
-    setLocalTelInput(extractLocalTel(initialData.region, initialData.tel));
+    setLocalTelInput(initialData.phone);
   }, [initialData]);
 
-  const shouldUseFallbackAddressData =
-    provinces.length === 0 && districts.length === 0;
-  const fallbackProvinceOptions = useMemo(
-    () =>
-      FALLBACK_ADDRESS_TREE.map((item, index) => ({
-        id: index + 1,
-        value: item.province,
-      })),
-    [],
-  );
-  const selectedFallbackProvince = useMemo(
-    () =>
-      FALLBACK_ADDRESS_TREE.find(
-        (item) => item.province === formValue.province,
-      ),
-    [formValue.province],
-  );
-  const fallbackDistrictOptions = useMemo(
-    () =>
-      (selectedFallbackProvince?.districts ?? []).map((item, index) => ({
-        id: index + 1,
-        value: item.district,
-      })),
-    [selectedFallbackProvince],
-  );
-  const selectedFallbackDistrict = useMemo(
-    () =>
-      selectedFallbackProvince?.districts.find(
-        (item) => item.district === formValue.district,
-      ),
-    [formValue.district, selectedFallbackProvince],
-  );
-  const fallbackSubDistrictOptions = useMemo(
-    () =>
-      (selectedFallbackDistrict?.subDistricts ?? []).map((item, index) => ({
-        id: index + 1,
-        value: item.subDistrict,
-      })),
-    [selectedFallbackDistrict],
-  );
-  const fallbackDerivedPostalCode = useMemo(
-    () =>
-      selectedFallbackDistrict?.subDistricts.find(
-        (item) => item.subDistrict === formValue.subDistrict,
-      )?.postalCode ?? "",
-    [formValue.subDistrict, selectedFallbackDistrict],
-  );
+  useEffect(() => {
+    if (!open) return;
+    if (provinces.length > 0) return;
+
+    const loadProvinces = async () => {
+      try {
+        const response = await utilityService.getProvince();
+        useAddressOptionStore.setProvinces(mapProvinceOptions(response.data));
+      } catch {
+        return;
+      }
+    };
+
+    void loadProvinces();
+  }, [open, provinces.length]);
+
+  useEffect(() => {
+    if (!open) return;
+    if (phoneRegions.length > 0) return;
+    void usePhoneRegionStore.fetchPhoneRegions();
+  }, [open, phoneRegions.length]);
+
+  useEffect(() => {
+    if (!open || phoneRegions.length === 0) return;
+    const currentDial = getDialCodeByRegion(formValue.phone_region);
+    if (
+      currentDial &&
+      phoneRegions.some(
+        (item) => normalizeDialCode(item.dialing_code) === currentDial,
+      )
+    ) {
+      return;
+    }
+
+    const phoneDigits = formValue.phone.replace(/\D/g, "");
+    const inferred = phoneRegions.find((item) =>
+      phoneDigits.startsWith(normalizeDialCode(item.dialing_code)),
+    );
+    const nextDial =
+      normalizeDialCode(inferred?.dialing_code ?? "") ||
+      normalizeDialCode(phoneRegions[0]?.dialing_code ?? "");
+    if (!nextDial) return;
+
+    setFormValue((prev) => ({ ...prev, phone_region: nextDial }));
+  }, [formValue.phone, formValue.phone_region, open, phoneRegions]);
+
+  const regionOptions = useMemo(() => {
+    return phoneRegions
+      .map((item) => {
+        const dialCode = normalizeDialCode(item.dialing_code);
+        if (!dialCode) return null;
+        return {
+          value: dialCode,
+          label:
+            item.text_eng?.trim() || item.text_th?.trim() || `+${dialCode}`,
+          dialCode,
+        };
+      })
+      .filter(
+        (item): item is { value: string; label: string; dialCode: string } =>
+          Boolean(item),
+      );
+  }, [phoneRegions]);
 
   const baseProvinceOptions = useMemo(
-    () => useAddressOptionStore.getProvinceOptions(),
+    () =>
+      provinces.map((item) => ({
+        id: item.province_id,
+        value: item.province_eng,
+      })),
     [provinces],
   );
   const selectedProvinceId = useMemo(
@@ -188,10 +185,37 @@ export default function ProfileDialog({
         ?.id ?? 0,
     [baseProvinceOptions, formValue.province],
   );
+
+  useEffect(() => {
+    if (!open || !selectedProvinceId) return;
+
+    const hasDistrictsForProvince = districts.some(
+      (item) => item.province_id === selectedProvinceId,
+    );
+    if (hasDistrictsForProvince) return;
+
+    const loadDistricts = async () => {
+      try {
+        const response = await utilityService.getDistrict(selectedProvinceId);
+        useAddressOptionStore.setDistricts(
+          mapDistrictOptions(response.data.districts),
+        );
+      } catch {
+        return;
+      }
+    };
+
+    void loadDistricts();
+  }, [districts, open, selectedProvinceId]);
   const baseDistrictOptions = useMemo(
     () =>
       selectedProvinceId
-        ? useAddressOptionStore.getDistrictOptions(selectedProvinceId)
+        ? districts
+            .filter((item) => item.province_id === selectedProvinceId)
+            .map((item) => ({
+              id: item.district_id,
+              value: item.district_eng,
+            }))
         : [],
     [districts, selectedProvinceId],
   );
@@ -201,11 +225,39 @@ export default function ProfileDialog({
         ?.id ?? 0,
     [baseDistrictOptions, formValue.district],
   );
+
+  useEffect(() => {
+    if (!open || !selectedDistrictId) return;
+
+    const district = districts.find(
+      (item) => item.district_id === selectedDistrictId,
+    );
+    if (district?.sub_district_list?.length) return;
+
+    const loadSubDistricts = async () => {
+      try {
+        const response =
+          await utilityService.getSubDistrict(selectedDistrictId);
+        useAddressOptionStore.setSubDistricts(
+          selectedDistrictId,
+          mapSubDistrictOptions(response.data.sub_districts),
+        );
+      } catch {
+        return;
+      }
+    };
+
+    void loadSubDistricts();
+  }, [districts, open, selectedDistrictId]);
   const baseSubDistrictOptions = useMemo(
     () =>
-      selectedDistrictId
-        ? useAddressOptionStore.getSubDistrictOptions(selectedDistrictId)
-        : [],
+      (
+        districts.find((item) => item.district_id === selectedDistrictId)
+          ?.sub_district_list ?? []
+      ).map((item) => ({
+        id: item.sub_district_id,
+        value: item.sub_district_eng,
+      })),
     [districts, selectedDistrictId],
   );
   const selectedSubDistrictId = useMemo(
@@ -215,70 +267,79 @@ export default function ProfileDialog({
       )?.id ?? 0,
     [baseSubDistrictOptions, formValue.subDistrict],
   );
-  const derivedPostalCode = useMemo(() => {
-    if (shouldUseFallbackAddressData) return fallbackDerivedPostalCode;
-    if (!selectedDistrictId || !selectedSubDistrictId) return "";
-    const postalCode = useAddressOptionStore.getPostalCode(
-      selectedDistrictId,
-      selectedSubDistrictId,
-    );
-    return postalCode ? String(postalCode) : "";
-  }, [
-    fallbackDerivedPostalCode,
-    selectedDistrictId,
-    selectedSubDistrictId,
-    shouldUseFallbackAddressData,
-  ]);
+
+  useEffect(() => {
+    if (!open || !selectedSubDistrictId || !selectedDistrictId) return;
+    if (
+      useAddressOptionStore.getPostalCode(
+        selectedDistrictId,
+        selectedSubDistrictId,
+      )
+    ) {
+      return;
+    }
+
+    const loadPostalCodes = async () => {
+      try {
+        const response = await utilityService.getPostalCode(
+          selectedSubDistrictId,
+        );
+        useAddressOptionStore.setPostalCodes(
+          selectedSubDistrictId,
+          response.data
+            .map((item) => Number(item.postal_code))
+            .filter((item) => Number.isFinite(item)),
+        );
+      } catch {
+        return;
+      }
+    };
+
+    void loadPostalCodes();
+  }, [open, selectedDistrictId, selectedSubDistrictId]);
   const provinceOptions = useMemo(
-    () =>
-      withSelectedFallback(
-        shouldUseFallbackAddressData
-          ? fallbackProvinceOptions
-          : baseProvinceOptions,
-        formValue.province,
-      ),
-    [
-      baseProvinceOptions,
-      fallbackProvinceOptions,
-      formValue.province,
-      shouldUseFallbackAddressData,
-    ],
+    () => withSelectedFallback(baseProvinceOptions, formValue.province),
+    [baseProvinceOptions, formValue.province],
   );
   const districtOptions = useMemo(
-    () =>
-      withSelectedFallback(
-        shouldUseFallbackAddressData
-          ? fallbackDistrictOptions
-          : baseDistrictOptions,
-        formValue.district,
-      ),
-    [
-      baseDistrictOptions,
-      fallbackDistrictOptions,
-      formValue.district,
-      shouldUseFallbackAddressData,
-    ],
+    () => withSelectedFallback(baseDistrictOptions, formValue.district),
+    [baseDistrictOptions, formValue.district],
   );
   const subDistrictOptions = useMemo(
-    () =>
-      withSelectedFallback(
-        shouldUseFallbackAddressData
-          ? fallbackSubDistrictOptions
-          : baseSubDistrictOptions,
-        formValue.subDistrict,
-      ),
-    [
-      baseSubDistrictOptions,
-      fallbackSubDistrictOptions,
-      formValue.subDistrict,
-      shouldUseFallbackAddressData,
-    ],
+    () => withSelectedFallback(baseSubDistrictOptions, formValue.subDistrict),
+    [baseSubDistrictOptions, formValue.subDistrict],
   );
   const postalCodeOptions = useMemo(() => {
-    const resolvedPostalCode = derivedPostalCode || formValue.postalCode;
-    if (!resolvedPostalCode) return [];
-    return [{ id: 1, value: resolvedPostalCode }];
-  }, [derivedPostalCode, formValue.postalCode]);
+    const codes = selectedSubDistrictId
+      ? (postalCodesBySubDistrict[selectedSubDistrictId] ?? [])
+      : [];
+    const mapped = codes.map((code) => ({
+      id: code,
+      value: String(code),
+    }));
+
+    if (!formValue.postalCode) return mapped;
+    if (mapped.some((option) => option.value === formValue.postalCode)) {
+      return mapped;
+    }
+
+    return [{ id: -1, value: formValue.postalCode }, ...mapped];
+  }, [formValue.postalCode, postalCodesBySubDistrict, selectedSubDistrictId]);
+
+  useEffect(() => {
+    if (postalCodeOptions.length === 0) return;
+    if (
+      formValue.postalCode &&
+      postalCodeOptions.some((option) => option.value === formValue.postalCode)
+    ) {
+      return;
+    }
+
+    setFormValue((prev) => ({
+      ...prev,
+      postalCode: postalCodeOptions[0]?.value ?? "",
+    }));
+  }, [formValue.postalCode, postalCodeOptions]);
 
   if (!open) return null;
 
@@ -302,26 +363,10 @@ export default function ProfileDialog({
   };
 
   const handleSubDistrictChange = (value: string) => {
-    const nextPostalCode = shouldUseFallbackAddressData
-      ? selectedFallbackDistrict?.subDistricts.find(
-          (item) => item.subDistrict === value,
-        )?.postalCode
-      : (() => {
-          const nextSubDistrictId =
-            baseSubDistrictOptions.find((option) => option.value === value)
-              ?.id ?? 0;
-          return selectedDistrictId && nextSubDistrictId
-            ? useAddressOptionStore.getPostalCode(
-                selectedDistrictId,
-                nextSubDistrictId,
-              )
-            : undefined;
-        })();
-
     setFormValue((prev) => ({
       ...prev,
       subDistrict: value,
-      postalCode: nextPostalCode ? String(nextPostalCode) : "",
+      postalCode: "",
     }));
   };
 
@@ -355,13 +400,19 @@ export default function ProfileDialog({
     }));
   };
 
-  const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    onSave({
-      ...formValue,
-      tel: buildTelWithDialCode(formValue.region, localTelInput),
-    });
-    onClose();
+    try {
+      await Promise.resolve(
+        onSave({
+          ...formValue,
+          phone: localTelInput,
+        }),
+      );
+      onClose();
+    } catch {
+      return;
+    }
   };
 
   return (
@@ -424,24 +475,24 @@ export default function ProfileDialog({
 
           <div>
             <h3 className="text-xl font-semibold text-slate-900">Contact</h3>
-            <div className="mt-1 grid grid-cols-1 gap-2 sm:grid-cols-[84px_144px_minmax(0,1fr)]">
+            <div className="mt-1 grid grid-cols-1 gap-2 sm:grid-cols-[160px_144px_minmax(0,1fr)]">
               <div>
                 <label className="mb-1 block text-sm text-slate-700">
                   Region
                 </label>
                 <select
-                  value={formValue.region}
+                  value={formValue.phone_region}
                   onChange={(e) => {
                     setFormValue((prev) => ({
                       ...prev,
-                      region: e.target.value,
+                      phone_region: e.target.value,
                     }));
                   }}
                   className="h-9 w-full rounded-xl border border-slate-200 px-2 text-sm outline-none"
                 >
-                  {REGION_OPTIONS.map((option) => (
+                  {regionOptions.map((option) => (
                     <option key={option.value} value={option.value}>
-                      {option.value}
+                      {option.label}
                     </option>
                   ))}
                 </select>
@@ -452,7 +503,7 @@ export default function ProfileDialog({
                 </label>
                 <div className="flex h-9 w-full overflow-hidden rounded-xl border border-slate-200 bg-white">
                   <span className="inline-flex items-center border-r border-slate-200 px-2 text-sm text-slate-600">
-                    +{getDialCodeByRegion(formValue.region)}
+                    +{getDialCodeByRegion(formValue.phone_region)}
                   </span>
                   <input
                     value={localTelInput}

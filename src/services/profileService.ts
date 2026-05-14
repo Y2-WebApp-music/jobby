@@ -177,6 +177,7 @@ export type UserProfileItem = {
   logo: string;
   banner: string;
   phone: string;
+  phone_region?: string;
   about: string;
   quote: string;
   address: ProfileAddressItem | null;
@@ -215,6 +216,7 @@ export type UpdateProfileContactPayload = {
 };
 
 export type UpdateProfilePayload = {
+  email?: string;
   first_name?: string;
   last_name?: string;
   phone?: string;
@@ -271,13 +273,14 @@ export type GetEducationResponse = EducationItem[];
 export type CreateEducationResponse = Record<string, unknown>;
 
 export type UpdateEducationResponse = Record<string, unknown>;
+export type DeleteEducationResponse = Record<string, unknown>;
 
 export type GetWorkExperienceResponse = WorkExperienceItem[];
 
 export type CreateWorkExperienceResponse = Record<string, unknown>;
 
 export type UpdateWorkExperienceResponse = Record<string, unknown>;
-
+export type DeleteWorkExperienceResponse = Record<string, unknown>;
 export type GetProjectsResponse = ProjectItem[];
 
 export type GetProjectByIdResponse = ProjectItem;
@@ -285,6 +288,9 @@ export type GetProjectByIdResponse = ProjectItem;
 export type GetProjectResponse = GetProjectsResponse | GetProjectByIdResponse;
 
 export type CreateProjectResponse = Record<string, unknown>;
+
+export type UpdateProjectResponse = Record<string, unknown>;
+export type DeleteProjectResponse = Record<string, unknown>;
 
 export type GetAchievementsResponse = AchievementItem[];
 
@@ -297,6 +303,7 @@ export type GetAchievementResponse =
 export type CreateAchievementResponse = Record<string, unknown>;
 
 export type UpdateAchievementResponse = Record<string, unknown>;
+export type DeleteAchievementResponse = Record<string, unknown>;
 
 export const PROFILE_ENDPOINT = "/profile/userProfile";
 
@@ -418,6 +425,13 @@ export const updateEducation = (
   });
 };
 
+export const deleteEducation = (id: string, educationId: string) => {
+  return apiService.fetchData<DeleteEducationResponse>({
+    url: `${PROFILE_ENDPOINT}/${encodeURIComponent(id)}/educations/${encodeURIComponent(educationId)}`,
+    method: "delete",
+  });
+};
+
 export const getWorkExperience = (id: string) => {
   return apiService.fetchData<GetWorkExperienceResponse>({
     url: `${PROFILE_ENDPOINT}/${encodeURIComponent(id)}/work-experiences`,
@@ -448,6 +462,13 @@ export const updateWorkExperience = (
   });
 };
 
+export const deleteWorkExperience = (id: string, workExperienceId: string) => {
+  return apiService.fetchData<DeleteWorkExperienceResponse>({
+    url: `${PROFILE_ENDPOINT}/${encodeURIComponent(id)}/work-experiences/${encodeURIComponent(workExperienceId)}`,
+    method: "delete",
+  });
+};
+
 export function getProject(
   id: string,
 ): Promise<SuccessResponse<GetProjectsResponse>>;
@@ -472,6 +493,25 @@ export const createProject = (id: string, data: CreateProjectRequest) => {
     url: `${PROFILE_ENDPOINT}/${encodeURIComponent(id)}/projects`,
     method: "post",
     data: buildPayloadImagesFormData(data),
+  });
+};
+
+export const updateProject = (
+  id: string,
+  projectId: string,
+  data: CreateProjectRequest,
+) => {
+  return apiService.fetchData<UpdateProjectResponse>({
+    url: `${PROFILE_ENDPOINT}/${encodeURIComponent(id)}/projects/${encodeURIComponent(projectId)}`,
+    method: "patch",
+    data: buildPayloadImagesFormData(data),
+  });
+};
+
+export const deleteProject = (id: string, projectId: string) => {
+  return apiService.fetchData<DeleteProjectResponse>({
+    url: `${PROFILE_ENDPOINT}/${encodeURIComponent(id)}/projects/${encodeURIComponent(projectId)}`,
+    method: "delete",
   });
 };
 
@@ -514,12 +554,23 @@ export const updateAchievement = (
   });
 };
 
+export const deleteAchievement = (id: string, achievementId: string) => {
+  return apiService.fetchData<DeleteAchievementResponse>({
+    url: `${PROFILE_ENDPOINT}/${encodeURIComponent(id)}/achievements/${encodeURIComponent(achievementId)}`,
+    method: "delete",
+  });
+};
+
 const profileService = {
   addUserSkill,
   createAchievement,
   createEducation,
   createProject,
   createWorkExperience,
+  deleteAchievement,
+  deleteEducation,
+  deleteProject,
+  deleteWorkExperience,
   getAchievement,
   getDynamicInfo,
   getEducation,
@@ -532,6 +583,7 @@ const profileService = {
   updateEducation,
   updateProfile,
   updateProfileMedia,
+  updateProject,
   updateWorkExperience,
 };
 

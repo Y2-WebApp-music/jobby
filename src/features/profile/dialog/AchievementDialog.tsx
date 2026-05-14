@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { CgClose } from "react-icons/cg";
 import { RiDeleteBin5Line, RiPencilFill } from "react-icons/ri";
 import { ImageIcon } from "lucide-react";
@@ -14,6 +14,10 @@ import AddskillDialog from "@/features/profile/dialog/AddskillDialog";
 
 export type AchievementItem = {
   id: number;
+  backendId?: string;
+  skillItems?: { id?: string; name: string }[];
+  existingImages?: string[];
+  newImages?: { url: string; file: File }[];
   name: string;
   from: string;
   description: string;
@@ -28,13 +32,16 @@ interface AchievementDialogProps {
   initialEditingId?: number | null;
   directEditMode?: boolean;
   onClose: () => void;
-  onSave: (items: AchievementItem[]) => void;
+  onSave: (items: AchievementItem[]) => void | Promise<void>;
 }
 
 const MAX_ACHIEVEMENT_IMAGES = 5;
 
 const createEmptyAchievement = (): AchievementItem => ({
   id: Date.now(),
+  skillItems: [],
+  existingImages: [],
+  newImages: [],
   name: "",
   from: "",
   description: "",
@@ -153,6 +160,19 @@ export default function AchievementDialog({
     initialEditingItem ?? createEmptyAchievement(),
   );
 
+  useEffect(() => {
+    if (!open) return;
+    const openingEditingItem =
+      initialEditingId === null
+        ? null
+        : (initialData.find((item) => item.id === initialEditingId) ?? null);
+
+    setItems(initialData);
+    setEditingId(openingEditingItem?.id ?? null);
+    setDraft(openingEditingItem ?? createEmptyAchievement());
+    setEditorOpen(Boolean(directEditMode && openingEditingItem));
+  }, [open, initialData, initialEditingId, directEditMode]);
+
   if (!open) return null;
 
   const openEditor = (item?: AchievementItem) => {
@@ -168,13 +188,18 @@ export default function AchievementDialog({
 
   const handleAddSkill = (nextSkill: string) => {
     if (!nextSkill || draft.skills.includes(nextSkill)) return;
-    setDraft((prev) => ({ ...prev, skills: [...prev.skills, nextSkill] }));
+    setDraft((prev) => ({
+      ...prev,
+      skills: [...prev.skills, nextSkill],
+      skillItems: [...(prev.skillItems ?? []), { name: nextSkill }],
+    }));
   };
 
   const handleRemoveSkill = (skill: string) => {
     setDraft((prev) => ({
       ...prev,
       skills: prev.skills.filter((item) => item !== skill),
+      skillItems: (prev.skillItems ?? []).filter((item) => item.name !== skill),
     }));
   };
 
@@ -184,8 +209,12 @@ export default function AchievementDialog({
     if (left <= 0) return;
     const selected = Array.from(files)
       .slice(0, left)
-      .map((file) => URL.createObjectURL(file));
-    setDraft((prev) => ({ ...prev, images: [...prev.images, ...selected] }));
+      .map((file) => ({ url: URL.createObjectURL(file), file }));
+    setDraft((prev) => ({
+      ...prev,
+      images: [...prev.images, ...selected.map((item) => item.url)],
+      newImages: [...(prev.newImages ?? []), ...selected],
+    }));
   };
 
   const handleRemoveImage = (index: number) => {
@@ -197,15 +226,21 @@ export default function AchievementDialog({
       return {
         ...prev,
         images: prev.images.filter((_, i) => i !== index),
+        existingImages: (prev.existingImages ?? []).filter(
+          (image) => image !== target,
+        ),
+        newImages: (prev.newImages ?? []).filter(
+          (image) => image.url !== target,
+        ),
       };
     });
   };
 
-  const handleSaveDraft = (e: FormEvent<HTMLFormElement>) => {
+  const handleSaveDraft = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const normalized = {
       ...draft,
-      date: formatDate(draft.date),
+      date: draft.date,
     };
     let nextItems: AchievementItem[];
     if (editingId === null) {
@@ -216,31 +251,33 @@ export default function AchievementDialog({
       );
     }
 
-    setItems(nextItems);
-
-    if (directEditMode) {
-      onSave(nextItems);
+    try {
+      await Promise.resolve(onSave(nextItems));
+      setItems(nextItems);
+      setEditorOpen(false);
       onClose();
+    } catch {
       return;
     }
-
-    setEditorOpen(false);
   };
 
-  const handleDeleteDraft = () => {
+  const handleDeleteDraft = async () => {
     if (editingId === null) return;
-    setItems((prev) => prev.filter((item) => item.id !== editingId));
-    setEditorOpen(false);
-  };
+    const nextItems = items.filter((item) => item.id !== editingId);
 
-  const handleSaveAll = () => {
-    onSave(items);
-    onClose();
+    try {
+      await Promise.resolve(onSave(nextItems));
+      setItems(nextItems);
+      setEditorOpen(false);
+      onClose();
+    } catch {
+      return;
+    }
   };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-      <div className="w-full max-w-4xl rounded-3xl bg-white p-5 shadow-xl">
+      <div className="w-full max-w-4xl rounded-3xl bg-white p-5 shadow-xl max-h-[80vh] overflow-y-auto">
         <div className="mb-4 flex items-start justify-between">
           <div>
             <h2 className="text-2xl font-semibold text-slate-900">
@@ -283,7 +320,7 @@ export default function AchievementDialog({
                     {item.description || "Description"}
                   </div>
                   <div className="text-sm text-slate-700">
-                    {item.date || "Date"}
+                    {formatDate(item.date) || "Date"}
                   </div>
                 </div>
                 <button
@@ -315,19 +352,12 @@ export default function AchievementDialog({
           >
             Cancel
           </button>
-          <Button
-            type="button"
-            onClick={handleSaveAll}
-            className="rounded-full bg-gradient-to-r from-main to-second px-5 py-1.5 text-base font-medium text-white"
-          >
-            Save Change
-          </Button>
         </div>
       </div>
 
       {editorOpen ? (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 p-4">
-          <div className="w-full max-w-4xl rounded-3xl bg-white p-5 shadow-xl">
+          <div className="w-full max-w-4xl rounded-3xl bg-white p-5 shadow-xl max-h-[80vh] overflow-y-auto">
             <div className="mb-4 flex items-start justify-between">
               <div>
                 <h2 className="text-2xl font-semibold text-slate-900">
@@ -430,7 +460,7 @@ export default function AchievementDialog({
               <DatePickerField
                 label="Date"
                 value={draft.date}
-                minDate={TODAY_YMD}
+                maxDate={TODAY_YMD}
                 onChange={(nextValue) =>
                   setDraft((prev) => ({ ...prev, date: nextValue }))
                 }
@@ -487,7 +517,7 @@ export default function AchievementDialog({
               <div className="flex justify-between pt-1">
                 <button
                   type="button"
-                  onClick={handleDeleteDraft}
+                  onClick={() => void handleDeleteDraft()}
                   disabled={editingId === null}
                   className="rounded-full border border-slate-300 px-5 py-1.5 text-base text-slate-500 enabled:hover:bg-slate-50 disabled:opacity-50"
                 >
