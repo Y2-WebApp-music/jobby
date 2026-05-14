@@ -139,7 +139,7 @@ function DatePickerField({
         </PopoverTrigger>
         <PopoverContent
           align="start"
-          className="w-auto border-0 p-0 shadow-none"
+          className="z-80 w-auto border-0 p-0 shadow-none"
         >
           <Calendar
             mode="single"
