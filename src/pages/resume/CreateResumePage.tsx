@@ -297,7 +297,7 @@ export default function CreateResumePage() {
   const resumeId = searchParams.get("id")?.trim() || "";
   const isEditMode = resumeId !== "";
 
-  console.log('resume ',resume.data.address.country_id)
+  console.log("resume ", resume.data.address.country_id);
 
   const updateData = <K extends keyof ResumeCreateProps["data"]>(
     key: K,
@@ -469,7 +469,7 @@ export default function CreateResumePage() {
         const response = await profileService.getUserProfile(user.id);
         if (cancelled) return;
 
-        console.log('response ',response.data)
+        console.log("response ", response.data);
 
         setResume((prev) => ({
           ...prev,

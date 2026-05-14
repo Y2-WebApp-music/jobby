@@ -204,9 +204,7 @@ export const getSearchFilterOptions = () => {
       url: `${SEARCH_ENDPOINT}/filter-options`,
       method: "get",
     })
-    .then((response) =>
-      withDefaultData(response, emptySearchFilterOptions),
-    );
+    .then((response) => withDefaultData(response, emptySearchFilterOptions));
 };
 
 export const getSearchAddressOptions = (params: SearchAddressOptionsParams) => {

@@ -287,22 +287,18 @@ export default function SearchJobPage() {
     () => skillSuggestions.map((item) => item.name),
     [skillSuggestions],
   );
-  const skillOptionItems = useMemo(
-    () => {
-      const searchText = skillFilterQuery.trim().toLowerCase();
+  const skillOptionItems = useMemo(() => {
+    const searchText = skillFilterQuery.trim().toLowerCase();
 
-      if (searchText.length >= 2) {
-        return skillFilterSuggestions.filter(
-          (item) =>
-            item.type === "skill" &&
-            item.name.toLowerCase().includes(searchText),
-        );
-      }
+    if (searchText.length >= 2) {
+      return skillFilterSuggestions.filter(
+        (item) =>
+          item.type === "skill" && item.name.toLowerCase().includes(searchText),
+      );
+    }
 
-      return selectedSkillItems.filter((item) => item.type === "skill");
-    },
-    [selectedSkillItems, skillFilterQuery, skillFilterSuggestions],
-  );
+    return selectedSkillItems.filter((item) => item.type === "skill");
+  }, [selectedSkillItems, skillFilterQuery, skillFilterSuggestions]);
   const headerSkills = selectedSkillNames.slice(0, 4);
   const headerSkillsOverflow = Math.max(0, selectedSkillNames.length - 4);
 
@@ -383,7 +379,11 @@ export default function SearchJobPage() {
       cancelled = true;
       window.clearTimeout(timeoutId);
     };
-  }, [searchPayload.search_text, searchPayload.search_type, setSkillSuggestions]);
+  }, [
+    searchPayload.search_text,
+    searchPayload.search_type,
+    setSkillSuggestions,
+  ]);
 
   useEffect(() => {
     const searchText = placeInput.trim();
@@ -855,35 +855,35 @@ export default function SearchJobPage() {
                 >
                   <HiOutlineSelector className="h-4 w-4" />
                 </button>
-                  <button
-                    type="button"
-                    className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[#999999] hover:bg-slate-100"
-                    aria-label="clear skill use"
-                    onClick={() => {
-                      setSkillFilterQuery("");
-                      updatePayload({ skill: [], page: 0 });
-                    }}
-                  >
-                    <CgClose />
-                  </button>
+                <button
+                  type="button"
+                  className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[#999999] hover:bg-slate-100"
+                  aria-label="clear skill use"
+                  onClick={() => {
+                    setSkillFilterQuery("");
+                    updatePayload({ skill: [], page: 0 });
+                  }}
+                >
+                  <CgClose />
+                </button>
 
-                  {skillOpen ? (
-                    <div className="absolute left-0 top-full z-20 mt-2 w-full rounded-2xl border border-[#e2e2e2] bg-white p-3 shadow-lg">
-                      <div className="mb-3">
-                        <input
-                          value={skillFilterQuery}
-                          onChange={(event) =>
-                            setSkillFilterQuery(event.target.value)
-                          }
-                          placeholder="Search skills"
-                          className="h-9 w-full rounded-xl border border-[#e2e2e2] px-3 text-sm outline-none focus:border-[#ff76c5]"
-                        />
-                      </div>
-                      <div className="flex flex-wrap gap-2">
-                        {skillOptionItems.length > 0 ? (
-                          skillOptionItems.map((skill) => {
-                            const active = selectedSkillIds.has(skill.id);
-                            return (
+                {skillOpen ? (
+                  <div className="absolute left-0 top-full z-20 mt-2 w-full rounded-2xl border border-[#e2e2e2] bg-white p-3 shadow-lg">
+                    <div className="mb-3">
+                      <input
+                        value={skillFilterQuery}
+                        onChange={(event) =>
+                          setSkillFilterQuery(event.target.value)
+                        }
+                        placeholder="Search skills"
+                        className="h-9 w-full rounded-xl border border-[#e2e2e2] px-3 text-sm outline-none focus:border-[#ff76c5]"
+                      />
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {skillOptionItems.length > 0 ? (
+                        skillOptionItems.map((skill) => {
+                          const active = selectedSkillIds.has(skill.id);
+                          return (
                             <button
                               key={skill.id}
                               type="button"
@@ -896,21 +896,21 @@ export default function SearchJobPage() {
                               )}
                             >
                               {skill.name}
-                              </button>
-                            );
-                          })
-                        ) : skillFilterQuery.trim().length < 2 ? (
-                          <span className="text-sm text-slate-500">
-                            Type at least 2 letters to search skills.
-                          </span>
-                        ) : (
-                          <span className="text-sm text-slate-500">
-                            No matching skills found.
-                          </span>
-                        )}
-                      </div>
+                            </button>
+                          );
+                        })
+                      ) : skillFilterQuery.trim().length < 2 ? (
+                        <span className="text-sm text-slate-500">
+                          Type at least 2 letters to search skills.
+                        </span>
+                      ) : (
+                        <span className="text-sm text-slate-500">
+                          No matching skills found.
+                        </span>
+                      )}
                     </div>
-                  ) : null}
+                  </div>
+                ) : null}
               </div>
             </div>
           </div>
@@ -1107,7 +1107,9 @@ export default function SearchJobPage() {
                                 {job.location}
                               </div>
                               <div className="mt-2 text-xs text-slate-500">
-                                {sessionViewedIds.has(job.id) ? "Viewed - " : ""}
+                                {sessionViewedIds.has(job.id)
+                                  ? "Viewed - "
+                                  : ""}
                                 {job.meta}
                               </div>
                             </div>
