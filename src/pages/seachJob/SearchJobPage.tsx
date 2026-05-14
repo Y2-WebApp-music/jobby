@@ -187,6 +187,116 @@ const getTotalResultsCount = (
   return totalPages * pageSize;
 };
 
+const useSkillInfoDialogState = () => {
+  const [skillInfoOpen, setSkillInfoOpen] = useState(false);
+  const [selectedSkillName, setSelectedSkillName] = useState<string | null>(
+    null,
+  );
+  const [selectedSkillDetail, setSelectedSkillDetail] =
+    useState<SkillDetailResponse | null>(null);
+  const [loadingSkillDetail, setLoadingSkillDetail] = useState(false);
+  const [skillDetailError, setSkillDetailError] = useState<string | null>(null);
+
+  return {
+    skillInfoOpen,
+    setSkillInfoOpen,
+    selectedSkillName,
+    setSelectedSkillName,
+    selectedSkillDetail,
+    setSelectedSkillDetail,
+    loadingSkillDetail,
+    setLoadingSkillDetail,
+    skillDetailError,
+    setSkillDetailError,
+  };
+};
+
+const useApplyDialogState = () => {
+  const [applyData, setApplyData] = useState<ApplyPayload>(initialApplyPayload);
+  const [applyDetail, setApplyDetail] = useState(initialApplyDialogJob);
+  const [resumesInJobby, setResumesInJobby] = useState<
+    { id: string; name: string; create_date: string }[]
+  >([]);
+  const [loadingApply, setLoadingApply] = useState(false);
+
+  return {
+    applyData,
+    setApplyData,
+    applyDetail,
+    setApplyDetail,
+    resumesInJobby,
+    setResumesInJobby,
+    loadingApply,
+    setLoadingApply,
+  };
+};
+
+const useSearchFiltersState = () => {
+  const [filterOptions, setFilterOptions] = useState<{
+    categoryOptions: FilterOptionItem[];
+    workTypeOptions: FilterOptionItem[];
+    workOptionOptions: FilterOptionItem[];
+  }>({
+    categoryOptions: [],
+    workTypeOptions: [],
+    workOptionOptions: [],
+  });
+  const [placeOptions, setPlaceOptions] = useState<PlaceSearchItem[]>([]);
+  const [placeInput, setPlaceInput] = useState("");
+  const [skillFilterQuery, setSkillFilterQuery] = useState("");
+  const [skillFilterSuggestions, setSkillFilterSuggestions] = useState<
+    SearchSuggestItem[]
+  >([]);
+  const [selectedPlaceLabel, setSelectedPlaceLabel] = useState("Any Place");
+  const [selectedSkillItems, setSelectedSkillItems] = useState<
+    SearchSuggestItem[]
+  >([]);
+  const { categoryOptions, workTypeOptions, workOptionOptions } = filterOptions;
+
+  return {
+    ...filterOptions,
+    setFilterOptions,
+    categoryOptions,
+    workTypeOptions,
+    workOptionOptions,
+    placeOptions,
+    setPlaceOptions,
+    placeInput,
+    setPlaceInput,
+    skillFilterQuery,
+    setSkillFilterQuery,
+    skillFilterSuggestions,
+    setSkillFilterSuggestions,
+    selectedPlaceLabel,
+    setSelectedPlaceLabel,
+    selectedSkillItems,
+    setSelectedSkillItems,
+  };
+};
+
+const useJobsUiState = () => {
+  const [savedJobIds, setSavedJobIds] = useState<Set<string>>(new Set());
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalResults, setTotalResults] = useState(0);
+  const [loadingJobs, setLoadingJobs] = useState(false);
+  const [sessionViewedIds, setSessionViewedIds] = useState<Set<string>>(
+    new Set(),
+  );
+
+  return {
+    savedJobIds,
+    setSavedJobIds,
+    totalPages,
+    setTotalPages,
+    totalResults,
+    setTotalResults,
+    loadingJobs,
+    setLoadingJobs,
+    sessionViewedIds,
+    setSessionViewedIds,
+  };
+};
+
 export default function SearchJobPage() {
   const user = useAuthStore((state) => state.user);
   const {
@@ -210,47 +320,62 @@ export default function SearchJobPage() {
   const skillFilterRef = useRef<HTMLDivElement | null>(null);
   const jobListScrollRef = useRef<HTMLDivElement | null>(null);
   const skillDetailRequestRef = useRef(0);
+  const jobsRequestKeyRef = useRef<string | null>(null);
+  const jobsRequestInFlightRef = useRef(false);
+  const jobDetailInFlightRef = useRef<Set<string>>(new Set());
 
-  const [skillInfoOpen, setSkillInfoOpen] = useState(false);
-  const [selectedSkillName, setSelectedSkillName] = useState<string | null>(
-    null,
-  );
-  const [selectedSkillDetail, setSelectedSkillDetail] =
-    useState<SkillDetailResponse | null>(null);
-  const [loadingSkillDetail, setLoadingSkillDetail] = useState(false);
-  const [skillDetailError, setSkillDetailError] = useState<string | null>(null);
-  const [applyData, setApplyData] = useState<ApplyPayload>(initialApplyPayload);
-  const [applyDetail, setApplyDetail] = useState(initialApplyDialogJob);
-  const [resumesInJobby, setResumesInJobby] = useState<
-    { id: string; name: string; create_date: string }[]
-  >([]);
-  const [categoryOptions, setCategoryOptions] = useState<FilterOptionItem[]>(
-    [],
-  );
-  const [workTypeOptions, setWorkTypeOptions] = useState<FilterOptionItem[]>(
-    [],
-  );
-  const [workOptionOptions, setWorkOptionOptions] = useState<
-    FilterOptionItem[]
-  >([]);
-  const [placeOptions, setPlaceOptions] = useState<PlaceSearchItem[]>([]);
-  const [placeInput, setPlaceInput] = useState("");
-  const [skillFilterQuery, setSkillFilterQuery] = useState("");
-  const [skillFilterSuggestions, setSkillFilterSuggestions] = useState<
-    SearchSuggestItem[]
-  >([]);
-  const [selectedPlaceLabel, setSelectedPlaceLabel] = useState("Any Place");
-  const [selectedSkillItems, setSelectedSkillItems] = useState<
-    SearchSuggestItem[]
-  >([]);
-  const [savedJobIds, setSavedJobIds] = useState<Set<string>>(new Set());
-  const [totalPages, setTotalPages] = useState(1);
-  const [totalResults, setTotalResults] = useState(0);
-  const [loadingJobs, setLoadingJobs] = useState(false);
-  const [loadingApply, setLoadingApply] = useState(false);
-  const [sessionViewedIds, setSessionViewedIds] = useState<Set<string>>(
-    new Set(),
-  );
+  const {
+    skillInfoOpen,
+    setSkillInfoOpen,
+    selectedSkillName,
+    setSelectedSkillName,
+    selectedSkillDetail,
+    setSelectedSkillDetail,
+    loadingSkillDetail,
+    setLoadingSkillDetail,
+    skillDetailError,
+    setSkillDetailError,
+  } = useSkillInfoDialogState();
+  const {
+    applyData,
+    setApplyData,
+    applyDetail,
+    setApplyDetail,
+    resumesInJobby,
+    setResumesInJobby,
+    loadingApply,
+    setLoadingApply,
+  } = useApplyDialogState();
+  const {
+    categoryOptions,
+    workTypeOptions,
+    workOptionOptions,
+    setFilterOptions,
+    placeOptions,
+    setPlaceOptions,
+    placeInput,
+    setPlaceInput,
+    skillFilterQuery,
+    setSkillFilterQuery,
+    skillFilterSuggestions,
+    setSkillFilterSuggestions,
+    selectedPlaceLabel,
+    setSelectedPlaceLabel,
+    selectedSkillItems,
+    setSelectedSkillItems,
+  } = useSearchFiltersState();
+  const {
+    savedJobIds,
+    setSavedJobIds,
+    totalPages,
+    setTotalPages,
+    totalResults,
+    setTotalResults,
+    loadingJobs,
+    setLoadingJobs,
+    sessionViewedIds,
+    setSessionViewedIds,
+  } = useJobsUiState();
 
   const currentPage = searchPayload.page ? searchPayload.page + 1 : 1;
   const filterMode = sortTypeToMode(searchPayload.sort_type);
@@ -352,9 +477,11 @@ export default function SearchJobPage() {
       try {
         const response = await searchJobService.getSearchFilterOptions();
         if (cancelled) return;
-        setCategoryOptions(response.data.category);
-        setWorkTypeOptions(response.data.work_type);
-        setWorkOptionOptions(response.data.work_option);
+        setFilterOptions({
+          categoryOptions: response.data.category,
+          workTypeOptions: response.data.work_type,
+          workOptionOptions: response.data.work_option,
+        });
       } catch {
         if (!cancelled) {
           toast.error("Failed to load search filters");
@@ -367,7 +494,7 @@ export default function SearchJobPage() {
     return () => {
       cancelled = true;
     };
-  }, [updatePayload]);
+  }, [setFilterOptions]);
 
   useEffect(() => {
     const searchText = searchPayload.search_text.trim();
@@ -427,7 +554,7 @@ export default function SearchJobPage() {
       cancelled = true;
       window.clearTimeout(timeoutId);
     };
-  }, [placeInput]);
+  }, [placeInput, setPlaceOptions]);
 
   useEffect(() => {
     if (!skillOpen) return;
@@ -465,10 +592,13 @@ export default function SearchJobPage() {
       cancelled = true;
       window.clearTimeout(timeoutId);
     };
-  }, [skillFilterQuery, skillOpen]);
+  }, [setSkillFilterSuggestions, skillFilterQuery, skillOpen]);
 
   const fetchJobDetail = useCallback(
     async (job: Job) => {
+      if (jobDetailInFlightRef.current.has(job.id)) return;
+      jobDetailInFlightRef.current.add(job.id);
+
       setSessionViewedIds((prev) => {
         if (prev.has(job.id)) return prev;
         const next = new Set(prev);
@@ -521,45 +651,68 @@ export default function SearchJobPage() {
         });
       } catch {
         return;
+      } finally {
+        jobDetailInFlightRef.current.delete(job.id);
       }
     },
-    [setJobs, user?.id],
+    [setJobs, setSavedJobIds, setSessionViewedIds, user?.id],
   );
 
-  useEffect(() => {
-    const loadJobs = async () => {
-      setLoadingJobs(true);
-      try {
-        const response = await searchJobService.searchJobs({
-          ...searchPayload,
-          user_id: user?.id ?? "",
-          limit: pageSize,
-        });
+  const loadJobs = useCallback(async () => {
+    const requestKey = JSON.stringify({
+      ...searchPayload,
+      user_id: user?.id ?? "",
+      limit: pageSize,
+    });
+    if (
+      jobsRequestInFlightRef.current &&
+      jobsRequestKeyRef.current === requestKey
+    ) {
+      return;
+    }
+    jobsRequestInFlightRef.current = true;
+    jobsRequestKeyRef.current = requestKey;
 
-        const nextJobs = response.data.job_result.map(mapSearchResultToJob);
-        setJobs(nextJobs);
-        setSavedJobIds(
-          new Set(nextJobs.filter((j) => j.saved).map((j) => j.id)),
-        );
-        setTotalPages(Math.max(1, response.data.total_page ?? 0));
-        setTotalResults(getTotalResultsCount(response.data, nextJobs.length));
-        setSelectedJobId((prev) => {
-          if (prev && nextJobs.some((job) => job.nodeId === prev)) return prev;
-          return null;
-        });
-      } catch {
-        setJobs([]);
-        setTotalPages(1);
-        setTotalResults(0);
-        setSelectedJobId(null);
-        toast.error("Failed to load jobs");
-      } finally {
-        setLoadingJobs(false);
+    setLoadingJobs(true);
+    try {
+      const response = await searchJobService.searchJobs({
+        ...searchPayload,
+        user_id: user?.id ?? "",
+        limit: pageSize,
+      });
+
+      const nextJobs = response.data.job_result.map(mapSearchResultToJob);
+      setJobs(nextJobs);
+      setSavedJobIds(new Set(nextJobs.filter((j) => j.saved).map((j) => j.id)));
+      setTotalPages(Math.max(1, response.data.total_page ?? 0));
+      setTotalResults(getTotalResultsCount(response.data, nextJobs.length));
+      setSelectedJobId(nextJobs[0]?.nodeId ?? null);
+    } catch {
+      setJobs([]);
+      setTotalPages(1);
+      setTotalResults(0);
+      setSelectedJobId(null);
+      toast.error("Failed to load jobs");
+    } finally {
+      if (jobsRequestKeyRef.current === requestKey) {
+        jobsRequestInFlightRef.current = false;
       }
-    };
+      setLoadingJobs(false);
+    }
+  }, [
+    searchPayload,
+    setJobs,
+    setLoadingJobs,
+    setSavedJobIds,
+    setSelectedJobId,
+    setTotalPages,
+    setTotalResults,
+    user?.id,
+  ]);
 
-    void loadJobs();
-  }, [searchPayload, setJobs, setSelectedJobId, user?.id]);
+  useEffect(() => {
+    loadJobs();
+  }, [loadJobs]);
 
   useEffect(() => {
     if (!selectedJobId) return;
