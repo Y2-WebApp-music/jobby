@@ -1,6 +1,7 @@
 import PageLayout from "@/components/layout/PageLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { PaginationEllipsis } from "@/components/ui/pagination";
 import {
   Combobox,
   ComboboxContent,
@@ -13,12 +14,6 @@ import {
   MultiSelect,
   type MultiSelectOption,
 } from "@/components/ui/multi-select";
-import {
-  Pagination,
-  PaginationContent,
-  PaginationEllipsis,
-  PaginationItem,
-} from "@/components/ui/pagination";
 import SkillinfoDialog from "@/features/profile/dialog/SkillinfoDialog";
 import { ApplyDialog } from "@/features/searchJob/dialogs/ApplyDialog";
 import { cn } from "@/lib/utils";
@@ -64,6 +59,15 @@ const modeToSortType = (
   return 0;
 };
 
+const matchesSelectedSearchType = (
+  item: SearchSuggestItem,
+  searchType: SearchTypeCode,
+) => {
+  if (searchType === 1) return item.type === "skill";
+  if (searchType === 2) return item.type === "job";
+  return true;
+};
+
 const formatPostedLabel = (value: string) => {
   const postedAt = new Date(value);
   if (Number.isNaN(postedAt.getTime())) return "posted recently";
@@ -78,6 +82,16 @@ const formatPostedLabel = (value: string) => {
   const weeks = Math.floor(diffDays / 7);
   if (weeks === 1) return "posted 1 week ago";
   return `posted ${weeks} weeks ago`;
+};
+
+const normalizeViewedFlag = (value: unknown) => {
+  if (typeof value === "boolean") return value;
+  if (typeof value === "number") return value === 1;
+  if (typeof value === "string") {
+    const normalized = value.trim().toLowerCase();
+    return normalized === "1" || normalized === "true";
+  }
+  return false;
 };
 
 const mapSearchResultToJob = (item: SearchJobResult): Job => ({
@@ -100,8 +114,71 @@ const mapSearchResultToJob = (item: SearchJobResult): Job => ({
   companyDescription: "",
   extraDescription: "",
   matchSkillCount: item.match_skill_count ?? 0,
-  viewed: item.is_viewed,
+  viewed: normalizeViewedFlag(item.is_viewed),
+  detailLoaded: false,
 });
+
+type PaginationEntry = number | "start-ellipsis" | "end-ellipsis";
+
+const buildPaginationEntries = (
+  currentPage: number,
+  totalPages: number,
+): PaginationEntry[] => {
+  if (totalPages <= 5) {
+    return Array.from({ length: totalPages }, (_, index) => index + 1);
+  }
+
+  if (currentPage <= 3) {
+    return [1, 2, 3, 4, "end-ellipsis", totalPages];
+  }
+
+  if (currentPage >= totalPages - 2) {
+    return [
+      1,
+      "start-ellipsis",
+      totalPages - 3,
+      totalPages - 2,
+      totalPages - 1,
+      totalPages,
+    ];
+  }
+
+  return [
+    1,
+    "start-ellipsis",
+    currentPage - 1,
+    currentPage,
+    currentPage + 1,
+    "end-ellipsis",
+    totalPages,
+  ];
+};
+
+const getTotalResultsCount = (
+  response: SearchJobResponse,
+  currentPageJobsCount: number,
+) => {
+  if (typeof response.total_result === "number") {
+    return response.total_result;
+  }
+
+  if (typeof response.total_count === "number") {
+    return response.total_count;
+  }
+
+  const totalPages = response.total_page ?? 0;
+  const page = response.page ?? 0;
+
+  if (totalPages <= 1) {
+    return currentPageJobsCount;
+  }
+
+  if (page + 1 >= totalPages) {
+    return (totalPages - 1) * pageSize + currentPageJobsCount;
+  }
+
+  return totalPages * pageSize;
+};
 
 export default function SearchJobPage() {
   const user = useAuthStore((state) => state.user);
@@ -110,8 +187,6 @@ export default function SearchJobPage() {
     setJobs,
     selectedJobId,
     setSelectedJobId,
-    viewed,
-    setViewed,
     searchPayload,
     setSearchPayload,
     skillSuggestions,
@@ -149,17 +224,29 @@ export default function SearchJobPage() {
   >([]);
   const [placeOptions, setPlaceOptions] = useState<PlaceSearchItem[]>([]);
   const [placeInput, setPlaceInput] = useState("");
+  const [skillFilterQuery, setSkillFilterQuery] = useState("");
+  const [skillFilterSuggestions, setSkillFilterSuggestions] = useState<
+    SearchSuggestItem[]
+  >([]);
   const [selectedPlaceLabel, setSelectedPlaceLabel] = useState("Any Place");
   const [selectedSkillItems, setSelectedSkillItems] = useState<
     SearchSuggestItem[]
   >([]);
   const [savedJobIds, setSavedJobIds] = useState<Set<string>>(new Set());
   const [totalPages, setTotalPages] = useState(1);
+  const [totalResults, setTotalResults] = useState(0);
   const [loadingJobs, setLoadingJobs] = useState(false);
   const [loadingApply, setLoadingApply] = useState(false);
+  const [sessionViewedIds, setSessionViewedIds] = useState<Set<string>>(
+    new Set(),
+  );
 
   const currentPage = searchPayload.page ? searchPayload.page + 1 : 1;
   const filterMode = sortTypeToMode(searchPayload.sort_type);
+  const paginationEntries = useMemo(
+    () => buildPaginationEntries(currentPage, totalPages),
+    [currentPage, totalPages],
+  );
   const selectedSkillIds = useMemo(
     () => new Set(searchPayload.skill),
     [searchPayload.skill],
@@ -171,17 +258,50 @@ export default function SearchJobPage() {
         .map((item) => item.name),
     [selectedSkillIds, selectedSkillItems],
   );
+  const visibleJobs = useMemo(
+    () =>
+      filterMode === "unviewed"
+        ? jobs.filter((job) => !sessionViewedIds.has(job.id))
+        : jobs,
+    [filterMode, jobs, sessionViewedIds],
+  );
+  const locallyHiddenUnviewedCount = useMemo(
+    () => sessionViewedIds.size,
+    [sessionViewedIds],
+  );
+  const displayedResults = useMemo(
+    () =>
+      filterMode === "unviewed"
+        ? Math.max(0, totalResults - locallyHiddenUnviewedCount)
+        : totalResults,
+    [filterMode, locallyHiddenUnviewedCount, totalResults],
+  );
   const selectedJob = useMemo(
-    () => jobs.find((job) => job.id === selectedJobId) ?? jobs[0] ?? null,
-    [jobs, selectedJobId],
+    () =>
+      visibleJobs.find((job) => job.nodeId === selectedJobId) ??
+      visibleJobs[0] ??
+      null,
+    [selectedJobId, visibleJobs],
   );
   const searchSuggestionNames = useMemo(
     () => skillSuggestions.map((item) => item.name),
     [skillSuggestions],
   );
   const skillOptionItems = useMemo(
-    () => skillSuggestions.filter((item) => item.type === "skill"),
-    [skillSuggestions],
+    () => {
+      const searchText = skillFilterQuery.trim().toLowerCase();
+
+      if (searchText.length >= 2) {
+        return skillFilterSuggestions.filter(
+          (item) =>
+            item.type === "skill" &&
+            item.name.toLowerCase().includes(searchText),
+        );
+      }
+
+      return selectedSkillItems.filter((item) => item.type === "skill");
+    },
+    [selectedSkillItems, skillFilterQuery, skillFilterSuggestions],
   );
   const headerSkills = selectedSkillNames.slice(0, 4);
   const headerSkillsOverflow = Math.max(0, selectedSkillNames.length - 4);
@@ -245,16 +365,13 @@ export default function SearchJobPage() {
       try {
         const response = await searchJobService.getSearchNameOptions({
           search_text: searchText,
+          search_type: searchPayload.search_type,
         });
         if (cancelled) return;
-        setSkillSuggestions(response.data.search_result);
-        setSelectedSkillItems((prev) => {
-          const merged = new Map(prev.map((item) => [item.id, item]));
-          response.data.search_result
-            .filter((item) => item.type === "skill")
-            .forEach((item) => merged.set(item.id, item));
-          return Array.from(merged.values());
-        });
+        const filteredResults = response.data.search_result.filter((item) =>
+          matchesSelectedSearchType(item, searchPayload.search_type),
+        );
+        setSkillSuggestions(filteredResults);
       } catch {
         if (!cancelled) {
           setSkillSuggestions([]);
@@ -266,15 +383,10 @@ export default function SearchJobPage() {
       cancelled = true;
       window.clearTimeout(timeoutId);
     };
-  }, [searchPayload.search_text, setSkillSuggestions]);
+  }, [searchPayload.search_text, searchPayload.search_type, setSkillSuggestions]);
 
   useEffect(() => {
     const searchText = placeInput.trim();
-    if (searchText.length < 2) {
-      setPlaceOptions([]);
-      return;
-    }
-
     let cancelled = false;
     const timeoutId = window.setTimeout(async () => {
       try {
@@ -282,9 +394,8 @@ export default function SearchJobPage() {
           search_text: searchText,
           limit: 100,
         });
-        if (!cancelled) {
-          setPlaceOptions(response.data.search_result);
-        }
+        if (cancelled) return;
+        setPlaceOptions(response.data.search_result);
       } catch {
         if (!cancelled) {
           setPlaceOptions([]);
@@ -297,6 +408,93 @@ export default function SearchJobPage() {
       window.clearTimeout(timeoutId);
     };
   }, [placeInput]);
+
+  useEffect(() => {
+    if (!skillOpen) return;
+
+    const searchText = skillFilterQuery.trim();
+    if (searchText.length < 2) {
+      setSkillFilterSuggestions([]);
+      return;
+    }
+
+    let cancelled = false;
+    const timeoutId = window.setTimeout(async () => {
+      try {
+        const response = await searchJobService.getSearchNameOptions({
+          search_text: searchText,
+          search_type: 1,
+        });
+        if (cancelled) return;
+
+        const normalizedSearchText = searchText.toLowerCase();
+        const nextSkills = response.data.search_result.filter(
+          (item) =>
+            item.type === "skill" &&
+            item.name.toLowerCase().includes(normalizedSearchText),
+        );
+        setSkillFilterSuggestions(nextSkills);
+      } catch {
+        if (!cancelled) {
+          setSkillFilterSuggestions([]);
+        }
+      }
+    }, 250);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timeoutId);
+    };
+  }, [skillFilterQuery, skillOpen]);
+
+  const fetchJobDetail = useCallback(
+    async (job: Job) => {
+      setSessionViewedIds((prev) => {
+        if (prev.has(job.id)) return prev;
+        const next = new Set(prev);
+        next.add(job.id);
+        return next;
+      });
+
+      if (!user?.id) return;
+
+      try {
+        const [detailResponse] = await Promise.all([
+          searchJobService.getSearchJobDetail(job.id, user.id),
+          searchJobService.viewedJob(user.id, job.id).catch(() => undefined),
+        ]);
+
+        setJobs((prev) =>
+          prev.map((item) =>
+            item.nodeId === job.nodeId
+              ? {
+                  ...item,
+                  skills: detailResponse.data.skills.map((skill) => skill.name),
+                  category:
+                    detailResponse.data.categories
+                      .map((category) => category.text_eng)
+                      .join(", ") || item.category,
+                  workType:
+                    detailResponse.data.work_types
+                      .map((workType) => workType.text_eng)
+                      .join(", ") || item.workType,
+                  workOption:
+                    detailResponse.data.work_options
+                      .map((workOption) => workOption.text_eng)
+                      .join(", ") || item.workOption,
+                  companyDescription: detailResponse.data.description ?? "",
+                  extraDescription: detailResponse.data.description_rtf ?? "",
+                  detailLoaded: true,
+                }
+              : item,
+          ),
+        );
+      } catch {
+        return;
+      }
+    },
+    [setJobs, user?.id],
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -313,22 +511,17 @@ export default function SearchJobPage() {
 
         const nextJobs = response.data.job_result.map(mapSearchResultToJob);
         setJobs(nextJobs);
-        setViewed(
-          new Set(
-            response.data.job_result
-              .filter((item) => item.is_viewed)
-              .map((item) => item.id),
-          ),
-        );
         setTotalPages(Math.max(1, response.data.total_page ?? 0));
+        setTotalResults(getTotalResultsCount(response.data, nextJobs.length));
         setSelectedJobId((prev) => {
-          if (prev && nextJobs.some((job) => job.id === prev)) return prev;
-          return nextJobs[0]?.id ?? null;
+          if (prev && nextJobs.some((job) => job.nodeId === prev)) return prev;
+          return null;
         });
       } catch {
         if (!cancelled) {
           setJobs([]);
           setTotalPages(1);
+          setTotalResults(0);
           setSelectedJobId(null);
           toast.error("Failed to load jobs");
         }
@@ -344,15 +537,16 @@ export default function SearchJobPage() {
     return () => {
       cancelled = true;
     };
-  }, [searchPayload, setJobs, setSelectedJobId, setViewed, user?.id]);
+  }, [searchPayload, setJobs, setSelectedJobId, user?.id]);
 
   useEffect(() => {
     if (!selectedJobId) return;
-    if (!user?.id) return;
 
-    fetcJobDetail(selectedJobId);
-  
-  }, [selectedJobId, setJobs]);
+    const selected = jobs.find((job) => job.nodeId === selectedJobId);
+    if (!selected || selected.detailLoaded) return;
+
+    void fetchJobDetail(selected);
+  }, [fetchJobDetail, jobs, selectedJobId]);
 
   useEffect(() => {
     jobListScrollRef.current?.scrollTo({ top: 0 });
@@ -385,6 +579,10 @@ export default function SearchJobPage() {
 
   const toggleSkill = (skill: SearchSuggestItem) => {
     setSelectedSkillItems((prev) => {
+      if (selectedSkillIds.has(skill.id)) {
+        return prev.filter((item) => item.id !== skill.id);
+      }
+
       if (prev.some((item) => item.id === skill.id)) return prev;
       return [...prev, skill];
     });
@@ -397,29 +595,12 @@ export default function SearchJobPage() {
     });
   };
 
-  const fetcJobDetail = async (id: string) => {
-    setSelectedJobId(id);
-    setViewed((prev) => {
-      if (prev.has(id)) return prev;
-      const next = new Set(prev);
-      next.add(id);
-      return next;
-    });
-
-    if (!user?.id) return;
-
-    try {
-      await searchJobService.getSearchJobDetail(id, user.id);
-    } catch (e){
-      console.log('e ',e)
-    }
-  };
-
   const handleDelete = (id: string) => {
     setJobs((prev) => {
       const nextJobs = prev.filter((job) => job.id !== id);
-      if (selectedJobId === id) {
-        setSelectedJobId(nextJobs[0]?.id ?? null);
+      const deletedJob = prev.find((job) => job.id === id);
+      if (deletedJob && selectedJobId === deletedJob.nodeId) {
+        setSelectedJobId(nextJobs[0]?.nodeId ?? null);
       }
       return nextJobs;
     });
@@ -436,20 +617,20 @@ export default function SearchJobPage() {
   };
 
   const handlePlaceSelect = (label: string) => {
-    if (label === "Any Place") {
-      setSelectedPlaceLabel("Any Place");
-      setPlaceInput("");
-      updatePayload({
-        place: { province_id: 0, district_id: 0 },
-        page: 0,
-      });
-      return;
-    }
-
     const selected = placeOptions.find(
       (option) => `${option.province_name}, ${option.district_name}` === label,
     );
     if (!selected) return;
+
+    if (selected.province_code === null && selected.district_code === null) {
+      setSelectedPlaceLabel("Any Place");
+      setPlaceInput("");
+      updatePayload({
+        place: { province_id: null, district_id: null },
+        page: 0,
+      });
+      return;
+    }
 
     setSelectedPlaceLabel(label);
     setPlaceInput("");
@@ -674,22 +855,35 @@ export default function SearchJobPage() {
                 >
                   <HiOutlineSelector className="h-4 w-4" />
                 </button>
-                <button
-                  type="button"
-                  className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[#999999] hover:bg-slate-100"
-                  aria-label="clear skill use"
-                  onClick={() => updatePayload({ skill: [], page: 0 })}
-                >
-                  <CgClose />
-                </button>
+                  <button
+                    type="button"
+                    className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[#999999] hover:bg-slate-100"
+                    aria-label="clear skill use"
+                    onClick={() => {
+                      setSkillFilterQuery("");
+                      updatePayload({ skill: [], page: 0 });
+                    }}
+                  >
+                    <CgClose />
+                  </button>
 
-                {skillOpen ? (
-                  <div className="absolute left-0 top-full z-20 mt-2 w-full rounded-2xl border border-[#e2e2e2] bg-white p-3 shadow-lg">
-                    <div className="flex flex-wrap gap-2">
-                      {skillOptionItems.length > 0 ? (
-                        skillOptionItems.map((skill) => {
-                          const active = selectedSkillIds.has(skill.id);
-                          return (
+                  {skillOpen ? (
+                    <div className="absolute left-0 top-full z-20 mt-2 w-full rounded-2xl border border-[#e2e2e2] bg-white p-3 shadow-lg">
+                      <div className="mb-3">
+                        <input
+                          value={skillFilterQuery}
+                          onChange={(event) =>
+                            setSkillFilterQuery(event.target.value)
+                          }
+                          placeholder="Search skills"
+                          className="h-9 w-full rounded-xl border border-[#e2e2e2] px-3 text-sm outline-none focus:border-[#ff76c5]"
+                        />
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {skillOptionItems.length > 0 ? (
+                          skillOptionItems.map((skill) => {
+                            const active = selectedSkillIds.has(skill.id);
+                            return (
                             <button
                               key={skill.id}
                               type="button"
@@ -702,17 +896,21 @@ export default function SearchJobPage() {
                               )}
                             >
                               {skill.name}
-                            </button>
-                          );
-                        })
-                      ) : (
-                        <span className="text-sm text-slate-500">
-                          Type in the search box to load skill suggestions.
-                        </span>
-                      )}
+                              </button>
+                            );
+                          })
+                        ) : skillFilterQuery.trim().length < 2 ? (
+                          <span className="text-sm text-slate-500">
+                            Type at least 2 letters to search skills.
+                          </span>
+                        ) : (
+                          <span className="text-sm text-slate-500">
+                            No matching skills found.
+                          </span>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                ) : null}
+                  ) : null}
               </div>
             </div>
           </div>
@@ -743,13 +941,10 @@ export default function SearchJobPage() {
 
             <div className="relative">
               <Combobox
-                items={[
-                  "Any Place",
-                  ...placeOptions.map(
-                    (option) =>
-                      `${option.province_name}, ${option.district_name}`,
-                  ),
-                ]}
+                items={placeOptions.map(
+                  (option) =>
+                    `${option.province_name}, ${option.district_name}`,
+                )}
               >
                 <ComboboxInput
                   placeholder={selectedPlaceLabel}
@@ -825,7 +1020,7 @@ export default function SearchJobPage() {
             <div className="flex h-full min-h-0 flex-col border-r border-[#e5e5e5] pb-3 pr-0">
               <div className="flex items-center gap-3 py-4">
                 <span className="text-sm font-medium text-slate-950">
-                  {loadingJobs ? "Loading..." : `${jobs.length} Results`}
+                  {loadingJobs ? "Loading..." : `${displayedResults} Results`}
                 </span>
                 <div className="inline-flex overflow-hidden rounded-full border border-[#d7d7d7] bg-white text-sm">
                   {(["relevance", "date", "unviewed"] as const).map(
@@ -863,12 +1058,12 @@ export default function SearchJobPage() {
                 className="min-h-0 flex-1 overflow-y-auto"
               >
                 <div className="space-y-0">
-                  {jobs.map((job) => {
-                    const isSelected = selectedJob?.id === job.id;
+                  {visibleJobs.map((job) => {
+                    const isSelected = selectedJob?.nodeId === job.nodeId;
                     return (
                       <Card
-                        key={job.id}
-                        onClick={() => setSelectedJobId(job.id)}
+                        key={job.nodeId}
+                        onClick={() => setSelectedJobId(job.nodeId)}
                         className={cn(
                           "group relative w-full cursor-pointer rounded-none border-x-0 border-b border-t-0 border-[#e5e5e5] bg-white transition",
                           isSelected ? "bg-[#fafafa]" : "hover:bg-[#fcfcfc]",
@@ -912,7 +1107,7 @@ export default function SearchJobPage() {
                                 {job.location}
                               </div>
                               <div className="mt-2 text-xs text-slate-500">
-                                {viewed.has(job.id) ? "Viewed - " : ""}
+                                {sessionViewedIds.has(job.id) ? "Viewed - " : ""}
                                 {job.meta}
                               </div>
                             </div>
@@ -924,148 +1119,97 @@ export default function SearchJobPage() {
                 </div>
               </div>
 
-              <div className="relative -mt-px flex min-h-[52px] items-center justify-center border-t border-[#e5e5e5] bg-white py-2 text-sm">
-                {(() => {
-                  const generatePageNumbers = () => {
-                    const pages: (number | "ellipsis-start" | "ellipsis-end")[] = [];
-                    
-                    if (totalPages <= 3) {
-                      // Show all pages if 3 or fewer
-                      for (let i = 1; i <= totalPages; i++) {
-                        pages.push(i);
-                      }
-                    } else {
-                      // Always show first page
-                      pages.push(1);
-                      
-                      // Determine which pages to show around current page
-                      const start = Math.max(2, currentPage - 1);
-                      const end = Math.min(totalPages - 1, currentPage + 1);
-                      
-                      // Add ellipsis if there's a gap after page 1
-                      if (start > 2) {
-                        pages.push("ellipsis-start");
-                      }
-                      
-                      // Add pages around current page
-                      for (let i = start; i <= end; i++) {
-                        pages.push(i);
-                      }
-                      
-                      // Add ellipsis if there's a gap before last page
-                      if (end < totalPages - 1) {
-                        pages.push("ellipsis-end");
-                      }
-                      
-                      // Always show last page
-                      pages.push(totalPages);
+              <div className="relative -mt-px flex min-h-[52px] items-center border-t border-[#e5e5e5] bg-white py-2 text-sm">
+                <button
+                  className="inline-flex items-center gap-1 rounded-full px-2 py-1 text-slate-600 hover:bg-slate-100 disabled:opacity-40"
+                  onClick={() =>
+                    updatePayload({ page: Math.max(0, currentPage - 2) })
+                  }
+                  disabled={currentPage === 1}
+                  type="button"
+                >
+                  <IoIosArrowBack />
+                  Previous
+                </button>
+
+                <div className="absolute left-1/2 top-1/2 flex -translate-x-1/2 -translate-y-1/2 items-center gap-2">
+                  {paginationEntries.map((entry, index) =>
+                    typeof entry === "number" ? (
+                      <button
+                        key={entry}
+                        onClick={() => updatePayload({ page: entry - 1 })}
+                        className={cn(
+                          "h-8 w-8 rounded-lg text-sm",
+                          entry === currentPage
+                            ? "bg-[linear-gradient(90deg,var(--color-main),var(--color-second))] text-white"
+                            : "text-slate-600 hover:bg-slate-100",
+                        )}
+                        type="button"
+                      >
+                        {entry}
+                      </button>
+                    ) : (
+                      <PaginationEllipsis
+                        key={`${entry}-${index}`}
+                        className="h-8 w-8 shrink-0 text-slate-500"
+                      />
+                    ),
+                  )}
+                </div>
+
+                <div className="ml-auto flex justify-end">
+                  <button
+                    className="inline-flex items-center gap-1 rounded-full px-2 py-1 text-slate-600 hover:bg-slate-100 disabled:opacity-40"
+                    onClick={() =>
+                      updatePayload({
+                        page: Math.min(totalPages - 1, currentPage),
+                      })
                     }
-                    
-                    return pages;
-                  };
-                  
-                  return (
-                    <Pagination className="flex justify-center">
-                      <PaginationContent>
-                        <PaginationItem>
-                          <button
-                            onClick={() =>
-                              updatePayload({ page: Math.max(0, currentPage - 2) })
-                            }
-                            disabled={currentPage === 1}
-                            className="inline-flex items-center gap-1 rounded-full px-2 py-1 text-slate-600 hover:bg-slate-100 disabled:opacity-40"
-                            type="button"
-                          >
-                            <IoIosArrowBack />
-                            Previous
-                          </button>
-                        </PaginationItem>
-                        
-                        {generatePageNumbers().map((page, idx) => {
-                          if (page === "ellipsis-start" || page === "ellipsis-end") {
-                            return (
-                              <PaginationItem key={`${page}-${idx}`}>
-                                <PaginationEllipsis />
-                              </PaginationItem>
-                            );
-                          }
-                          
-                          const isActive = page === currentPage;
-                          return (
-                            <PaginationItem key={page}>
-                              <button
-                                onClick={() => updatePayload({ page: page - 1 })}
-                                className={cn(
-                                  "h-8 w-8 rounded-lg text-sm flex items-center justify-center",
-                                  isActive
-                                    ? "bg-[linear-gradient(90deg,var(--color-main),var(--color-second))] text-white"
-                                    : "text-slate-600 hover:bg-slate-100",
-                                )}
-                                type="button"
-                              >
-                                {page}
-                              </button>
-                            </PaginationItem>
-                          );
-                        })}
-                        
-                        <PaginationItem>
-                          <button
-                            onClick={() =>
-                              updatePayload({
-                                page: Math.min(totalPages - 1, currentPage),
-                              })
-                            }
-                            disabled={currentPage === totalPages}
-                            className="inline-flex items-center gap-1 rounded-full px-2 py-1 text-slate-600 hover:bg-slate-100 disabled:opacity-40"
-                            type="button"
-                          >
-                            Next
-                            <IoIosArrowForward />
-                          </button>
-                        </PaginationItem>
-                      </PaginationContent>
-                    </Pagination>
-                  );
-                })()}
+                    disabled={currentPage === totalPages}
+                    type="button"
+                  >
+                    Next
+                    <IoIosArrowForward />
+                  </button>
+                </div>
               </div>
             </div>
 
             <div className="h-full overflow-y-auto border-l border-[#e5e5e5] pl-4">
-              {jobs.length === 0 || !selectedJob ? (
+              {visibleJobs.length === 0 || !selectedJob ? (
                 <div className="pt-6 text-sm text-slate-500">
                   No jobs to display.
                 </div>
               ) : (
                 <div className="pt-2">
-                  <div className="flex items-start gap-3">
-                    <div className="h-10 w-10 overflow-hidden rounded-full bg-[#e0e0e0]">
-                      {selectedJob.companyLogo ? (
-                        <img
-                          src={selectedJob.companyLogo}
-                          alt={selectedJob.company}
-                          className="h-full w-full object-cover"
-                        />
-                      ) : null}
-                    </div>
-                    <div className="min-w-0">
-                      <div className="text-sm text-slate-500">
+                  <div className="grid gap-2">
+                    <div className="flex items-center gap-3">
+                      <div className="h-10 w-10 overflow-hidden rounded-full bg-[#e0e0e0]">
+                        {selectedJob.companyLogo ? (
+                          <img
+                            src={selectedJob.companyLogo}
+                            alt={selectedJob.company}
+                            className="h-full w-full object-cover"
+                          />
+                        ) : null}
+                      </div>
+                      <div className="min-w-0 text-sm text-slate-500 break-words">
                         {selectedJob.company}
                       </div>
-                      <h2 className="text-[22px] font-semibold leading-tight text-slate-950">
-                        {selectedJob.title}
-                      </h2>
-                      <p className="text-sm text-slate-500">
-                        {selectedJob.location} -{" "}
-                        {formatPostedLabel(selectedJob.postedAt)}
-                      </p>
+                      <button
+                        className="ml-auto text-slate-700 hover:text-slate-950"
+                        type="button"
+                      >
+                        <IoIosMore size={20} />
+                      </button>
                     </div>
-                    <button
-                      className="ml-auto text-slate-700 hover:text-slate-950"
-                      type="button"
-                    >
-                      <IoIosMore size={20} />
-                    </button>
+                    <h2 className="text-[22px] font-semibold leading-tight text-slate-950 break-words">
+                      {selectedJob.title}
+                    </h2>
+                    <p className="text-sm text-slate-500 break-words">
+                      {selectedJob.location} -{" "}
+                      {formatPostedLabel(selectedJob.postedAt)}
+                    </p>
                   </div>
 
                   <div className="mt-3 flex gap-2">
@@ -1132,15 +1276,19 @@ export default function SearchJobPage() {
                     <p className="text-sm leading-relaxed text-slate-500">
                       Company Description
                     </p>
-                    <p className="mt-2 text-sm leading-relaxed text-slate-500">
-                      {selectedJob.companyDescription ||
-                        "No description available."}
-                    </p>
                     {selectedJob.extraDescription ? (
+                      <div
+                        className="mt-2 text-sm leading-6 text-muted-foreground [&_ol]:my-3 [&_ol]:list-decimal [&_ol]:pl-5 [&_p]:my-0 [&_p+ol]:mt-3 [&_p+ul]:mt-3 [&_p:not(:first-child)]:mt-3 [&_strong]:font-semibold [&_strong]:text-foreground [&_ul]:my-3 [&_ul]:list-disc [&_ul]:pl-5"
+                        dangerouslySetInnerHTML={{
+                          __html: selectedJob.extraDescription,
+                        }}
+                      />
+                    ) : (
                       <p className="mt-2 text-sm leading-relaxed text-slate-500">
-                        {selectedJob.extraDescription}
+                        {selectedJob.companyDescription ||
+                          "No description available."}
                       </p>
-                    ) : null}
+                    )}
                   </div>
                 </div>
               )}
