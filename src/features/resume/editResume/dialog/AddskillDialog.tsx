@@ -16,7 +16,10 @@ import {
   PopoverContent,
 } from "@/components/ui/popover";
 import ExamDialog from "@/features/profile/dialog/ExamDialog";
-import { getSearchSkill, type SearchSkillItem } from "@/services/searchSkillService";
+import {
+  getSearchSkill,
+  type SearchSkillItem,
+} from "@/services/searchSkillService";
 import {
   getSkillDetail,
   type SkillDetailResponse,
@@ -76,9 +79,8 @@ export default function AddskillDialog({
     const normalized = selectedSkillDetail.related_skills.filter((item) =>
       item.relType.toLowerCase().includes("pre"),
     );
-    return (normalized.length > 0
-      ? normalized
-      : selectedSkillDetail.related_skills
+    return (
+      normalized.length > 0 ? normalized : selectedSkillDetail.related_skills
     ).map((item) => item.name);
   }, [selectedSkillDetail]);
 
@@ -112,7 +114,9 @@ export default function AddskillDialog({
 
     const preparedSkill =
       selectedSkillDetail?.skill ??
-      suggestions.find((item) => item.name.toLowerCase() === next.toLowerCase());
+      suggestions.find(
+        (item) => item.name.toLowerCase() === next.toLowerCase(),
+      );
     const preparedSkillName = preparedSkill?.name;
     if (!preparedSkillName) return;
 
