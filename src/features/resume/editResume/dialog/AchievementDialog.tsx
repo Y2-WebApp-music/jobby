@@ -11,7 +11,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import AddskillDialog from "@/features/profile/dialog/AddskillDialog";
+import AddskillDialog from "@/features/resume/editResume/dialog/AddskillDialog";
 
 export type AchievementItem = {
   id: number;

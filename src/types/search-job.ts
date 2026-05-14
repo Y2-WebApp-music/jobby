@@ -33,12 +33,16 @@ export type SearchJobResult = {
   match_skill_count: number | null;
   status: number | null;
   is_viewed: boolean;
+  applied: boolean;
+  save: boolean;
 };
 
 export type SearchJobResponse = {
   job_result: SearchJobResult[];
   page: number | null;
   total_page: number | null;
+  total_result?: number | null;
+  total_count?: number | null;
 };
 
 export type FilterOptionItem = {
