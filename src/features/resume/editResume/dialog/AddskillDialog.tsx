@@ -10,7 +10,11 @@ import {
   CommandList,
 } from "@/components/ui/command";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
-import { Popover, PopoverAnchor, PopoverContent } from "@/components/ui/popover";
+import {
+  Popover,
+  PopoverAnchor,
+  PopoverContent,
+} from "@/components/ui/popover";
 import ExamDialog from "@/features/profile/dialog/ExamDialog";
 import { getSkillExam } from "@/types/skillExam";
 import { profileSkillCatalog } from "@/types/skill";
@@ -246,7 +250,9 @@ export default function AddskillDialog({
               align="start"
               sideOffset={6}
               className="z-80 p-1"
-              style={{ width: searchInputWidth ? `${searchInputWidth}px` : undefined }}
+              style={{
+                width: searchInputWidth ? `${searchInputWidth}px` : undefined,
+              }}
               onOpenAutoFocus={(e) => e.preventDefault()}
               onCloseAutoFocus={(e) => e.preventDefault()}
             >
@@ -311,8 +317,8 @@ export default function AddskillDialog({
               <Button
                 type="button"
                 onClick={() => addToDraft(selectedSkill.name)}
-                variant='default'
-                size='lg'
+                variant="default"
+                size="lg"
               >
                 <PlusIcon className="size-4" />
                 Add This Skill
@@ -358,8 +364,8 @@ export default function AddskillDialog({
                 type="button"
                 onClick={handleAddAllSkills}
                 disabled={!hasSkillChanges}
-                variant='default'
-                size='lg'
+                variant="default"
+                size="lg"
               >
                 <PlusIcon className="size-4" />
                 Add Skills

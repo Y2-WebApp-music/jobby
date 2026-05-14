@@ -3,9 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Pencil, Plus } from "lucide-react";
 import { CgClose } from "react-icons/cg";
 import AddskillDialog from "../dialog/AddskillDialog";
-import EducateDialog, {
-  type EducationItem,
-} from "../dialog/EducateDialog";
+import EducateDialog, { type EducationItem } from "../dialog/EducateDialog";
 import { type FormInputTabProps, formatMonthYear } from "./formInputTabProps";
 import { HiOutlinePlus } from "react-icons/hi";
 
@@ -146,7 +144,10 @@ export function EducationTab({ resume, updateData }: FormInputTabProps) {
               <CgClose />
             </Button>
           ))}
-          <Button variant="default" onClick={() => setIsAddSkillDialogOpen(true)}>
+          <Button
+            variant="default"
+            onClick={() => setIsAddSkillDialogOpen(true)}
+          >
             <HiOutlinePlus className="size-4" />
             Add Skill
           </Button>

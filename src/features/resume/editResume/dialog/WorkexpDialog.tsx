@@ -206,7 +206,9 @@ export default function WorkexpDialog({
 
         <form onSubmit={handleSaveDraft} className="space-y-3">
           <div>
-            <label className="mb-1 block text-sm text-slate-700">Position</label>
+            <label className="mb-1 block text-sm text-slate-700">
+              Position
+            </label>
             <input
               value={draft.position}
               placeholder="placeholder"
@@ -228,7 +230,9 @@ export default function WorkexpDialog({
             />
           </div>
           <div className="max-w-[260px]">
-            <label className="mb-1 block text-sm text-slate-700">Work Type</label>
+            <label className="mb-1 block text-sm text-slate-700">
+              Work Type
+            </label>
             <select
               value={draft.workType}
               onChange={(e) =>
@@ -250,7 +254,9 @@ export default function WorkexpDialog({
           </div>
 
           <div>
-            <label className="mb-1 block text-sm text-slate-700">Skill use</label>
+            <label className="mb-1 block text-sm text-slate-700">
+              Skill use
+            </label>
             <div className="mb-2 flex flex-wrap gap-2">
               {draft.skills.map((skill) => (
                 <span

@@ -256,7 +256,9 @@ export default function ProjectDialog({
             />
           </div>
           <div>
-            <label className="mb-1 block text-sm text-slate-700">Skill use</label>
+            <label className="mb-1 block text-sm text-slate-700">
+              Skill use
+            </label>
             <div className="mb-2 flex flex-wrap gap-2">
               {draft.skills.map((skill) => (
                 <span

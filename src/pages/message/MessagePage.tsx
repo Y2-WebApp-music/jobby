@@ -259,7 +259,9 @@ export default function MessagePage() {
     Record<string, ChatMessage[]>
   >({});
   const [likedMessageIds, setLikedMessageIds] = useState<string[]>([]);
-  const [likesCountByMessageId, setLikesCountByMessageId] = useState<Record<string, number>>({});
+  const [likesCountByMessageId, setLikesCountByMessageId] = useState<
+    Record<string, number>
+  >({});
   const [replyingTo, setReplyingTo] = useState<ChatMessage | null>(null);
   const [lightboxState, setLightboxState] = useState<{
     imageUrls: string[];
@@ -298,7 +300,8 @@ export default function MessagePage() {
           if (!previous) return previous;
           return {
             ...previous,
-            currentIndex: (previous.currentIndex + 1) % previous.imageUrls.length,
+            currentIndex:
+              (previous.currentIndex + 1) % previous.imageUrls.length,
           };
         });
         return;
@@ -730,11 +733,16 @@ export default function MessagePage() {
     const currentlyLiked = likedMessageIds.includes(messageId);
 
     setLikedMessageIds((prev) =>
-      currentlyLiked ? prev.filter((id) => id !== messageId) : [...prev, messageId],
+      currentlyLiked
+        ? prev.filter((id) => id !== messageId)
+        : [...prev, messageId],
     );
     setLikesCountByMessageId((prev) => ({
       ...prev,
-      [messageId]: Math.max(0, (prev[messageId] ?? 0) + (currentlyLiked ? -1 : 1)),
+      [messageId]: Math.max(
+        0,
+        (prev[messageId] ?? 0) + (currentlyLiked ? -1 : 1),
+      ),
     }));
 
     const socket = getTypedSocket();
@@ -759,11 +767,16 @@ export default function MessagePage() {
       }));
     } catch {
       setLikedMessageIds((prev) =>
-        currentlyLiked ? [...prev, messageId] : prev.filter((id) => id !== messageId),
+        currentlyLiked
+          ? [...prev, messageId]
+          : prev.filter((id) => id !== messageId),
       );
       setLikesCountByMessageId((prev) => ({
         ...prev,
-        [messageId]: Math.max(0, (prev[messageId] ?? 0) + (currentlyLiked ? 1 : -1)),
+        [messageId]: Math.max(
+          0,
+          (prev[messageId] ?? 0) + (currentlyLiked ? 1 : -1),
+        ),
       }));
     }
   };
@@ -911,7 +924,9 @@ export default function MessagePage() {
         }
         return next;
       });
-      setReplyingTo((prev) => (prev?.serverId === messageServerId ? null : prev));
+      setReplyingTo((prev) =>
+        prev?.serverId === messageServerId ? null : prev,
+      );
     } catch (error) {
       console.error(error);
     }
@@ -1124,9 +1139,7 @@ export default function MessagePage() {
                                   ? "Unlike message"
                                   : "Like message"
                               }
-                              onClick={() =>
-                                void handleToggleReaction(message)
-                              }
+                              onClick={() => void handleToggleReaction(message)}
                               className="rounded-md p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
                             >
                               <Heart
@@ -1181,11 +1194,15 @@ export default function MessagePage() {
                                 {quotedMessage ? (
                                   quotedMessage.fileUrl ? (
                                     <p className="line-clamp-2 text-xs text-muted-foreground">
-                                      📎 {quotedMessage.fileName ?? "Attachment"}
+                                      📎{" "}
+                                      {quotedMessage.fileName ?? "Attachment"}
                                     </p>
                                   ) : quotedMessage.imageUrls?.length ? (
                                     <p className="line-clamp-2 text-xs text-muted-foreground">
-                                      📷 {quotedMessage.imageUrls.length > 1 ? `${quotedMessage.imageUrls.length} photos` : "Photo"}
+                                      📷{" "}
+                                      {quotedMessage.imageUrls.length > 1
+                                        ? `${quotedMessage.imageUrls.length} photos`
+                                        : "Photo"}
                                     </p>
                                   ) : (
                                     <p className="line-clamp-2 text-xs text-muted-foreground">
@@ -1313,7 +1330,10 @@ export default function MessagePage() {
                     <div className="mb-2 flex items-start gap-2 rounded-xl border border-primary/30 bg-primary/5 px-3 py-2">
                       <div className="min-w-0 flex-1">
                         <p className="mb-0.5 text-xs font-medium text-primary">
-                          Replying to {replyingTo.from === "me" ? "yourself" : selectedThread?.name}
+                          Replying to{" "}
+                          {replyingTo.from === "me"
+                            ? "yourself"
+                            : selectedThread?.name}
                         </p>
                         {replyingTo.fileUrl ? (
                           <p className="truncate text-xs text-muted-foreground">
@@ -1321,7 +1341,10 @@ export default function MessagePage() {
                           </p>
                         ) : replyingTo.imageUrls?.length ? (
                           <p className="truncate text-xs text-muted-foreground">
-                            📷 {replyingTo.imageUrls.length > 1 ? `${replyingTo.imageUrls.length} photos` : "Photo"}
+                            📷{" "}
+                            {replyingTo.imageUrls.length > 1
+                              ? `${replyingTo.imageUrls.length} photos`
+                              : "Photo"}
                           </p>
                         ) : (
                           <p className="truncate text-sm text-muted-foreground">

@@ -206,7 +206,8 @@ export default function AchievementDialog({
               Achievement
             </DialogTitle>
             <p className="text-sm text-slate-500">
-              Make changes to your Achievement here. Click save when you're done.
+              Make changes to your Achievement here. Click save when you're
+              done.
             </p>
           </div>
           <button
@@ -266,7 +267,9 @@ export default function AchievementDialog({
           </div>
 
           <div>
-            <label className="mb-1 block text-sm text-slate-700">Skill use</label>
+            <label className="mb-1 block text-sm text-slate-700">
+              Skill use
+            </label>
             <div className="mb-2 flex flex-wrap gap-2">
               {draft.skills.map((skill) => (
                 <span

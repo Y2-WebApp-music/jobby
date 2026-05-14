@@ -26,9 +26,9 @@ export function ExperienceTab({ resume, updateData }: FormInputTabProps) {
   const [isAchievementDialogOpen, setIsAchievementDialogOpen] = useState(false);
   const [workexpEditIndex, setWorkexpEditIndex] = useState<number | null>(null);
   const [projectEditIndex, setProjectEditIndex] = useState<number | null>(null);
-  const [achievementEditIndex, setAchievementEditIndex] = useState<number | null>(
-    null,
-  );
+  const [achievementEditIndex, setAchievementEditIndex] = useState<
+    number | null
+  >(null);
 
   const workexpDialogData = useMemo<WorkExperienceItem[]>(
     () =>
@@ -146,9 +146,13 @@ export function ExperienceTab({ resume, updateData }: FormInputTabProps) {
   };
 
   const selectedWorkexpItem =
-    workexpEditIndex === null ? null : (workexpDialogData[workexpEditIndex] ?? null);
+    workexpEditIndex === null
+      ? null
+      : (workexpDialogData[workexpEditIndex] ?? null);
   const selectedProjectItem =
-    projectEditIndex === null ? null : (projectDialogData[projectEditIndex] ?? null);
+    projectEditIndex === null
+      ? null
+      : (projectDialogData[projectEditIndex] ?? null);
   const selectedAchievementItem =
     achievementEditIndex === null
       ? null
@@ -199,13 +203,17 @@ export function ExperienceTab({ resume, updateData }: FormInputTabProps) {
 
   const deleteProjectItem = () => {
     if (projectEditIndex === null) return;
-    handleSaveProject(projectDialogData.filter((_, index) => index !== projectEditIndex));
+    handleSaveProject(
+      projectDialogData.filter((_, index) => index !== projectEditIndex),
+    );
   };
 
   const deleteAchievementItem = () => {
     if (achievementEditIndex === null) return;
     handleSaveAchievement(
-      achievementDialogData.filter((_, index) => index !== achievementEditIndex),
+      achievementDialogData.filter(
+        (_, index) => index !== achievementEditIndex,
+      ),
     );
   };
 
