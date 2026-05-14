@@ -1,7 +1,6 @@
 import PageLayout from "@/components/layout/PageLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { PaginationEllipsis } from "@/components/ui/pagination";
 import {
   Combobox,
   ComboboxContent,
@@ -14,11 +13,22 @@ import {
   MultiSelect,
   type MultiSelectOption,
 } from "@/components/ui/multi-select";
+import { PaginationEllipsis } from "@/components/ui/pagination";
 import SkillinfoDialog from "@/features/profile/dialog/SkillinfoDialog";
 import { ApplyDialog } from "@/features/searchJob/dialogs/ApplyDialog";
 import { cn } from "@/lib/utils";
 import searchJobService from "@/services/searchJobService";
+import {
+  getSkillDetail,
+  type SkillDetailResponse,
+} from "@/services/skillDetailService";
 import { useAuthStore } from "@/store/auth";
+import {
+  pageSize,
+  searchTypeOptions,
+  useSearchJobState,
+  type Job,
+} from "@/types/job";
 import type {
   FilterOptionItem,
   PlaceSearchItem,
@@ -34,12 +44,6 @@ import {
   initialApplyPayload,
   type ApplyPayload,
 } from "@/types/searchJob";
-import {
-  pageSize,
-  searchTypeOptions,
-  type Job,
-  useSearchJobState,
-} from "@/types/job";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { CgClose } from "react-icons/cg";
 import { HiOutlineSelector } from "react-icons/hi";
@@ -200,17 +204,21 @@ export default function SearchJobPage() {
     setApplyOpen,
     applyDialogKey,
     setApplyDialogKey,
-    setMessageCount,
   } = useSearchJobState();
 
   const skillInfoRef = useRef<HTMLDivElement | null>(null);
   const skillFilterRef = useRef<HTMLDivElement | null>(null);
   const jobListScrollRef = useRef<HTMLDivElement | null>(null);
+  const skillDetailRequestRef = useRef(0);
 
   const [skillInfoOpen, setSkillInfoOpen] = useState(false);
   const [selectedSkillName, setSelectedSkillName] = useState<string | null>(
     null,
   );
+  const [selectedSkillDetail, setSelectedSkillDetail] =
+    useState<SkillDetailResponse | null>(null);
+  const [loadingSkillDetail, setLoadingSkillDetail] = useState(false);
+  const [skillDetailError, setSkillDetailError] = useState<string | null>(null);
   const [applyData, setApplyData] = useState<ApplyPayload>(initialApplyPayload);
   const [applyDetail, setApplyDetail] = useState(initialApplyDialogJob);
   const [resumesInJobby, setResumesInJobby] = useState<
@@ -336,10 +344,6 @@ export default function SearchJobPage() {
       limit: pageSize,
     }));
   }, [setSearchPayload, user?.id]);
-
-  useEffect(() => {
-    setMessageCount(100);
-  }, [setMessageCount]);
 
   useEffect(() => {
     let cancelled = false;
@@ -484,7 +488,7 @@ export default function SearchJobPage() {
             item.nodeId === job.nodeId
               ? {
                   ...item,
-                  skills: detailResponse.data.skills.map((skill) => skill.name),
+                  skills: detailResponse.data.skills,
                   category:
                     detailResponse.data.categories
                       .map((category) => category.text_eng)
@@ -523,8 +527,6 @@ export default function SearchJobPage() {
   );
 
   useEffect(() => {
-    let cancelled = false;
-
     const loadJobs = async () => {
       setLoadingJobs(true);
       try {
@@ -533,7 +535,6 @@ export default function SearchJobPage() {
           user_id: user?.id ?? "",
           limit: pageSize,
         });
-        if (cancelled) return;
 
         const nextJobs = response.data.job_result.map(mapSearchResultToJob);
         setJobs(nextJobs);
@@ -547,25 +548,17 @@ export default function SearchJobPage() {
           return null;
         });
       } catch {
-        if (!cancelled) {
-          setJobs([]);
-          setTotalPages(1);
-          setTotalResults(0);
-          setSelectedJobId(null);
-          toast.error("Failed to load jobs");
-        }
+        setJobs([]);
+        setTotalPages(1);
+        setTotalResults(0);
+        setSelectedJobId(null);
+        toast.error("Failed to load jobs");
       } finally {
-        if (!cancelled) {
-          setLoadingJobs(false);
-        }
+        setLoadingJobs(false);
       }
     };
 
     void loadJobs();
-
-    return () => {
-      cancelled = true;
-    };
   }, [searchPayload, setJobs, setSelectedJobId, user?.id]);
 
   useEffect(() => {
@@ -580,25 +573,6 @@ export default function SearchJobPage() {
   useEffect(() => {
     jobListScrollRef.current?.scrollTo({ top: 0 });
   }, [currentPage]);
-
-  useEffect(() => {
-    if (!skillOpen) return;
-
-    const handlePointerDown = (event: MouseEvent | TouchEvent) => {
-      const target = event.target as Node | null;
-      if (!target) return;
-      if (skillFilterRef.current?.contains(target)) return;
-      setSkillOpen(false);
-    };
-
-    document.addEventListener("mousedown", handlePointerDown);
-    document.addEventListener("touchstart", handlePointerDown);
-
-    return () => {
-      document.removeEventListener("mousedown", handlePointerDown);
-      document.removeEventListener("touchstart", handlePointerDown);
-    };
-  }, [setSkillOpen, skillOpen]);
 
   useEffect(() => {
     const handler = () => updatePayload({ search_text: "", page: 0 });
@@ -640,9 +614,35 @@ export default function SearchJobPage() {
     skillInfoRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
-  const handleOpenSkillInfo = (skillName: string) => {
+  const handleOpenSkillInfo = async (skillId: string, skillName: string) => {
     setSelectedSkillName(skillName);
+    setSelectedSkillDetail(null);
+    setSkillDetailError(null);
+    setLoadingSkillDetail(true);
     setSkillInfoOpen(true);
+
+    const requestId = ++skillDetailRequestRef.current;
+    try {
+      const response = await getSkillDetail(skillId);
+      if (requestId !== skillDetailRequestRef.current) return;
+      setSelectedSkillDetail(response.data);
+    } catch {
+      if (requestId !== skillDetailRequestRef.current) return;
+      setSelectedSkillDetail(null);
+      setSkillDetailError("Unable to load skill details.");
+    } finally {
+      if (requestId === skillDetailRequestRef.current) {
+        setLoadingSkillDetail(false);
+      }
+    }
+  };
+
+  const handleCloseSkillInfo = () => {
+    skillDetailRequestRef.current += 1;
+    setSkillInfoOpen(false);
+    setLoadingSkillDetail(false);
+    setSkillDetailError(null);
+    setSelectedSkillDetail(null);
   };
 
   const handlePlaceSelect = (label: string) => {
@@ -746,10 +746,6 @@ export default function SearchJobPage() {
 
     await searchJobService.applyJob(user.id, selectedJob.id, applyData);
   };
-
-  useEffect(() => {
-    console.log("selectedJob ", selectedJob);
-  }, [selectedJob]);
 
   return (
     <PageLayout>
@@ -1090,6 +1086,7 @@ export default function SearchJobPage() {
                 </div>
               </div>
 
+              {/* left Card job List */}
               <div
                 ref={jobListScrollRef}
                 className="min-h-0 flex-1 overflow-y-auto"
@@ -1214,6 +1211,7 @@ export default function SearchJobPage() {
               </div>
             </div>
 
+            {/* Job Detail */}
             <div className="h-full overflow-y-auto border-l border-[#e5e5e5] pl-4">
               {visibleJobs.length === 0 || !selectedJob ? (
                 <div className="pt-6 text-sm text-slate-500">
@@ -1232,7 +1230,7 @@ export default function SearchJobPage() {
                           />
                         ) : null}
                       </div>
-                      <div className="min-w-0 text-sm text-slate-500 break-words">
+                      <div className="min-w-0 text-sm text-slate-500 wrap-break-word">
                         {selectedJob.company}
                       </div>
                       <button
@@ -1242,10 +1240,10 @@ export default function SearchJobPage() {
                         <IoIosMore size={20} />
                       </button>
                     </div>
-                    <h2 className="text-[22px] font-semibold leading-tight text-slate-950 break-words">
+                    <h2 className="text-[22px] font-semibold leading-tight text-slate-950 wrap-break-word">
                       {selectedJob.title}
                     </h2>
-                    <p className="text-sm text-slate-500 break-words">
+                    <p className="text-sm text-slate-500 wrap-break-word">
                       {selectedJob.location} -{" "}
                       {formatPostedLabel(selectedJob.postedAt)}
                     </p>
@@ -1299,13 +1297,18 @@ export default function SearchJobPage() {
                       {selectedJob.skills.length > 0 ? (
                         selectedJob.skills.map((skill) => (
                           <Button
-                            key={skill}
+                            key={skill.skill_id}
                             type="button"
                             variant="outline_gradient"
                             size="sm"
-                            onClick={() => handleOpenSkillInfo(skill)}
+                            onClick={() =>
+                              void handleOpenSkillInfo(
+                                skill.skill_id,
+                                skill.skill_name,
+                              )
+                            }
                           >
-                            {skill}
+                            {skill.skill_name}
                           </Button>
                         ))
                       ) : (
@@ -1347,8 +1350,14 @@ export default function SearchJobPage() {
       </div>
       <SkillinfoDialog
         open={skillInfoOpen}
-        onClose={() => setSkillInfoOpen(false)}
+        onClose={handleCloseSkillInfo}
         skillName={selectedSkillName}
+        skillDetail={selectedSkillDetail}
+        isLoading={loadingSkillDetail}
+        errorMessage={skillDetailError}
+        onSelectSkill={(skillId, skillName) =>
+          void handleOpenSkillInfo(skillId, skillName)
+        }
       />
       <ApplyDialog
         key={applyDialogKey}
