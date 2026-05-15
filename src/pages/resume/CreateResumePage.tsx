@@ -30,6 +30,30 @@ const DEFAULT_COUNTRY_TH = "Thailand";
 const DEFAULT_COUNTRY_ENG = "KINGDOM OF THAILAND";
 const DEFAULT_COUNTRY_ID = 76400;
 
+const resumeThumbModules = import.meta.glob("/src/assets/resume-thumb/*.png", {
+  eager: true,
+  import: "default",
+}) as Record<string, string>;
+
+const colorByIndex: Record<number, string> = {
+  0: "blue",
+  1: "red",
+  2: "green",
+  3: "pink",
+  4: "or",
+};
+
+const resolveThemePreviewUrl = (theme?: number, color?: number) => {
+  const resolvedTheme = theme && theme >= 1 && theme <= 3 ? theme : 1;
+  const resolvedColor = colorByIndex[color ?? 0] ?? "blue";
+  const thumbPath = `/src/assets/resume-thumb/thumb-${resolvedColor}-${resolvedTheme}.png`;
+  const pdfThumbPath = "/src/assets/resume-thumb/pdf-thumb.png";
+
+  return (
+    resumeThumbModules[thumbPath] ?? resumeThumbModules[pdfThumbPath] ?? null
+  );
+};
+
 const toIsoOrEmpty = (value: Date | string) => {
   if (!value) return "";
   const formatted = dayjs(value);
@@ -601,17 +625,33 @@ export default function CreateResumePage() {
 
           <div className="grow mb-5 flex items-center gap-6 rounded-xl border border-neutral-200 bg-neutral-50 p-4">
             <div className="flex flex-1 gap-3">
-              {[1, 2, 3].map((id) => (
-                <button
-                  key={id}
-                  onClick={() => setResume((prev) => ({ ...prev, theme: id }))}
-                  className={`h-[120px] w-[86px] cursor-pointer rounded-xl bg-neutral-200 ${
-                    id === resume.theme
-                      ? "border-2 border-c-ff7a00"
-                      : "border border-neutral-300"
-                  }`}
-                />
-              ))}
+              {[1, 2, 3].map((id) =>
+                (() => {
+                  const thumbUrl = resolveThemePreviewUrl(id, resume.color);
+
+                  return (
+                    <button
+                      key={id}
+                      onClick={() =>
+                        setResume((prev) => ({ ...prev, theme: id }))
+                      }
+                      className={`h-[120px] w-[86px] cursor-pointer overflow-hidden rounded-xl bg-neutral-200 ${
+                        id === resume.theme
+                          ? "border-2 border-c-ff7a00"
+                          : "border border-neutral-300"
+                      }`}
+                    >
+                      {thumbUrl ? (
+                        <img
+                          src={thumbUrl}
+                          alt={`Theme ${id} preview`}
+                          className="h-full w-full object-cover object-top"
+                        />
+                      ) : null}
+                    </button>
+                  );
+                })(),
+              )}
             </div>
 
             <div className="h-20 w-px bg-neutral-300" />

@@ -27,6 +27,30 @@ const formatResumeDate = (date: string) => {
   return d.isValid() ? d.format("DD MMM YYYY HH:mm") : date;
 };
 
+const resumeThumbModules = import.meta.glob("/src/assets/resume-thumb/*.png", {
+  eager: true,
+  import: "default",
+}) as Record<string, string>;
+
+const colorByIndex: Record<number, string> = {
+  0: "blue",
+  1: "red",
+  2: "green",
+  3: "pink",
+  4: "or",
+};
+
+const resolveThemePreviewUrl = (theme?: number, color?: number) => {
+  const resolvedTheme = theme && theme >= 1 && theme <= 3 ? theme : 1;
+  const resolvedColor = colorByIndex[color ?? 0] ?? "blue";
+  const thumbPath = `/src/assets/resume-thumb/thumb-${resolvedColor}-${resolvedTheme}.png`;
+
+  return resumeThumbModules[thumbPath] ?? null;
+};
+
+const pdfThumbUrl =
+  resumeThumbModules["/src/assets/resume-thumb/pdf-thumb.png"] ?? null;
+
 export function ResumeCard({
   resume,
   onOpen,
@@ -37,6 +61,10 @@ export function ResumeCard({
   className,
 }: ResumeCardProps) {
   const displayDate = formatResumeDate(resume.create_date);
+  const themePreviewUrl = resolveThemePreviewUrl(resume.theme, resume.color);
+  const cardPreviewUrl = resume.resume_file
+    ? pdfThumbUrl
+    : (previewUrl ?? themePreviewUrl ?? pdfThumbUrl);
 
   return (
     <article
@@ -57,9 +85,9 @@ export function ResumeCard({
     >
       {/* Preview area */}
       <div className="flex h-32 w-24 shrink-0 overflow-hidden rounded-lg bg-muted">
-        {previewUrl ? (
+        {cardPreviewUrl ? (
           <img
-            src={previewUrl}
+            src={cardPreviewUrl}
             alt=""
             className="h-full w-full object-cover object-top"
           />
