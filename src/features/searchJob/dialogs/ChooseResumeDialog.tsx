@@ -14,6 +14,30 @@ import { CgClose } from "react-icons/cg";
 
 type View = "choose" | "list";
 
+const resumeThumbModules = import.meta.glob("/src/assets/resume-thumb/*.png", {
+  eager: true,
+  import: "default",
+}) as Record<string, string>;
+
+const colorByIndex: Record<number, string> = {
+  0: "blue",
+  1: "red",
+  2: "green",
+  3: "pink",
+  4: "or",
+};
+
+const resolveThemePreviewUrl = (theme?: number, color?: number) => {
+  const resolvedTheme = theme && theme >= 1 && theme <= 3 ? theme : 1;
+  const resolvedColor = colorByIndex[color ?? 0] ?? "blue";
+  const thumbPath = `/src/assets/resume-thumb/thumb-${resolvedColor}-${resolvedTheme}.png`;
+
+  return resumeThumbModules[thumbPath] ?? null;
+};
+
+const pdfThumbUrl =
+  resumeThumbModules["/src/assets/resume-thumb/pdf-thumb.png"] ?? null;
+
 export function ChooseResumeDialog({
   open,
   onOpenChange,
@@ -123,7 +147,29 @@ export function ChooseResumeDialog({
                         "transition-colors hover:bg-muted/50 hover:border-input cursor-pointer",
                       )}
                     >
-                      <div className="size-12 shrink-0 rounded-lg bg-muted" />
+                      {(() => {
+                        const themePreviewUrl = resolveThemePreviewUrl(
+                          resume.theme,
+                          resume.color,
+                        );
+                        const cardPreviewUrl = resume.resume_file
+                          ? pdfThumbUrl
+                          : (themePreviewUrl ?? pdfThumbUrl);
+
+                        return (
+                          <div className="size-12 shrink-0 overflow-hidden rounded-lg bg-muted">
+                            {cardPreviewUrl ? (
+                              <img
+                                src={cardPreviewUrl}
+                                alt=""
+                                className="h-full w-full object-cover object-top"
+                              />
+                            ) : (
+                              <div className="size-full bg-neutral-200" />
+                            )}
+                          </div>
+                        );
+                      })()}
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-sm font-medium">
                           {resume.name}

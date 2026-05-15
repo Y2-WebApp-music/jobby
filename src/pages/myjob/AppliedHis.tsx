@@ -7,6 +7,7 @@ import searchJobService from "@/services/searchJobService";
 import userService from "@/services/userService";
 import { useAuthStore } from "@/store/auth";
 import { pageSize, type Job } from "@/types/job";
+import type { ResumeListItem } from "@/types/resumeType";
 import {
   initialApplyDialogJob,
   initialApplyPayload,
@@ -169,9 +170,7 @@ export default function MyJobsPage() {
   const [applyOpen, setApplyOpen] = useState(false);
   const [applyData, setApplyData] = useState<ApplyPayload>(initialApplyPayload);
   const [applyDetail, setApplyDetail] = useState(initialApplyDialogJob);
-  const [resumesInJobby, setResumesInJobby] = useState<
-    { id: string; name: string; create_date: string }[]
-  >([]);
+  const [resumesInJobby, setResumesInJobby] = useState<ResumeListItem[]>([]);
   const jobListRef = useRef<HTMLDivElement | null>(null);
 
   const rawJobView = searchParams.get("view");
@@ -347,9 +346,23 @@ export default function MyJobsPage() {
         searchJobService.createApplyPayloadFromNeed(needResponse.data),
       );
       setResumesInJobby(
-        resumeResponse.data.map(
-          searchJobService.mapSearchJobResumeToResumeListItem,
-        ),
+        resumeResponse.data.map((item) => {
+          const mapped =
+            searchJobService.mapSearchJobResumeToResumeListItem(item);
+
+          return {
+            ...mapped,
+            theme:
+              typeof item.theme === "number" && Number.isFinite(item.theme)
+                ? item.theme
+                : 1,
+            color:
+              typeof item.color === "number" && Number.isFinite(item.color)
+                ? item.color
+                : 0,
+            resume_file: item.resume_file ?? null,
+          };
+        }),
       );
       setApplyOpen(true);
     } catch {

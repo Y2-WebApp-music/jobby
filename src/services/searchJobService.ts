@@ -132,6 +132,7 @@ export type SearchJobUserResumeItem = {
   create_date: string;
   theme: number;
   color: number;
+  resume_file?: string | null;
   first_name: string;
   last_name: string;
   logo: string;
@@ -332,6 +333,9 @@ export const mapSearchJobResumeToResumeListItem = (
   id: resume.id,
   name: resume.name,
   create_date: resume.create_date,
+  theme: resume.theme,
+  color: resume.color,
+  resume_file: resume.resume_file ?? null,
 });
 
 const buildApplyJobFormData = (payload: ApplyPayload) => {

@@ -44,6 +44,7 @@ import {
   initialApplyPayload,
   type ApplyPayload,
 } from "@/types/searchJob";
+import type { ResumeListItem } from "@/types/resumeType";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { CgClose } from "react-icons/cg";
 import { HiOutlineSelector } from "react-icons/hi";
@@ -214,9 +215,7 @@ const useSkillInfoDialogState = () => {
 const useApplyDialogState = () => {
   const [applyData, setApplyData] = useState<ApplyPayload>(initialApplyPayload);
   const [applyDetail, setApplyDetail] = useState(initialApplyDialogJob);
-  const [resumesInJobby, setResumesInJobby] = useState<
-    { id: string; name: string; create_date: string }[]
-  >([]);
+  const [resumesInJobby, setResumesInJobby] = useState<ResumeListItem[]>([]);
   const [loadingApply, setLoadingApply] = useState(false);
 
   return {
@@ -879,9 +878,23 @@ export default function SearchJobPage() {
         searchJobService.createApplyPayloadFromNeed(needResponse.data),
       );
       setResumesInJobby(
-        resumeResponse.data.map(
-          searchJobService.mapSearchJobResumeToResumeListItem,
-        ),
+        resumeResponse.data.map((item) => {
+          const mapped =
+            searchJobService.mapSearchJobResumeToResumeListItem(item);
+
+          return {
+            ...mapped,
+            theme:
+              typeof item.theme === "number" && Number.isFinite(item.theme)
+                ? item.theme
+                : 1,
+            color:
+              typeof item.color === "number" && Number.isFinite(item.color)
+                ? item.color
+                : 0,
+            resume_file: item.resume_file ?? null,
+          };
+        }),
       );
       setApplyDialogKey((prev) => prev + 1);
       setApplyOpen(true);
