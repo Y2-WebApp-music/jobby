@@ -63,6 +63,9 @@ export type ResumeListItem = {
   id: string;
   name: string;
   create_date: string;
+  theme?: number;
+  color?: number;
+  resume_file?: string | null;
 };
 
 export type ResumeCreateProps = {
