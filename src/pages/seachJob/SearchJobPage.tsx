@@ -1491,9 +1491,6 @@ export default function SearchJobPage() {
                     <h3 className="mb-2 text-base font-medium text-slate-950">
                       {selectedJob.aboutTitle}
                     </h3>
-                    <p className="text-sm leading-relaxed text-slate-500">
-                      Company Description
-                    </p>
                     {selectedJob.extraDescription ? (
                       <div
                         className="mt-2 text-sm leading-6 text-muted-foreground [&_ol]:my-3 [&_ol]:list-decimal [&_ol]:pl-5 [&_p]:my-0 [&_p+ol]:mt-3 [&_p+ul]:mt-3 [&_p:not(:first-child)]:mt-3 [&_strong]:font-semibold [&_strong]:text-foreground [&_ul]:my-3 [&_ul]:list-disc [&_ul]:pl-5"
