@@ -8,7 +8,7 @@ import {
   hydrateAuthStoreFromSession,
 } from "@/services/authClient";
 import { useState, type FormEvent } from "react";
-import { FcGoogle } from "react-icons/fc";
+// import { FcGoogle } from "react-icons/fc";
 import { IoMdEye, IoMdEyeOff } from "react-icons/io";
 
 export default function SignInPage() {
@@ -21,24 +21,24 @@ export default function SignInPage() {
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  const onGoogleSignIn = async () => {
-    setErrorMsg(null);
-    setLoading(true);
-    try {
-      const callback = `${window.location.origin}/`;
-      // newUserCallbackURL can be used to send new users to a different page after sign-up
-      await authClient.signIn.social({
-        provider: "google",
-        callbackURL: callback,
-        newUserCallbackURL: callback,
-      });
-    } catch (err) {
-      console.error("Google sign-in failed", err);
-      setErrorMsg("Google sign-in failed");
-    } finally {
-      setLoading(false);
-    }
-  };
+  // const onGoogleSignIn = async () => {
+  //   setErrorMsg(null);
+  //   setLoading(true);
+  //   try {
+  //     const callback = `${window.location.origin}/`;
+  //     // newUserCallbackURL can be used to send new users to a different page after sign-up
+  //     await authClient.signIn.social({
+  //       provider: "google",
+  //       callbackURL: callback,
+  //       newUserCallbackURL: callback,
+  //     });
+  //   } catch (err) {
+  //     console.error("Google sign-in failed", err);
+  //     setErrorMsg("Google sign-in failed");
+  //   } finally {
+  //     setLoading(false);
+  //   }
+  // };
 
   const onEmailSignIn = async (e?: FormEvent) => {
     e?.preventDefault();
@@ -268,13 +268,13 @@ export default function SignInPage() {
                   </Button>
                 </div>
 
-                <div className="flex items-center gap-3 text-[11px] text-[#7b7b7b]">
+                {/* <div className="flex items-center gap-3 text-[11px] text-[#7b7b7b]">
                   <div className="h-px flex-1 bg-[#767676]" />
                   <span>or</span>
                   <div className="h-px flex-1 bg-[#767676]" />
-                </div>
+                </div> */}
 
-                <div className="flex justify-center">
+                {/* <div className="flex justify-center">
                   <button
                     type="button"
                     onClick={() => void onGoogleSignIn()}
@@ -284,7 +284,7 @@ export default function SignInPage() {
                     <FcGoogle className="size-4" />
                     Continue with Google
                   </button>
-                </div>
+                </div> */}
               </form>
             </section>
 
