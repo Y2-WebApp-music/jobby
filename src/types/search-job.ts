@@ -27,6 +27,7 @@ export type SearchJobResult = {
     name: string;
     logo: string;
   };
+  applied_status?: number | null;
   province_name: string;
   district_name: string;
   created_at: string;
